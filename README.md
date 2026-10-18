@@ -1,2 +1,117 @@
 # coding-task-benchmark
-An orchestrator that launches a coding task across various models / providers, benchmarks results and has them review each other.
+
+Paste a Codility-style task. The harness gives each coding agent its own directory and up to three attempts, then scores the `solution.py` files on one frozen test suite.
+
+The solvers are the Claude Code and Grok CLIs in headless mode. The harness never logs into Codility. You read the report and submit the solution you are willing to defend.
+
+## Run
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+During the interview, pass only the task. The lineup is already chosen:
+
+```bash
+pbpaste | ./interview
+./interview task.md
+```
+
+That runs three attempts on each of these models, at the same time. Each row has its own reasoning level, because that changes the code the model writes:
+
+| Solver | Model | Reasoning |
+| --- | --- | --- |
+| Claude | opus | medium |
+| Claude | sonnet | high |
+| Codex | gpt-6-astra | high |
+| Codex | gpt-6.1-sol | xhigh |
+| Grok | grok-4.7 | high |
+
+Opus at medium and gpt-6.1-sol at xhigh are fixed. The other three are high. Sonnet 5.5's FrontierCode score peaks at xhigh and falls at max, because max makes edits the grader treats as out of scope, and high is the step up from Claude Code's medium default. Astra's DeepSWE score barely moves above high. Grok 4.7's published DeepSWE number is the high-effort run, and high is that model's default. Codex is started with `--ignore-user-config`, so an `xhigh` in `~/.codex/config.toml` would not apply. The catalog default for these Codex models is low.
+
+Claude Sonnet at high also writes the hidden tests before those five start. Change the list in [src/ctb/cli.py](src/ctb/cli.py) before the interview, not during it.
+
+To pick models yourself:
+
+```bash
+ctb run examples/binary_gap.md --agents claude,grok
+```
+
+Offline walkthrough, with no model calls. The `fake` agent only knows the bundled BinaryGap sample, and it misses on purpose on attempt 1:
+
+```bash
+ctb run examples/binary_gap.md --agents fake --test-author fake --skip-review
+```
+
+The report is `runs/<timestamp>/report.md`.
+
+## What a run does
+
+1. Reads the task. Python blocks that contain `assert` become public tests.
+2. The test-author CLI writes `test_hidden.py` and `perf_cases.py` in its own directory. Those files are copied out and frozen. Solvers never get that directory.
+3. Each solver gets a fresh git repo containing `task.md` and a `solution.py` stub. A git root in the workspace keeps Grok from treating this benchmark repo as the project. The solvers start together.
+4. Each solver takes its attempts in order. Attempt 1 solves the task. Each later attempt sees the previous score and writes a different approach. The harness keeps the better one: passing tests, then a runtime at least 10 percent lower, then clearer code.
+5. When at least two agents ran, each one grades the other's final code with tools disabled. The grades start together. An agent does not grade itself, and it does not see the test score.
+6. The profile is written from the weights below. A dimension that was not measured is dropped and the remaining weights are rescaled.
+
+| Dimension | Weight | Source |
+| --- | ---: | --- |
+| Correctness | 40 | Frozen pytest suite. A failing public example scores 0. |
+| Performance | 20 | Median runtime of `perf_cases.py`. Fastest passing solution scores 100. |
+| Readability | 15 | Function length and complexity, plus Ruff when it is installed. |
+| Extensibility | 10 | Mean of the other agents' extensibility grades. |
+| Peer | 10 | Mean of the other agents' three rubric grades. |
+| Cost | 5 | Token total and wall clock, averaged. Lower is better. Dollars are shown when the CLI reports them. |
+
+## Agents and models
+
+Each entry is a CLI, `cli:model`, or `cli:model:effort`. The model id is whatever that CLI accepts. Claude's own help lists aliases such as `opus` and `sonnet`. Run `grok models` for Grok ids. Codex takes the id you would pass to `codex exec -m`. The effort is that CLI's reasoning level: Claude uses `--effort`, Grok uses `--effort`, and Codex uses `-c model_reasoning_effort`. Omit it to leave the CLI default. A model can reject a level its own menu does not list.
+
+The same CLI can run twice when the models differ. `claude:opus,claude:sonnet` is two solvers. `claude,claude` is rejected because both would be named `claude`.
+
+Omitting the model uses that CLI's configured default. The default agent list is `claude,grok`.
+
+Codex is `codex exec --json`. The first attempt uses `--sandbox workspace-write`. Later attempts use `codex exec resume`, which has no sandbox flag, so those calls bypass approvals rather than hang on a prompt. Codex token totals come from each `turn.completed` usage object. Cached input is reported inside `input_tokens`, and the harness splits it back out. Dollar cost is not in that stream.
+
+Claude Code:
+
+- `claude -p --output-format json --safe-mode --disable-slash-commands --strict-mcp-config`
+- Solvers use `--permission-mode bypassPermissions` so they can run Python in the workspace
+- `--max-budget-usd` defaults to 2 per call
+- Resume with `--resume`
+- Add `--model <model>` when the agent entry is `claude:<model>`
+- Add `--effort <level>` when the entry is `claude:<model>:<effort>` (`low`, `medium`, `high`, `xhigh`, `max`)
+
+Grok:
+
+- `grok -p --output-format json --sandbox strict --max-turns 25 --no-subagents --disable-web-search`
+- `GROK_CLAUDE_SKILLS_ENABLED=false` and `GROK_CURSOR_SKILLS_ENABLED=false` for that process
+- Resume with `-r`
+- Add `-m <model>` when the agent entry is `grok:<model>`
+- Add `--effort <level>` when the entry is `grok:<model>:<effort>` (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`)
+
+Codex:
+
+- `codex exec --json --sandbox workspace-write --approve-for-me --ignore-user-config`
+- Review uses `--sandbox read-only` and `--output-schema`
+- Resume with `codex exec resume <thread-id>`
+- Add `-m <model>` when the agent entry is `codex:<model>`
+- Add `-c model_reasoning_effort="<level>"` on the first attempt and on resume. `--ignore-user-config` would otherwise drop it. Levels include `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
+
+Token counts are whatever that invocation's JSON `usage` object reports. Wall clock is the process time around the CLI. Grok often omits dollar cost on subscription logins. The cost score still uses tokens and time.
+
+`--safe-mode` is deliberate. `--bare` would ignore the Claude subscription login.
+
+## Limits
+
+Grok's `strict` sandbox can read the workspace and not the rest of the disk. On macOS it does not block network for child processes. Web search is turned off anyway.
+
+Claude with Bash can still read other files your user can read. Hidden tests live outside the solver directory and are not named in the prompt. The repair prompt includes pytest failure text, which reveals the assertion that failed.
+
+The first real Grok run in a new folder may stop on a trust prompt. Run Grok's own trust command in that workspace if it says the folder is untrusted.
+
+Codex attempts after the first bypass approvals. `codex exec resume` does not accept a sandbox flag, and a prompt would hang the run. Those later attempts can read files outside the workspace.
+
+Usage on a resumed Grok session is stored as reported. If a live run shows cumulative totals, the next change is to store the difference between attempts.
