@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
@@ -22,6 +23,7 @@ def run_benchmark(
     out_dir: Path,
     review: bool,
     progress: ProgressBoard | None = None,
+    candidate: Callable[[], SolutionRun | None] | None = None,
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "task.md").write_text(task_text)
@@ -52,7 +54,7 @@ def run_benchmark(
         progress,
     )
     if review and len(agents) >= 2:
-        _review(solutions, agents, task_text, out_dir, progress)
+        _review(solutions, agents, task_text, out_dir, progress, candidate)
     elif review:
         skipped = "Peer review needs two agents, so that dimension was left out."
         notes.append(skipped)
@@ -225,13 +227,17 @@ def _review(
     task_text: str,
     out_dir: Path,
     progress: ProgressBoard | None = None,
+    candidate: Callable[[], SolutionRun | None] | None = None,
 ) -> None:
+    extra = None if candidate is None else candidate()
     jobs = [
         (solution, agent)
         for solution in solutions
         for agent in agents
         if agent.name != solution.agent
     ]
+    if extra is not None:
+        jobs.extend((extra, agent) for agent in agents if agent.name != extra.agent)
     if not jobs:
         return
     if progress is not None:
