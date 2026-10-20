@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from ctb.agents import agent_name, claude_command, codex_command, grok_command
-from ctb.cli import INTERVIEW_AGENTS, _build_agent, _split_agent
+from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _split_agent, main
 from ctb.reviews import parse_review
 from ctb.usage import result_from_codex_jsonl, result_from_stdout
 
@@ -123,6 +123,29 @@ def test_interview_lineup_is_five_distinct_models() -> None:
     assert "--ignore-user-config" in sol_cmd
     grok_cmd = grok_command("Solve", Path("/tmp/task"), None, "solve", grok.model, grok.effort)
     assert grok_cmd[grok_cmd.index("--effort") + 1] == "high"
+
+
+def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_serve(session: object, port: int) -> int:
+        seen["agents"] = [agent.name for agent in session._agents]
+        author = session._test_author
+        seen["author"] = None if author is None else author.name
+        seen["port"] = port
+        seen["review"] = session._review
+        seen["attempts"] = session._attempts
+        seen["timeout"] = session._timeout_s
+        return 0
+
+    monkeypatch.setattr("ctb.cli._serve", fake_serve)
+    assert main(["ui"]) == 0
+    assert seen["agents"] == [_build_agent(name, 600, 3).name for name in INTERVIEW_AGENTS]
+    assert seen["author"] == _build_agent(INTERVIEW_AUTHOR, 600, 3).name
+    assert seen["port"] == 8765
+    assert seen["review"] is True
+    assert seen["attempts"] == 3
+    assert seen["timeout"] == 600
 
 
 def test_agent_entries_can_name_a_model() -> None:

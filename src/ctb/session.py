@@ -8,7 +8,7 @@ from ctb.evaluate import evaluate_solution
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
 from ctb.orchestrate import _grade, run_benchmark
 from ctb.progress import ProgressBoard
-from ctb.score import apply_profile, correctness_score
+from ctb.score import apply_profile, correctness_score, weighted_score
 
 _IDLE = {
     "phase": "idle",
@@ -83,7 +83,11 @@ class RunSession:
                 raise RuntimeError("A solution was already submitted.")
             self._you = you
             phase = "idle" if self._board is None else self._board.snapshot()["phase"]
-            start_reviews = phase in {"reviewing", "done", "error"} and not self._mine_claimed
+            start_reviews = (
+                self._review
+                and phase in {"reviewing", "done", "error"}
+                and not self._mine_claimed
+            )
             if start_reviews:
                 self._mine_claimed = True
         self._publish()
@@ -126,7 +130,7 @@ class RunSession:
             )
             with self._lock:
                 self._report_solutions = report.solutions
-            you = self._claim_you()
+            you = self._claim_you() if self._review else None
             if you is not None:
                 self._grade_you(you)
             else:
@@ -161,6 +165,18 @@ class RunSession:
             others = self._report_solutions
             if others is not None:
                 apply_profile([*others, you])
+                if you.tokens == 0 and you.wall_ms == 0:
+                    you.cost = None
+                    you.profile = weighted_score(
+                        {
+                            "correctness": you.correctness,
+                            "performance": you.performance,
+                            "readability": you.readability,
+                            "extensibility": you.extensibility,
+                            "peer": you.peer,
+                            "cost": None,
+                        }
+                    )
                 board = self._board
                 if board is not None:
                     board.set_solutions(others)

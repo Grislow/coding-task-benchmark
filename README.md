@@ -47,6 +47,22 @@ ctb run examples/binary_gap.md --agents fake --test-author fake --skip-review
 
 The report is `runs/<timestamp>/report.md`.
 
+## Local page
+
+`./ui` opens the same five models in a browser on this machine. Paste the task there, watch each attempt, open a solution, and paste your own to score it on that run's suite. A line entered on the page is shown across the top for 5 seconds. It is not stored and not sent anywhere.
+
+```bash
+./ui
+```
+
+The page listens on `127.0.0.1` port 8765 only. `./interview` still runs in the terminal.
+
+To open the page without calling a model:
+
+```bash
+ctb ui --agents fake --test-author fake --skip-review
+```
+
 ## What a run does
 
 1. Reads the task. Python blocks that contain `assert` become public tests.

@@ -8,6 +8,8 @@ from ctb.fake_agent import FakeAgent
 from ctb.models import CodingAgent
 from ctb.orchestrate import run_benchmark
 from ctb.report import write_report
+from ctb.server import bind
+from ctb.session import RunSession
 
 # Opus medium and gpt-6.1-sol xhigh are fixed choices. The other three are high:
 # Sonnet's FrontierCode score peaks at xhigh and drops at max, and high is the
@@ -69,7 +71,25 @@ def main(argv: list[str] | None = None) -> int:
         nargs="?",
         help="Markdown file with the task. Omit it, or pass -, to read stdin.",
     )
+    ui = sub.add_parser(
+        "ui",
+        help="Open the interview page on 127.0.0.1. Pass no task; paste it in the browser.",
+    )
+    ui.add_argument(
+        "--agents",
+        default=",".join(INTERVIEW_AGENTS),
+        help="Comma-separated cli, cli:model, or cli:model:effort entries.",
+    )
+    ui.add_argument(
+        "--test-author",
+        default=INTERVIEW_AUTHOR,
+        help="Who writes the hidden tests. Same form as --agents, or none.",
+    )
+    ui.add_argument("--port", type=int, default=8765)
+    ui.add_argument("--skip-review", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "ui":
+        return _serve_ui(args)
     if args.command == "interview":
         args.attempts = 3
         args.agents = ",".join(INTERVIEW_AGENTS)
@@ -108,6 +128,39 @@ def main(argv: list[str] | None = None) -> int:
     )
     write_report(report, out_dir)
     print(out_dir / "report.md")
+    return 0
+
+
+def _serve_ui(args: argparse.Namespace) -> int:
+    try:
+        agents = [_build_agent(name, 600, 3.0) for name in _names(args.agents)]
+        author = None if args.test_author == "none" else _build_agent(args.test_author, 600, 3.0)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if len({agent.name for agent in agents}) != len(agents):
+        print("Agent names must be unique.", file=sys.stderr)
+        return 2
+    session = RunSession(
+        agents,
+        author,
+        attempts=3,
+        timeout_s=600,
+        review=not args.skip_review,
+        out_root=Path("runs"),
+    )
+    return _serve(session, args.port)
+
+
+def _serve(session: RunSession, port: int) -> int:
+    page = (Path(__file__).resolve().parent / "ui.html").read_text()
+    server = bind(session, page, port)
+    host, bound = server.server_address
+    print(f"http://{host}:{bound}", file=sys.stderr)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
     return 0
 
 

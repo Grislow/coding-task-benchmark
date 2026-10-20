@@ -143,9 +143,31 @@ def test_a_paste_is_scored_on_the_frozen_suite_and_reviewed(tmp_path: Path) -> N
     assert isinstance(reviews, list)
     assert {item["reviewer"] for item in reviews} == {"fast", "slow"}
     assert mine["profile"] is not None
+    assert mine["cost"] is None
     solutions = snapshot["solutions"]
     assert isinstance(solutions, list)
     assert all(item["profile"] is not None for item in solutions)
+
+
+def test_skip_review_scores_the_paste_without_grades(tmp_path: Path) -> None:
+    session = RunSession(
+        [ScriptedAgent("fast", [_CORRECT], tokens=10), ScriptedAgent("slow", [_CORRECT], tokens=10)],
+        ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+    )
+    session.start(_TASK)
+    assert _wait(session)["phase"] == "done"
+    session.submit_mine(_CORRECT)
+    deadline = time.monotonic() + 0.4
+    while time.monotonic() < deadline:
+        time.sleep(0.05)
+    mine = _candidate(session.snapshot())
+    assert mine["passed"] is True
+    assert mine["reviews"] == []
+    assert mine["profile"] is not None
 
 
 def test_a_paste_during_solving_is_reviewed_with_the_agents(tmp_path: Path) -> None:
