@@ -63,13 +63,14 @@ def test_claude_and_grok_usage_json() -> None:
 
 def test_review_json_inside_a_wrapper() -> None:
     note = parse_review(
-        '{"text": "{\\"correctness\\": 80, \\"readability\\": 70, \\"extensibility\\": 60, \\"summary\\": \\"Clear.\\"}"}',
+        '{"text": "{\\"readability\\": 70, \\"readability_reason\\": \\"Clear.\\", \\"extensibility\\": 60, \\"extensibility_reason\\": \\"One loop.\\"}"}',
         "grok",
     )
     assert note is not None
     assert note.reviewer == "grok"
     assert note.extensibility == 60
-    assert note.summary == "Clear."
+    assert note.readability_reason == "Clear."
+    assert note.extensibility_reason == "One loop."
 
 
 def test_headless_commands_keep_solvers_in_bounds() -> None:

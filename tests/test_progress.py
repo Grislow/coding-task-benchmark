@@ -88,7 +88,16 @@ def test_attempt_and_review_progress_follow_the_run(tmp_path: Path) -> None:
     assert isinstance(reviews, list)
     assert len(reviews) == 2
     assert {item["reviewer"] for item in reviews} == {"fast", "slow"}
-    assert all(item["state"] == "done" and item["correctness"] == 90 for item in reviews)
+    assert all(
+        item["state"] == "done"
+        and item["readability"] == 80
+        and item["readability_reason"] == "Readable loop."
+        for item in reviews
+    )
+    assert kept["failure_excerpt"] == ""
+    assert kept["readability_notes"]
+    failed = _attempt(snapshot, "slow", 1)
+    assert "test_hidden_sentinel_gap" in str(failed["failure_excerpt"])
 
     solutions = snapshot["solutions"]
     assert isinstance(solutions, list)

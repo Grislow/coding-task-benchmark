@@ -70,7 +70,7 @@ def _card(solution: SolutionRun) -> list[str]:
     lines = [
         f"## {solution.agent}",
         "",
-        f"Runtime median: {_ms(solution.performance_ms)}. {solution.readability_notes}.",
+        _measured_line(solution),
         "",
         "| Attempt | Result | Tests | Wall | Tokens | USD |",
         "| ---: | --- | ---: | ---: | ---: | ---: |",
@@ -108,9 +108,10 @@ def _card(solution: SolutionRun) -> list[str]:
         lines.append("")
         for review in solution.reviews:
             lines.append(
-                f"- {review.reviewer}: correctness {review.correctness}, "
-                f"readability {review.readability}, extensibility {review.extensibility}. "
-                f"{review.summary}"
+                f"- {review.reviewer}: readability {review.readability}. {review.readability_reason}"
+            )
+            lines.append(
+                f"  Extensibility {review.extensibility}. {review.extensibility_reason}"
             )
         lines.append("")
     lines.extend(["### solution.py", "", "```python", solution.source.rstrip(), "```", ""])
@@ -158,14 +159,20 @@ def _solution_payload(solution: SolutionRun) -> dict[str, object]:
         "reviews": [
             {
                 "reviewer": review.reviewer,
-                "correctness": review.correctness,
                 "readability": review.readability,
                 "extensibility": review.extensibility,
-                "summary": review.summary,
+                "readability_reason": review.readability_reason,
+                "extensibility_reason": review.extensibility_reason,
             }
             for review in solution.reviews
         ],
     }
+
+
+def _measured_line(solution: SolutionRun) -> str:
+    chosen = solution.chosen_attempt()
+    profile = "" if chosen is None or not chosen.performance_note else f" {chosen.performance_note}"
+    return f"Runtime median: {_ms(solution.performance_ms)}.{profile} {solution.readability_notes}."
 
 
 def _num(value: float | None) -> str:

@@ -27,6 +27,10 @@ class ProgressBoard:
                 "failure_excerpt": "",
                 "source": None,
                 "chosen": False,
+                "performance_ms": None,
+                "performance_note": "",
+                "readability": None,
+                "readability_notes": "",
             }
             for agent in agents
             for number in range(1, attempts + 1)
@@ -73,6 +77,10 @@ class ProgressBoard:
             item["tokens"] = record.usage.total
             item["failure_excerpt"] = record.failure_excerpt
             item["source"] = source
+            item["performance_ms"] = record.performance_ms
+            item["performance_note"] = record.performance_note
+            item["readability"] = record.readability
+            item["readability_notes"] = record.readability_notes
 
     def mark_chosen(self, agent: str, number: int) -> None:
         with self._lock:
@@ -89,10 +97,10 @@ class ProgressBoard:
                         "reviewer": reviewer,
                         "author": author,
                         "state": "running",
-                        "correctness": None,
                         "readability": None,
                         "extensibility": None,
-                        "summary": "",
+                        "readability_reason": "",
+                        "extensibility_reason": "",
                     }
                 )
                 return
@@ -106,19 +114,19 @@ class ProgressBoard:
                     "reviewer": reviewer,
                     "author": author,
                     "state": "done",
-                    "correctness": None,
                     "readability": None,
                     "extensibility": None,
-                    "summary": "",
+                    "readability_reason": "",
+                    "extensibility_reason": "",
                 }
                 self._reviews.append(item)
             item["state"] = "done"
             if note is None:
                 return
-            item["correctness"] = note.correctness
             item["readability"] = note.readability
             item["extensibility"] = note.extensibility
-            item["summary"] = note.summary
+            item["readability_reason"] = note.readability_reason
+            item["extensibility_reason"] = note.extensibility_reason
 
     def set_solutions(self, solutions: list[SolutionRun]) -> None:
         with self._lock:

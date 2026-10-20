@@ -11,20 +11,37 @@ from pathlib import Path
 from ctb.models import EvalResult
 
 _PERF_RUNNER = """
+import cProfile
 import json
+import pstats
 import statistics
 import time
 from perf_cases import CASES
 from solution import solution
 
-totals = []
 cases = list(CASES)[:20]
+totals = []
 for _ in range(5):
     started = time.perf_counter()
     for args, kwargs in cases:
         solution(*args, **kwargs)
     totals.append((time.perf_counter() - started) * 1000)
-print(json.dumps({"median_ms": statistics.median(totals)}))
+profiler = cProfile.Profile()
+profiler.enable()
+for args, kwargs in cases:
+    solution(*args, **kwargs)
+profiler.disable()
+ranked = sorted(pstats.Stats(profiler).stats.items(), key=lambda item: item[1][3], reverse=True)
+parts = []
+for func, values in ranked:
+    filename, _line, name = func
+    if "lsprof" in filename or name in {"disable", "enable"} or name.startswith("<"):
+        continue
+    parts.append(f"{name} {values[3] * 1000:.3f} ms")
+    if len(parts) == 4:
+        break
+note = "One profiled pass. " + ("; ".join(parts) if parts else "no functions recorded") + "."
+print(json.dumps({"median_ms": statistics.median(totals) if totals else None, "note": note}))
 """
 
 
@@ -76,8 +93,9 @@ def evaluate_solution(
             public = _run_pytest(root, timeout_s, "test_public.py")
             public_failed = not public.passed
         performance_ms = None
+        performance_note = ""
         if combined.passed and perf_cases and compile_source(perf_cases) is None:
-            performance_ms = _run_perf(root, perf_cases, timeout_s)
+            performance_ms, performance_note = _run_perf(root, perf_cases, timeout_s)
         return EvalResult(
             passed=combined.passed and not public_failed,
             tests_passed=combined.tests_passed,
@@ -85,6 +103,7 @@ def evaluate_solution(
             public_failed=public_failed,
             failure_excerpt=combined.failure_excerpt,
             performance_ms=performance_ms,
+            performance_note=performance_note,
         )
 
 
@@ -115,22 +134,24 @@ def _run_pytest(root: Path, timeout_s: int, target: str | None = None) -> EvalRe
     return EvalResult(ok, passed, total, False, failure[:4000], None)
 
 
-def _run_perf(root: Path, perf_cases: str, timeout_s: int) -> float | None:
+def _run_perf(root: Path, perf_cases: str, timeout_s: int) -> tuple[float | None, str]:
     (root / "perf_cases.py").write_text(perf_cases)
     (root / "run_perf.py").write_text(_PERF_RUNNER)
     completed = _run([sys.executable, "run_perf.py"], root, min(timeout_s, 30))
     if completed is None or completed.returncode != 0:
-        return None
+        return None, "The profiler did not finish."
     try:
         payload = json.loads(completed.stdout.strip().splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
-        return None
+        return None, "The profiler did not finish."
     if not isinstance(payload, dict):
-        return None
+        return None, "The profiler did not finish."
     value = payload.get("median_ms")
+    note = payload.get("note")
+    text = note if isinstance(note, str) else ""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    return float(value)
+        return None, text or "The profiler did not finish."
+    return float(value), text
 
 
 def _read_junit(path: Path, stdout: str, stderr: str) -> tuple[int, int, str]:

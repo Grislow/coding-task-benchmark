@@ -9,12 +9,17 @@ RUBRIC_SCHEMA = json.dumps(
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "correctness": {"type": "integer", "minimum": 0, "maximum": 100},
             "readability": {"type": "integer", "minimum": 0, "maximum": 100},
+            "readability_reason": {"type": "string"},
             "extensibility": {"type": "integer", "minimum": 0, "maximum": 100},
-            "summary": {"type": "string"},
+            "extensibility_reason": {"type": "string"},
         },
-        "required": ["correctness", "readability", "extensibility", "summary"],
+        "required": [
+            "readability",
+            "readability_reason",
+            "extensibility",
+            "extensibility_reason",
+        ],
     }
 )
 
@@ -66,8 +71,10 @@ def author_prompt() -> str:
 def review_prompt(task_text: str, source: str) -> str:
     return (
         "Grade this Python solution against the task. You have not seen its test results.\n"
+        "Do not grade correctness or speed. A test suite and a profiler already do that.\n"
         "Reply with JSON only, matching the requested schema.\n"
-        "Score correctness, readability, and extensibility from 0 to 100.\n"
+        "Score readability and extensibility from 0 to 100.\n"
+        "Give each score its own reason. Name the code the reason refers to.\n"
         "Extensibility means a later reader could add a case without rewriting the function.\n\n"
         "Task:\n"
         f"{task_text.strip()}\n\n"

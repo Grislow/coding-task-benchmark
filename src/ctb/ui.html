@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Interview</title>
+  <title>Solution Benchmarker</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,10 @@
       --muted: #8a8c92;
       --accent: #4a8ad6;
       --negative: #e5566f;
+      --positive: #44a282;
+      --gold: #d9a441;
+      --silver: #c6c8ce;
+      --bronze: #c4894a;
       --control: #3a3a3e;
       --font: "Public Sans", Inter, system-ui, sans-serif;
       --mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -30,11 +34,7 @@
       font-size: 13px;
       line-height: 20px;
     }
-    main {
-      padding: 32px;
-      display: grid;
-      gap: 24px;
-    }
+    main { padding: 32px; display: grid; gap: 24px; }
     h1 {
       margin: 0;
       font-size: 26px;
@@ -42,115 +42,22 @@
       letter-spacing: -0.02em;
       line-height: 1.15;
     }
-    h2 {
-      margin: 0 0 16px;
-      font-size: 20px;
-      font-weight: 400;
-      color: var(--muted);
-    }
-    .title-row {
+    h2 { margin: 0 0 8px; font-size: 20px; font-weight: 400; color: var(--muted); }
+    .title-row, .section-head, .paste-head {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      gap: 24px;
+      align-items: center;
+      gap: 16px;
     }
     .phase { color: var(--muted); }
     .notice { min-height: 20px; color: var(--muted); }
-    .card {
-      background: var(--surface);
-      border-radius: 6px;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
-      padding: 20px;
-    }
-    label { display: block; margin-bottom: 8px; }
-    textarea, pre {
-      width: 100%;
-      background: var(--ground);
-      color: var(--text);
-      border: 1px solid var(--control);
-      border-radius: 6px;
-      padding: 12px;
-      font-family: var(--mono);
-      font-size: 13px;
-      line-height: 20px;
-    }
-    textarea { min-height: 96px; resize: vertical; }
-    textarea:focus-visible, button:focus-visible {
-      outline: 1px solid var(--accent);
-      outline-offset: 2px;
-    }
-    .actions { margin-top: 12px; }
-    button.action {
-      height: 34px;
-      padding: 0 16px;
-      border: 0;
-      border-radius: 999px;
-      background: #ffffff;
-      color: #171719;
-      font: 500 13px/34px var(--font);
-    }
-    button.action:disabled { background: var(--raised); color: var(--muted); }
-    .agent {
-      display: grid;
-      grid-template-columns: minmax(160px, 220px) 1fr;
-      gap: 16px;
-      align-items: center;
-      padding: 8px 0;
-    }
-    .agent + .agent { border-top: 1px solid #1b1a1f; }
-    .agent-name { font-weight: 600; }
-    .slots { display: flex; gap: 16px; flex-wrap: wrap; }
-    button.slot {
-      min-width: 88px;
-      padding: 4px 0;
-      border: 0;
-      background: transparent;
-      color: var(--text);
-      text-align: left;
-      font: 400 13px/20px var(--font);
-    }
-    button.slot:disabled { color: var(--muted); }
-    .slot-label { border-bottom: 1px solid transparent; }
-    button.slot.selected .slot-label { border-bottom-color: var(--accent); }
-    .fail { color: var(--negative); }
-    .count, .num {
-      font-family: var(--mono);
-      font-variant-numeric: tabular-nums;
-    }
-    .count { display: block; color: var(--muted); font-size: 12px; }
-    .split {
-      display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-      gap: 24px;
-      align-items: start;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    th {
-      padding: 0 8px 8px 0;
-      font-size: 12px;
-      font-weight: 400;
-      color: var(--muted);
-      text-align: left;
-    }
-    td { padding: 8px 8px 8px 0; }
-    th.num, td.num { text-align: right; }
-    pre {
-      margin: 0;
-      min-height: 160px;
-      max-height: 420px;
-      overflow: auto;
-      white-space: pre-wrap;
-    }
-    #reviews { margin: 12px 0 0; padding-left: 18px; }
-    #reviews li { margin: 4px 0; }
-    .empty { color: var(--muted); }
     #banner {
       display: none;
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      z-index: 2;
+      z-index: 3;
       background: #f2f2f3;
       color: #171719;
       font-size: 64px;
@@ -161,21 +68,138 @@
     }
     #banner.visible { display: block; }
     body.telling main { padding-top: 148px; }
-    #message {
+    .hint { margin: 0 0 16px; color: var(--muted); }
+    .card {
+      background: var(--surface);
+      border-radius: 6px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+    }
+    label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    textarea, pre, #message {
       width: 100%;
-      height: 40px;
       background: var(--ground);
       color: var(--text);
       border: 1px solid var(--control);
       border-radius: 6px;
-      padding: 0 12px;
-      font: 400 16px var(--font);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 20px;
     }
-    #message:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+    textarea { min-height: 88px; padding: 12px; resize: vertical; }
+    #message { height: 40px; padding: 0 12px; font: 400 16px var(--font); }
+    textarea:focus-visible, button:focus-visible, #message:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+    button.action, button.ghost {
+      height: 34px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 999px;
+      font: 500 13px/34px var(--font);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button.action { background: #ffffff; color: #171719; }
+    button.action:disabled, button.ghost:disabled { background: var(--raised); color: var(--muted); }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--control); }
+    kbd {
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 16px;
+      border: 1px solid var(--control);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 0 5px;
+      color: var(--muted);
+    }
+    button.action kbd { color: #171719; border-color: #c6c8ce; }
+    .statuses { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .status {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 12px 12px 14px;
+      background: var(--raised);
+      border-radius: 6px;
+      border-left: 3px solid var(--muted);
+    }
+    .status.running { border-left-color: var(--accent); }
+    .status.passed { border-left-color: var(--positive); }
+    .status.failed { border-left-color: var(--negative); }
+    .status strong { display: block; font-size: 13px; }
+    .status span { color: var(--muted); }
+    .status.running .state { color: var(--accent); }
+    .status.passed .state { color: var(--positive); }
+    .status.failed .state { color: var(--negative); }
+    .status svg { margin-top: 2px; flex: none; }
+    .columns {
+      display: grid;
+      grid-template-columns: 28px minmax(160px, 1.6fr) 88px 88px 88px 88px;
+      gap: 8px;
+      align-items: center;
+    }
+    .columns.head { color: var(--muted); font-size: 12px; padding-bottom: 8px; }
+    .columns.head span:nth-child(n + 3) { text-align: right; }
+    button.row {
+      width: 100%;
+      padding: 10px 0;
+      border: 0;
+      border-bottom: 1px solid #1b1a1f;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    button.row.selected { box-shadow: inset 0 -1px 0 var(--accent); }
+    .who { display: flex; flex-direction: column; }
+    .who b { font-weight: 600; }
+    .who small { color: var(--muted); }
+    .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+    .score { font-size: 20px; }
+    .rank { display: flex; align-items: center; justify-content: center; }
+    .rank.gold { color: var(--gold); }
+    .rank.silver { color: var(--silver); }
+    .rank.bronze { color: var(--bronze); }
+    .detail { margin-top: 20px; }
+    .detail[hidden] { display: none; }
+    .detail-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 24px; }
+    #measured, #reviews { display: grid; gap: 12px; }
+    #measured p, .review p { margin: 0; }
+    .measure-label { font-weight: 600; }
+    .review h3 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+    pre {
+      margin: 12px 0 0;
+      min-height: 140px;
+      max-height: 360px;
+      overflow: auto;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+    pre.blurred { filter: blur(8px); user-select: none; }
+    .code-head { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+    .empty { color: var(--muted); }
+    .pastes { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    dialog {
+      width: min(520px, calc(100% - 48px));
+      border: 0;
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 24px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.62); }
+    dialog h2 { color: var(--text); }
     @media (max-width: 800px) {
       main { padding: 16px; }
-      .title-row, .split, .agent { grid-template-columns: 1fr; display: grid; }
-      .title-row { display: grid; }
+      .detail-grid, .pastes, .title-row { display: grid; }
+      .columns { grid-template-columns: 28px 1fr 72px; }
+      .columns.head span:nth-child(n + 4),
+      button.row .num:nth-child(n + 4) { display: none; }
     }
   </style>
 </head>
@@ -183,47 +207,69 @@
   <div id="banner"></div>
   <main>
     <div class="title-row">
-      <h1 id="title">Interview</h1>
-      <div id="phase" class="phase">Not started</div>
+      <div>
+        <h1 id="title">Solution Benchmarker</h1>
+      </div>
+      <div class="title-row">
+        <div id="phase" class="phase">Not started</div>
+        <button class="action" id="open-message" type="button">Message <kbd>M</kbd></button>
+      </div>
     </div>
     <div id="notice" class="notice"></div>
-    <section class="card">
-      <h2>Task</h2>
-      <label for="task">Paste the Codility statement</label>
-      <textarea id="task"></textarea>
-      <div class="actions"><button class="action" id="start" type="button">Start the run</button></div>
-    </section>
-    <section class="card">
-      <h2>Attempts</h2>
+    <section class="card" aria-label="Agent status">
+      <h2>Agents</h2>
       <div id="board"><p class="empty">The agents appear here after the task starts.</p></div>
     </section>
-    <div class="split">
-      <section class="card">
+    <section class="card">
+      <div class="section-head">
         <h2>Leaderboard</h2>
-        <div id="leaderboard"><p class="empty">No scores yet.</p></div>
-        <ul id="reviews"></ul>
+      </div>
+      <p class="hint">Each attempt is its own row. Score is the weighted total. Open a row for the code and the reasons.</p>
+      <div id="leaderboard"><p class="empty">No scores yet.</p></div>
+      <div id="detail" class="detail" hidden>
+        <div class="detail-grid">
+          <div>
+            <h2 id="detail-title">Attempt</h2>
+            <div id="measured"></div>
+            <div id="reviews"></div>
+          </div>
+          <div>
+            <div class="code-head">
+              <h2>Solution</h2>
+              <button class="ghost" id="reveal" type="button">Show solution</button>
+            </div>
+            <pre id="solution"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="pastes">
+      <section class="card">
+        <div class="paste-head"><h2>Task</h2><kbd>T</kbd></div>
+        <label for="task">Paste the Codility statement</label>
+        <textarea id="task"></textarea>
+        <div class="actions"><button class="action" id="start" type="button">Start the run</button></div>
       </section>
       <section class="card">
-        <h2>Solution</h2>
-        <pre id="solution">Select a finished attempt.</pre>
+        <div class="paste-head"><h2>Your solution</h2><kbd>Y</kbd></div>
+        <label for="mine">Paste the solution you would submit</label>
+        <textarea id="mine"></textarea>
+        <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
       </section>
     </div>
-    <section class="card">
-      <h2>Your solution</h2>
-      <label for="mine">Paste the solution you would submit</label>
-      <textarea id="mine"></textarea>
-      <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
-    </section>
-    <section class="card">
-      <h2>Message</h2>
-      <form id="message-form">
-        <label for="message">Shown across the top of the recording for 5 seconds</label>
-        <input id="message" type="text" autocomplete="off">
-      </form>
-    </section>
   </main>
+  <dialog id="message-dialog" aria-labelledby="message-title">
+    <form id="message-form" method="dialog">
+      <h2 id="message-title">Message the recording</h2>
+      <label for="message">Shown across the top for 5 seconds</label>
+      <input id="message" type="text" autocomplete="off">
+      <p class="hint">Enter sends it. Escape closes this.</p>
+    </form>
+  </dialog>
   <script>
     let selected = null;
+    let latest = null;
+    const revealed = new Set();
 
     const phases = {
       idle: "Not started",
@@ -235,23 +281,127 @@
       error: "Stopped"
     };
 
+    const ICONS = {
+      trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+      medal: '<path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/><path d="M12 18v-2h-.5"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+      message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
+    };
+
+    function icon(name) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("width", "16");
+      svg.setAttribute("height", "16");
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor");
+      svg.setAttribute("stroke-width", "2");
+      svg.setAttribute("stroke-linecap", "round");
+      svg.setAttribute("stroke-linejoin", "round");
+      svg.setAttribute("aria-hidden", "true");
+      svg.innerHTML = ICONS[name];
+      return svg;
+    }
+
     function figure(value) {
-      if (value === null || value === undefined) return "—";
+      if (value === null || value === undefined || Number.isNaN(value)) return "—";
       return Number(value).toFixed(1);
     }
 
-    function word(state, chosen) {
-      const label = state === "passed" ? "pass" : state === "failed" ? "fail" : state;
-      return chosen ? label + ", kept" : label;
+    function milliseconds(value) {
+      if (value === null || value === undefined) return "not timed";
+      if (value < 1) return Number(value).toFixed(3) + " ms median";
+      return Number(value).toFixed(2) + " ms median";
     }
 
-    function heading(task) {
-      for (const line of task.split("\n")) {
-        const stripped = line.trim();
-        if (stripped.startsWith("#")) return stripped.replace(/^#+\s*/, "") || "Interview";
-        if (stripped) return stripped.slice(0, 80);
+    function weighted(parts) {
+      const weights = {
+        correctness: 40,
+        performance: 20,
+        readability: 15,
+        extensibility: 10,
+        peer: 10,
+        cost: 5
+      };
+      let weight = 0;
+      let sum = 0;
+      for (const [name, value] of Object.entries(parts)) {
+        if (value === null || value === undefined) continue;
+        weight += weights[name];
+        sum += value * weights[name];
       }
-      return "";
+      if (!weight) return null;
+      return sum / weight;
+    }
+
+    function reviewParts(reviews) {
+      const done = (reviews || []).filter((review) => review.readability !== null && review.readability !== undefined);
+      if (!done.length) return { extensibility: null, peer: null, rows: [] };
+      const extensibility = done.reduce((sum, review) => sum + review.extensibility, 0) / done.length;
+      const peer = done.reduce((sum, review) => sum + (review.readability + review.extensibility) / 2, 0) / done.length;
+      return { extensibility, peer, rows: done };
+    }
+
+    function rowsFrom(snapshot) {
+      const attempts = (snapshot.attempts || []).filter((attempt) => attempt.state === "passed" || attempt.state === "failed");
+      const mine = snapshot.candidate;
+      if (mine && mine.tests_total) {
+        attempts.push({
+          agent: "you",
+          number: 1,
+          state: mine.passed ? "passed" : "failed",
+          chosen: true,
+          tests_passed: mine.tests_passed,
+          tests_total: mine.tests_total,
+          performance_ms: mine.performance_ms,
+          performance_note: mine.performance_note,
+          readability: mine.readability,
+          readability_notes: mine.readability_notes,
+          failure_excerpt: mine.failure_excerpt || "",
+          wall_ms: 0,
+          tokens: 0
+        });
+      }
+      const reviews = (snapshot.reviews || []).slice();
+      if (mine && mine.reviews) {
+        for (const review of mine.reviews) {
+          const seen = reviews.some((item) => item.reviewer === review.reviewer && item.author === "you");
+          if (!seen) reviews.push(review);
+        }
+      }
+      const passing = attempts.filter((item) => item.state === "passed" && item.performance_ms > 0);
+      const bestTime = passing.length ? Math.min(...passing.map((item) => item.performance_ms)) : null;
+      const timed = attempts.filter((item) => item.wall_ms > 0);
+      const bestWall = timed.length ? Math.min(...timed.map((item) => item.wall_ms)) : null;
+      return attempts.map((attempt) => {
+        const correctness = attempt.tests_total ? 100 * attempt.tests_passed / attempt.tests_total : null;
+        let performance = null;
+        if (bestTime) {
+          performance = attempt.state === "passed" && attempt.performance_ms > 0
+            ? 100 * bestTime / attempt.performance_ms
+            : 0;
+        }
+        const judged = attempt.chosen ? reviewParts(reviews.filter((review) => review.author === attempt.agent)) : { extensibility: null, peer: null, rows: [] };
+        let cost = null;
+        if (bestWall && attempt.wall_ms > 0) cost = 100 * bestWall / attempt.wall_ms;
+        else if (bestWall && attempt.agent !== "you") cost = 0;
+        return {
+          attempt,
+          reviews: attempt.chosen ? judged.rows : [],
+          score: weighted({
+            correctness,
+            performance,
+            readability: attempt.readability,
+            extensibility: judged.extensibility,
+            peer: judged.peer,
+            cost
+          })
+        };
+      }).sort((left, right) => (right.score ?? -1) - (left.score ?? -1));
     }
 
     function renderBoard(snapshot) {
@@ -265,115 +415,205 @@
         board.appendChild(empty);
         return;
       }
+      const wrap = document.createElement("div");
+      wrap.className = "statuses";
       for (const agent of agents) {
-        const row = document.createElement("div");
-        row.className = "agent";
-        const name = document.createElement("div");
-        name.className = "agent-name";
-        name.textContent = agent;
-        const slots = document.createElement("div");
-        slots.className = "slots";
-        for (const attempt of (snapshot.attempts || []).filter((item) => item.agent === agent)) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "slot";
-          button.dataset.agent = agent;
-          button.dataset.attempt = String(attempt.number);
-          const finished = attempt.state === "passed" || attempt.state === "failed";
-          button.disabled = !finished;
-          if (selected && selected.agent === agent && selected.attempt === String(attempt.number)) {
-            button.classList.add("selected");
-          }
-          const label = document.createElement("span");
-          label.className = "slot-label" + (attempt.state === "failed" ? " fail" : "");
-          label.textContent = word(attempt.state, attempt.chosen);
-          const count = document.createElement("span");
-          count.className = "count";
-          count.textContent = attempt.tests_total === null || attempt.tests_total === undefined
-            ? "—"
-            : attempt.tests_passed + "/" + attempt.tests_total;
-          button.append(label, count);
-          slots.appendChild(button);
+        const attempts = (snapshot.attempts || []).filter((item) => item.agent === agent);
+        const running = attempts.find((item) => item.state === "running");
+        const kept = attempts.find((item) => item.chosen && (item.state === "passed" || item.state === "failed"));
+        const started = attempts.find((item) => item.state !== "waiting");
+        let state = "waiting";
+        let text = "Waiting";
+        if (running) {
+          state = "running";
+          text = "Attempt " + running.number + " running";
+        } else if (kept) {
+          state = kept.state;
+          text = "Attempt " + kept.number + " kept";
+        } else if (started) {
+          state = started.state;
+          text = "Attempt " + started.number;
         }
-        row.append(name, slots);
-        board.appendChild(row);
+        const banner = document.createElement("div");
+        banner.className = "status " + state;
+        const glyph = state === "passed" ? "check" : state === "failed" ? "x" : state === "running" ? "play" : "clock";
+        banner.appendChild(icon(glyph));
+        const copy = document.createElement("div");
+        const name = document.createElement("strong");
+        name.textContent = agent;
+        const line = document.createElement("span");
+        line.textContent = text;
+        const word = document.createElement("span");
+        word.className = "state";
+        word.textContent = " " + (state === "passed" ? "pass" : state === "failed" ? "fail" : state);
+        line.appendChild(word);
+        copy.append(name, line);
+        banner.appendChild(copy);
+        wrap.appendChild(banner);
       }
+      board.appendChild(wrap);
     }
 
-    function renderTable(rows) {
+    function renderTable(entries) {
       const leaderboard = document.getElementById("leaderboard");
       leaderboard.replaceChildren();
-      if (!rows.length) {
+      if (!entries.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "No scores yet.";
+        empty.textContent = "Finished attempts land here.";
         leaderboard.appendChild(empty);
         return;
       }
-      const table = document.createElement("table");
-      const head = document.createElement("tr");
-      for (const [text, numeric] of [
-        ["Agent", false],
-        ["Profile", true],
-        ["Correctness", true],
-        ["Performance", true],
-        ["Readability", true],
-        ["Extensibility", true],
-        ["Peer", true],
-        ["Cost", true]
-      ]) {
-        const cell = document.createElement("th");
+      const head = document.createElement("div");
+      head.className = "columns head";
+      for (const text of ["", "Attempt", "Score", "Tests", "Speed", "Clarity"]) {
+        const cell = document.createElement("span");
         cell.textContent = text;
-        if (numeric) cell.className = "num";
         head.appendChild(cell);
       }
-      const body = document.createElement("tbody");
-      const header = document.createElement("thead");
-      header.appendChild(head);
-      for (const row of rows) {
-        const line = document.createElement("tr");
-        const agent = document.createElement("td");
-        agent.textContent = row.agent;
-        line.appendChild(agent);
-        for (const key of ["profile", "correctness", "performance", "readability", "extensibility", "peer", "cost"]) {
-          const cell = document.createElement("td");
-          cell.className = "num";
-          cell.textContent = figure(row[key]);
-          line.appendChild(cell);
+      leaderboard.appendChild(head);
+      entries.forEach((entry, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "row columns";
+        button.dataset.agent = entry.attempt.agent;
+        button.dataset.attempt = String(entry.attempt.number);
+        if (selected && selected.agent === entry.attempt.agent && selected.attempt === String(entry.attempt.number)) {
+          button.classList.add("selected");
         }
-        body.appendChild(line);
+        const rank = document.createElement("span");
+        rank.className = "rank";
+        if (index === 0) {
+          rank.classList.add("gold");
+          rank.appendChild(icon("trophy"));
+        } else if (index === 1) {
+          rank.classList.add("silver");
+          rank.appendChild(icon("medal"));
+        } else if (index === 2) {
+          rank.classList.add("bronze");
+          rank.appendChild(icon("medal"));
+        } else {
+          rank.textContent = String(index + 1);
+        }
+        const who = document.createElement("span");
+        who.className = "who";
+        const name = document.createElement("b");
+        name.textContent = entry.attempt.agent;
+        const meta = document.createElement("small");
+        const label = entry.attempt.state === "passed" ? "pass" : "fail";
+        meta.textContent = "Attempt " + entry.attempt.number + (entry.attempt.chosen ? " · kept · " : " · ") + label;
+        who.append(name, meta);
+        const score = document.createElement("span");
+        score.className = "num score";
+        score.textContent = figure(entry.score);
+        const tests = document.createElement("span");
+        tests.className = "num";
+        tests.textContent = entry.attempt.tests_passed + "/" + entry.attempt.tests_total;
+        const speed = document.createElement("span");
+        speed.className = "num";
+        speed.textContent = entry.attempt.performance_ms === null || entry.attempt.performance_ms === undefined
+          ? "—"
+          : (entry.attempt.performance_ms < 1
+            ? Number(entry.attempt.performance_ms).toFixed(3)
+            : Number(entry.attempt.performance_ms).toFixed(2));
+        const clarity = document.createElement("span");
+        clarity.className = "num";
+        clarity.textContent = figure(entry.attempt.readability);
+        button.append(rank, who, score, tests, speed, clarity);
+        leaderboard.appendChild(button);
+      });
+    }
+
+    function addMeasure(parent, label, detail) {
+      const paragraph = document.createElement("p");
+      const name = document.createElement("span");
+      name.className = "measure-label";
+      name.textContent = label + ". ";
+      paragraph.append(name, document.createTextNode(detail));
+      parent.appendChild(paragraph);
+    }
+
+    function currentEntry() {
+      if (!selected || !latest) return null;
+      return rowsFrom(latest).find(
+        (entry) => entry.attempt.agent === selected.agent && String(entry.attempt.number) === selected.attempt
+      ) || null;
+    }
+
+    function renderDetail() {
+      const detail = document.getElementById("detail");
+      const entry = currentEntry();
+      if (!entry) {
+        detail.hidden = true;
+        return;
       }
-      table.append(header, body);
-      leaderboard.appendChild(table);
+      detail.hidden = false;
+      const attempt = entry.attempt;
+      document.getElementById("detail-title").textContent = attempt.agent + " · attempt " + attempt.number;
+      const box = document.getElementById("measured");
+      box.replaceChildren();
+      const tests = attempt.tests_passed + "/" + attempt.tests_total + " from pytest. "
+        + (attempt.failure_excerpt || "Every test passed.");
+      addMeasure(box, "Correctness", tests);
+      const timing = attempt.performance_ms === null || attempt.performance_ms === undefined
+        ? "Not timed. The profiler runs only after every test passes."
+        : milliseconds(attempt.performance_ms) + ". " + (attempt.performance_note || "");
+      addMeasure(box, "Performance", timing);
+      addMeasure(box, "Readability", figure(attempt.readability) + ". " + (attempt.readability_notes || "No structure note."));
+      addMeasure(box, "Score", figure(entry.score) + ". Weighted. A missing part is left out and the rest are rescaled.");
+      const reviews = document.getElementById("reviews");
+      reviews.replaceChildren();
+      if (!attempt.chosen) {
+        const note = document.createElement("p");
+        note.className = "empty";
+        note.textContent = "Reviewers grade the kept attempt, so this one has measurements only.";
+        reviews.appendChild(note);
+      } else if (!entry.reviews.length) {
+        const note = document.createElement("p");
+        note.className = "empty";
+        note.textContent = "Reviewers have not graded this attempt yet.";
+        reviews.appendChild(note);
+      } else {
+        for (const review of entry.reviews) {
+          const block = document.createElement("article");
+          block.className = "review";
+          const title = document.createElement("h3");
+          title.textContent = review.reviewer;
+          block.appendChild(title);
+          addMeasure(block, "Readability " + figure(review.readability), review.readability_reason || "No reason given.");
+          addMeasure(block, "Extensibility " + figure(review.extensibility), review.extensibility_reason || "No reason given.");
+          reviews.appendChild(block);
+        }
+      }
+      applyBlur();
+    }
+
+    function applyBlur() {
+      const pre = document.getElementById("solution");
+      const button = document.getElementById("reveal");
+      if (!selected || !pre.textContent) {
+        pre.classList.remove("blurred");
+        pre.removeAttribute("aria-hidden");
+        button.hidden = true;
+        return;
+      }
+      const key = selected.agent + ":" + selected.attempt;
+      const open = revealed.has(key);
+      pre.classList.toggle("blurred", !open);
+      pre.toggleAttribute("aria-hidden", !open);
+      button.hidden = false;
+      button.replaceChildren(icon("eye"), document.createTextNode(open ? " Hide solution" : " Show solution"));
     }
 
     function render(snapshot) {
+      latest = snapshot;
       document.getElementById("phase").textContent = phases[snapshot.phase] || snapshot.phase;
       document.getElementById("score").disabled = snapshot.suite_ready !== true || snapshot.candidate !== null;
       const notes = snapshot.notes || [];
       if (notes.length) document.getElementById("notice").textContent = notes.join(" ");
       renderBoard(snapshot);
-      const rows = (snapshot.solutions || []).slice();
-      if (snapshot.candidate) rows.push(snapshot.candidate);
-      rows.sort((left, right) => {
-        const a = left.profile === null || left.profile === undefined ? -1 : left.profile;
-        const b = right.profile === null || right.profile === undefined ? -1 : right.profile;
-        return b - a;
-      });
-      renderTable(rows);
-      const reviews = document.getElementById("reviews");
-      reviews.replaceChildren();
-      const mine = snapshot.candidate;
-      if (mine && mine.reviews) {
-        for (const review of mine.reviews) {
-          const item = document.createElement("li");
-          item.textContent = review.reviewer + ": correctness " + review.correctness
-            + ", readability " + review.readability
-            + ", extensibility " + review.extensibility
-            + ". " + review.summary;
-          reviews.appendChild(item);
-        }
-      }
+      renderTable(rowsFrom(snapshot));
+      renderDetail();
     }
 
     async function refresh() {
@@ -382,9 +622,45 @@
       render(await response.json());
     }
 
+    async function openAttempt(agent, number) {
+      selected = { agent, attempt: String(number) };
+      const response = await fetch(
+        "/solution?agent=" + encodeURIComponent(agent) + "&attempt=" + number
+      );
+      const pre = document.getElementById("solution");
+      pre.textContent = response.ok ? await response.text() : "";
+      render(latest || { attempts: [], agents: [], reviews: [], solutions: [] });
+      document.getElementById("detail").scrollIntoView({ block: "nearest" });
+    }
+
+    function focusField(id) {
+      const field = document.getElementById(id);
+      field.focus();
+      field.scrollIntoView({ block: "center" });
+    }
+
+    function openMessage() {
+      const dialog = document.getElementById("message-dialog");
+      document.getElementById("message").value = "";
+      dialog.showModal();
+      document.getElementById("message").focus();
+    }
+
+    function showToast(text) {
+      const banner = document.getElementById("banner");
+      banner.textContent = text;
+      banner.classList.add("visible");
+      document.body.classList.add("telling");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => {
+        banner.classList.remove("visible");
+        banner.textContent = "";
+        document.body.classList.remove("telling");
+      }, 5000);
+    }
+
     document.getElementById("start").addEventListener("click", async () => {
       const task = document.getElementById("task").value;
-      const title = heading(task);
       const response = await fetch("/task", { method: "POST", body: task });
       const notice = document.getElementById("notice");
       if (!response.ok) {
@@ -392,7 +668,6 @@
         return;
       }
       notice.textContent = "";
-      if (title) document.getElementById("title").textContent = title;
       refresh();
     });
 
@@ -410,36 +685,46 @@
       refresh();
     });
 
-    document.getElementById("board").addEventListener("click", async (event) => {
-      const slot = event.target.closest("button.slot");
-      if (!slot || slot.disabled) return;
-      const response = await fetch(
-        "/solution?agent=" + encodeURIComponent(slot.dataset.agent) + "&attempt=" + slot.dataset.attempt
-      );
-      if (!response.ok) return;
-      document.getElementById("solution").textContent = await response.text();
-      selected = { agent: slot.dataset.agent, attempt: slot.dataset.attempt };
-      for (const button of document.querySelectorAll("button.slot")) button.classList.remove("selected");
-      slot.classList.add("selected");
+    document.getElementById("leaderboard").addEventListener("click", (event) => {
+      const row = event.target.closest("button.row");
+      if (!row) return;
+      openAttempt(row.dataset.agent, row.dataset.attempt);
     });
 
-    let bannerTimer = null;
+    document.getElementById("reveal").addEventListener("click", () => {
+      if (!selected) return;
+      const key = selected.agent + ":" + selected.attempt;
+      if (revealed.has(key)) revealed.delete(key);
+      else revealed.add(key);
+      applyBlur();
+    });
+
+    document.getElementById("open-message").addEventListener("click", openMessage);
+
     document.getElementById("message-form").addEventListener("submit", (event) => {
       event.preventDefault();
       const input = document.getElementById("message");
       const text = input.value.trim();
-      if (!text) return;
-      const banner = document.getElementById("banner");
-      banner.textContent = text;
-      banner.classList.add("visible");
-      document.body.classList.add("telling");
+      document.getElementById("message-dialog").close();
+      if (text) showToast(text);
       input.value = "";
-      clearTimeout(bannerTimer);
-      bannerTimer = setTimeout(() => {
-        banner.classList.remove("visible");
-        banner.textContent = "";
-        document.body.classList.remove("telling");
-      }, 5000);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const typing = event.target instanceof Element && event.target.closest("input, textarea");
+      if (typing) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "m") {
+        event.preventDefault();
+        openMessage();
+      } else if (key === "t") {
+        event.preventDefault();
+        focusField("task");
+      } else if (key === "y") {
+        event.preventDefault();
+        focusField("mine");
+      }
     });
 
     setInterval(refresh, 1000);

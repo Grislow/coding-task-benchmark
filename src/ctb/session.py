@@ -215,6 +215,8 @@ class RunSession:
             performance_ms=evaluation.performance_ms,
             readability=readability,
             chosen=True,
+            performance_note=evaluation.performance_note,
+            readability_notes=notes,
         )
         return SolutionRun(
             agent="you",
@@ -243,6 +245,7 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "tests_passed": None if attempt is None else attempt.tests_passed,
         "tests_total": None if attempt is None else attempt.tests_total,
         "performance_ms": you.performance_ms,
+        "performance_note": "" if attempt is None else attempt.performance_note,
         "failure_excerpt": "" if attempt is None else attempt.failure_excerpt,
         "readability": you.readability,
         "readability_notes": you.readability_notes,
@@ -255,10 +258,11 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "reviews": [
             {
                 "reviewer": review.reviewer,
-                "correctness": review.correctness,
+                "author": "you",
                 "readability": review.readability,
                 "extensibility": review.extensibility,
-                "summary": review.summary,
+                "readability_reason": review.readability_reason,
+                "extensibility_reason": review.extensibility_reason,
             }
             for review in you.reviews
         ],

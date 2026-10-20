@@ -63,8 +63,8 @@ class FakeAgent:
             text = "wrote tests"
         elif role == "review":
             text = (
-                '{"correctness": 70, "readability": 80, "extensibility": 75, '
-                '"summary": "Offline stand-in review."}'
+                '{"readability": 80, "readability_reason": "One loop, names match the task.", '
+                '"extensibility": 75, "extensibility_reason": "A new case fits in the same loop."}'
             )
         else:
             self._solves += 1

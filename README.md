@@ -75,10 +75,10 @@ ctb ui --agents fake --test-author fake --skip-review
 | Dimension | Weight | Source |
 | --- | ---: | --- |
 | Correctness | 40 | Frozen pytest suite. A failing public example scores 0. |
-| Performance | 20 | Median runtime of `perf_cases.py`. Fastest passing solution scores 100. |
+| Performance | 20 | Median runtime of `perf_cases.py`, with a cProfile trace of where the time went. Fastest passing solution scores 100. |
 | Readability | 15 | Function length and complexity, plus Ruff when it is installed. |
 | Extensibility | 10 | Mean of the other agents' extensibility grades. |
-| Peer | 10 | Mean of the other agents' three rubric grades. |
+| Peer | 10 | Mean of the other agents' readability and extensibility grades. Each of those grades includes a reason. |
 | Cost | 5 | Token total and wall clock, averaged. Lower is better. Dollars are shown when the CLI reports them. |
 
 ## Agents and models

@@ -68,8 +68,8 @@ class ScriptedAgent:
             text = "tests"
         elif role == "review":
             text = (
-                '{"correctness": 90, "readability": 80, "extensibility": 70, '
-                '"summary": "Readable loop."}'
+                '{"readability": 80, "readability_reason": "Readable loop.", '
+                '"extensibility": 70, "extensibility_reason": "One function can take another case."}'
             )
         else:
             source = self.sources[min(self._solves, len(self.sources) - 1)]
@@ -93,6 +93,7 @@ def test_solution_is_graded_outside_the_solver_directory() -> None:
     assert result.passed
     assert result.tests_total == 1
     assert result.performance_ms is not None and result.performance_ms > 0
+    assert "solution" in result.performance_note
 
     failed = evaluate_solution(_WRONG, None, _HIDDEN, _PERF, timeout_s=30)
     assert not failed.passed

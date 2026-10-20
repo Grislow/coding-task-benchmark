@@ -141,7 +141,7 @@ def _solve(
         solution_path = workspace / "solution.py"
         source = solution_path.read_text() if solution_path.exists() else ""
         evaluation = evaluate_solution(source, public_tests, hidden_tests, perf_cases, timeout_s)
-        readability, _notes = readability_report(source)
+        readability, readability_notes = readability_report(source)
         excerpt = result.error or evaluation.failure_excerpt
         (workspace / f"attempt-{number}.py").write_text(source)
         sources.append(source)
@@ -160,6 +160,8 @@ def _solve(
                 agent_error=result.error,
                 performance_ms=evaluation.performance_ms,
                 readability=readability,
+                performance_note=evaluation.performance_note,
+                readability_notes=readability_notes,
             )
         )
         if progress is not None:

@@ -68,7 +68,7 @@ def apply_profile(solutions: list[SolutionRun]) -> None:
         solution.extensibility = _mean([review.extensibility for review in solution.reviews])
         solution.peer = _mean(
             [
-                (review.correctness + review.readability + review.extensibility) / 3
+                (review.readability + review.extensibility) / 2
                 for review in solution.reviews
             ]
         )

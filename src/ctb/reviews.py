@@ -7,13 +7,12 @@ def parse_review(text: str, reviewer: str) -> ReviewNote | None:
     rubric = _find_rubric(_decode(text))
     if rubric is None:
         return None
-    summary = rubric.get("summary")
     return ReviewNote(
         reviewer=reviewer,
-        correctness=_bounded(rubric.get("correctness")),
         readability=_bounded(rubric.get("readability")),
         extensibility=_bounded(rubric.get("extensibility")),
-        summary=summary if isinstance(summary, str) else "",
+        readability_reason=_reason(rubric.get("readability_reason"), rubric.get("summary")),
+        extensibility_reason=_reason(rubric.get("extensibility_reason"), rubric.get("summary")),
     )
 
 
@@ -41,7 +40,7 @@ def _find_rubric(value: object) -> dict[str, object] | None:
         return _find_rubric(loaded)
     if isinstance(value, dict):
         keyed = {key: item for key, item in value.items() if isinstance(key, str)}
-        if "extensibility" in keyed and "correctness" in keyed and "readability" in keyed:
+        if "extensibility" in keyed and "readability" in keyed:
             return keyed
         for item in keyed.values():
             found = _find_rubric(item)
@@ -61,6 +60,14 @@ def _loads(text: str) -> object | None:
         return json.loads(text)
     except json.JSONDecodeError:
         return None
+
+
+def _reason(value: object, fallback: object) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(fallback, str):
+        return fallback.strip()
+    return ""
 
 
 def _bounded(value: object) -> int:

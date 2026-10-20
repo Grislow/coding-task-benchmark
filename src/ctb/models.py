@@ -71,15 +71,17 @@ class AttemptRecord:
     performance_ms: float | None = None
     readability: float = 0
     chosen: bool = False
+    performance_note: str = ""
+    readability_notes: str = ""
 
 
 @dataclass(frozen=True)
 class ReviewNote:
     reviewer: str
-    correctness: int
     readability: int
     extensibility: int
-    summary: str
+    readability_reason: str
+    extensibility_reason: str
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,7 @@ class EvalResult:
     public_failed: bool
     failure_excerpt: str
     performance_ms: float | None
+    performance_note: str = ""
 
 
 @dataclass
