@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ground: #171719;
+      --surface: #131217;
+      --raised: #212023;
+      --text: #ffffff;
+      --muted: #8a8c92;
+      --accent: #4a8ad6;
+      --negative: #e5566f;
+      --control: #3a3a3e;
+      --font: "Public Sans", Inter, system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--ground);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 20px;
+    }
+    main {
+      padding: 32px;
+      display: grid;
+      gap: 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 24px;
+    }
+    .phase { color: var(--muted); }
+    .notice { min-height: 20px; color: var(--muted); }
+    .card {
+      background: var(--surface);
+      border-radius: 6px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+    }
+    label { display: block; margin-bottom: 8px; }
+    textarea, pre {
+      width: 100%;
+      background: var(--ground);
+      color: var(--text);
+      border: 1px solid var(--control);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 20px;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    textarea:focus-visible, button:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .actions { margin-top: 12px; }
+    button.action {
+      height: 34px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #171719;
+      font: 500 13px/34px var(--font);
+    }
+    button.action:disabled { background: var(--raised); color: var(--muted); }
+    .agent {
+      display: grid;
+      grid-template-columns: minmax(160px, 220px) 1fr;
+      gap: 16px;
+      align-items: center;
+      padding: 8px 0;
+    }
+    .agent + .agent { border-top: 1px solid #1b1a1f; }
+    .agent-name { font-weight: 600; }
+    .slots { display: flex; gap: 16px; flex-wrap: wrap; }
+    button.slot {
+      min-width: 88px;
+      padding: 4px 0;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      font: 400 13px/20px var(--font);
+    }
+    button.slot:disabled { color: var(--muted); }
+    .slot-label { border-bottom: 1px solid transparent; }
+    button.slot.selected .slot-label { border-bottom-color: var(--accent); }
+    .fail { color: var(--negative); }
+    .count, .num {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .count { display: block; color: var(--muted); font-size: 12px; }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 24px;
+      align-items: start;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 0 8px 8px 0;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted);
+      text-align: left;
+    }
+    td { padding: 8px 8px 8px 0; }
+    th.num, td.num { text-align: right; }
+    pre {
+      margin: 0;
+      min-height: 160px;
+      max-height: 420px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    #reviews { margin: 12px 0 0; padding-left: 18px; }
+    #reviews li { margin: 4px 0; }
+    .empty { color: var(--muted); }
+    @media (max-width: 800px) {
+      main { padding: 16px; }
+      .title-row, .split, .agent { grid-template-columns: 1fr; display: grid; }
+      .title-row { display: grid; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="title-row">
+      <h1 id="title">Interview</h1>
+      <div id="phase" class="phase">Not started</div>
+    </div>
+    <div id="notice" class="notice"></div>
+    <section class="card">
+      <h2>Task</h2>
+      <label for="task">Paste the Codility statement</label>
+      <textarea id="task"></textarea>
+      <div class="actions"><button class="action" id="start" type="button">Start the run</button></div>
+    </section>
+    <section class="card">
+      <h2>Attempts</h2>
+      <div id="board"><p class="empty">The agents appear here after the task starts.</p></div>
+    </section>
+    <div class="split">
+      <section class="card">
+        <h2>Leaderboard</h2>
+        <div id="leaderboard"><p class="empty">No scores yet.</p></div>
+        <ul id="reviews"></ul>
+      </section>
+      <section class="card">
+        <h2>Solution</h2>
+        <pre id="solution">Select a finished attempt.</pre>
+      </section>
+    </div>
+    <section class="card">
+      <h2>Your solution</h2>
+      <label for="mine">Paste the solution you would submit</label>
+      <textarea id="mine"></textarea>
+      <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
+    </section>
+  </main>
+  <script>
+    let selected = null;
+
+    const phases = {
+      idle: "Not started",
+      starting: "Starting",
+      authoring: "Writing tests",
+      solving: "Solving",
+      reviewing: "Reviewing",
+      done: "Finished",
+      error: "Stopped"
+    };
+
+    function figure(value) {
+      if (value === null || value === undefined) return "—";
+      return Number(value).toFixed(1);
+    }
+
+    function word(state, chosen) {
+      const label = state === "passed" ? "pass" : state === "failed" ? "fail" : state;
+      return chosen ? label + ", kept" : label;
+    }
+
+    function heading(task) {
+      for (const line of task.split("\n")) {
+        const stripped = line.trim();
+        if (stripped.startsWith("#")) return stripped.replace(/^#+\s*/, "") || "Interview";
+        if (stripped) return stripped.slice(0, 80);
+      }
+      return "";
+    }
+
+    function renderBoard(snapshot) {
+      const board = document.getElementById("board");
+      board.replaceChildren();
+      const agents = snapshot.agents || [];
+      if (!agents.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "The agents appear here after the task starts.";
+        board.appendChild(empty);
+        return;
+      }
+      for (const agent of agents) {
+        const row = document.createElement("div");
+        row.className = "agent";
+        const name = document.createElement("div");
+        name.className = "agent-name";
+        name.textContent = agent;
+        const slots = document.createElement("div");
+        slots.className = "slots";
+        for (const attempt of (snapshot.attempts || []).filter((item) => item.agent === agent)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "slot";
+          button.dataset.agent = agent;
+          button.dataset.attempt = String(attempt.number);
+          const finished = attempt.state === "passed" || attempt.state === "failed";
+          button.disabled = !finished;
+          if (selected && selected.agent === agent && selected.attempt === String(attempt.number)) {
+            button.classList.add("selected");
+          }
+          const label = document.createElement("span");
+          label.className = "slot-label" + (attempt.state === "failed" ? " fail" : "");
+          label.textContent = word(attempt.state, attempt.chosen);
+          const count = document.createElement("span");
+          count.className = "count";
+          count.textContent = attempt.tests_total === null || attempt.tests_total === undefined
+            ? "—"
+            : attempt.tests_passed + "/" + attempt.tests_total;
+          button.append(label, count);
+          slots.appendChild(button);
+        }
+        row.append(name, slots);
+        board.appendChild(row);
+      }
+    }
+
+    function renderTable(rows) {
+      const leaderboard = document.getElementById("leaderboard");
+      leaderboard.replaceChildren();
+      if (!rows.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No scores yet.";
+        leaderboard.appendChild(empty);
+        return;
+      }
+      const table = document.createElement("table");
+      const head = document.createElement("tr");
+      for (const [text, numeric] of [
+        ["Agent", false],
+        ["Profile", true],
+        ["Correctness", true],
+        ["Performance", true],
+        ["Readability", true],
+        ["Extensibility", true],
+        ["Peer", true],
+        ["Cost", true]
+      ]) {
+        const cell = document.createElement("th");
+        cell.textContent = text;
+        if (numeric) cell.className = "num";
+        head.appendChild(cell);
+      }
+      const body = document.createElement("tbody");
+      const header = document.createElement("thead");
+      header.appendChild(head);
+      for (const row of rows) {
+        const line = document.createElement("tr");
+        const agent = document.createElement("td");
+        agent.textContent = row.agent;
+        line.appendChild(agent);
+        for (const key of ["profile", "correctness", "performance", "readability", "extensibility", "peer", "cost"]) {
+          const cell = document.createElement("td");
+          cell.className = "num";
+          cell.textContent = figure(row[key]);
+          line.appendChild(cell);
+        }
+        body.appendChild(line);
+      }
+      table.append(header, body);
+      leaderboard.appendChild(table);
+    }
+
+    function render(snapshot) {
+      document.getElementById("phase").textContent = phases[snapshot.phase] || snapshot.phase;
+      document.getElementById("score").disabled = snapshot.suite_ready !== true || snapshot.candidate !== null;
+      const notes = snapshot.notes || [];
+      if (notes.length) document.getElementById("notice").textContent = notes.join(" ");
+      renderBoard(snapshot);
+      const rows = (snapshot.solutions || []).slice();
+      if (snapshot.candidate) rows.push(snapshot.candidate);
+      rows.sort((left, right) => {
+        const a = left.profile === null || left.profile === undefined ? -1 : left.profile;
+        const b = right.profile === null || right.profile === undefined ? -1 : right.profile;
+        return b - a;
+      });
+      renderTable(rows);
+      const reviews = document.getElementById("reviews");
+      reviews.replaceChildren();
+      const mine = snapshot.candidate;
+      if (mine && mine.reviews) {
+        for (const review of mine.reviews) {
+          const item = document.createElement("li");
+          item.textContent = review.reviewer + ": correctness " + review.correctness
+            + ", readability " + review.readability
+            + ", extensibility " + review.extensibility
+            + ". " + review.summary;
+          reviews.appendChild(item);
+        }
+      }
+    }
+
+    async function refresh() {
+      const response = await fetch("/status");
+      if (!response.ok) return;
+      render(await response.json());
+    }
+
+    document.getElementById("start").addEventListener("click", async () => {
+      const task = document.getElementById("task").value;
+      const title = heading(task);
+      const response = await fetch("/task", { method: "POST", body: task });
+      const notice = document.getElementById("notice");
+      if (!response.ok) {
+        notice.textContent = await response.text();
+        return;
+      }
+      notice.textContent = "";
+      if (title) document.getElementById("title").textContent = title;
+      refresh();
+    });
+
+    document.getElementById("score").addEventListener("click", async () => {
+      const response = await fetch("/mine", {
+        method: "POST",
+        body: document.getElementById("mine").value
+      });
+      const notice = document.getElementById("notice");
+      if (!response.ok) {
+        notice.textContent = await response.text();
+        return;
+      }
+      notice.textContent = "";
+      refresh();
+    });
+
+    document.getElementById("board").addEventListener("click", async (event) => {
+      const slot = event.target.closest("button.slot");
+      if (!slot || slot.disabled) return;
+      const response = await fetch(
+        "/solution?agent=" + encodeURIComponent(slot.dataset.agent) + "&attempt=" + slot.dataset.attempt
+      );
+      if (!response.ok) return;
+      document.getElementById("solution").textContent = await response.text();
+      selected = { agent: slot.dataset.agent, attempt: slot.dataset.attempt };
+      for (const button of document.querySelectorAll("button.slot")) button.classList.remove("selected");
+      slot.classList.add("selected");
+    });
+
+    setInterval(refresh, 1000);
+    refresh();
+  </script>
+</body>
+</html>

@@ -45,6 +45,31 @@ def _wait_done(server: object) -> dict[str, object]:
     raise AssertionError("run did not finish")
 
 
+def test_the_page_polls_status_and_shows_the_run(tmp_path: Path) -> None:
+    page = (Path(__file__).parents[1] / "src" / "ctb" / "ui.html").read_text()
+    for marker in ('id="task"', 'id="board"', 'id="leaderboard"', 'id="mine"', 'id="solution"'):
+        assert marker in page
+    assert "/status" in page
+    assert "1000" in page
+    assert "attempt.state" in page
+    session = RunSession(
+        [ScriptedAgent("fast", [_CORRECT], tokens=1)],
+        None,
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+    )
+    server = _open(session, page)
+    try:
+        status, body = _request(_url(server, "/"))
+        assert status == 200
+        assert b'id="board"' in body
+        assert b"/status" in body
+    finally:
+        server.shutdown()
+
+
 def test_the_server_listens_on_localhost_and_serves_one_run(tmp_path: Path) -> None:
     session = RunSession(
         [ScriptedAgent("fast", [_CORRECT], tokens=10), ScriptedAgent("slow", [_WRONG, _CORRECT], tokens=10)],
