@@ -6,6 +6,7 @@ from pathlib import Path
 from ctb.checks import readability_report
 from ctb.evaluate import compile_source, evaluate_solution, extract_public_tests
 from ctb.models import AttemptRecord, BenchmarkReport, CodingAgent, ReviewNote, SolutionRun
+from ctb.progress import ProgressBoard
 from ctb.prompts import author_prompt, next_approach_prompt, solver_prompt
 from ctb.reviews import parse_review
 from ctb.score import apply_profile, chosen_index
@@ -20,17 +21,25 @@ def run_benchmark(
     timeout_s: int,
     out_dir: Path,
     review: bool,
+    progress: ProgressBoard | None = None,
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "task.md").write_text(task_text)
     notes: list[str] = []
     public_tests = extract_public_tests(task_text)
-    hidden_tests, perf_cases, author_note = _hidden_suite(test_author, task_text, out_dir)
+    hidden_tests, perf_cases, author_note = _hidden_suite(test_author, task_text, out_dir, progress)
     if author_note:
         notes.append(author_note)
+        if progress is not None:
+            progress.add_note(author_note)
     _store_suite(out_dir, public_tests, hidden_tests, perf_cases)
+    if progress is not None:
+        progress.set_suite(bool(public_tests or hidden_tests))
     if not public_tests and not hidden_tests:
-        notes.append("No tests were produced. Solvers get one attempt and correctness is left blank.")
+        missing = "No tests were produced. Solvers get one attempt and correctness is left blank."
+        notes.append(missing)
+        if progress is not None:
+            progress.add_note(missing)
     solutions = _solve_all(
         agents,
         task_text,
@@ -40,12 +49,19 @@ def run_benchmark(
         attempts,
         timeout_s,
         out_dir,
+        progress,
     )
     if review and len(agents) >= 2:
-        _review(solutions, agents, task_text, out_dir)
+        _review(solutions, agents, task_text, out_dir, progress)
     elif review:
-        notes.append("Peer review needs two agents, so that dimension was left out.")
+        skipped = "Peer review needs two agents, so that dimension was left out."
+        notes.append(skipped)
+        if progress is not None:
+            progress.add_note(skipped)
     apply_profile(solutions)
+    if progress is not None:
+        progress.set_solutions(solutions)
+        progress.set_phase("done")
     return BenchmarkReport(_title(task_text), str(out_dir), notes, solutions)
 
 
@@ -58,7 +74,10 @@ def _solve_all(
     attempts: int,
     timeout_s: int,
     out_dir: Path,
+    progress: ProgressBoard | None = None,
 ) -> list[SolutionRun]:
+    if progress is not None:
+        progress.set_phase("solving")
     if not agents:
         return []
     with ThreadPoolExecutor(max_workers=len(agents)) as pool:
@@ -73,6 +92,7 @@ def _solve_all(
                 attempts,
                 timeout_s,
                 out_dir,
+                progress,
             )
             for agent in agents
         ]
@@ -88,6 +108,7 @@ def _solve(
     attempts: int,
     timeout_s: int,
     out_dir: Path,
+    progress: ProgressBoard | None = None,
 ) -> SolutionRun:
     print(f"solving {agent.name}", file=sys.stderr, flush=True)
     workspace = out_dir / "work" / agent.name
@@ -96,6 +117,8 @@ def _solve(
     records: list[AttemptRecord] = []
     sources: list[str] = []
     for number in range(1, attempts + 1):
+        if progress is not None:
+            progress.attempt_started(agent.name, number)
         previous = records[-1] if records else None
         prompt = solver_prompt() if previous is None else next_approach_prompt(
             previous.number,
@@ -137,10 +160,14 @@ def _solve(
                 readability=readability,
             )
         )
+        if progress is not None:
+            progress.attempt_finished(agent.name, records[-1], source)
         if evaluation.tests_total == 0:
             break
     best = chosen_index(records)
     records[best] = replace(records[best], chosen=True)
+    if progress is not None:
+        progress.mark_chosen(agent.name, records[best].number)
     source = sources[best]
     (workspace / "solution.py").write_text(source)
     readability, readability_notes = readability_report(source)
@@ -158,9 +185,13 @@ def _hidden_suite(
     author: CodingAgent | None,
     task_text: str,
     out_dir: Path,
+    progress: ProgressBoard | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     if author is None:
         return None, None, None
+    if progress is not None:
+        progress.set_phase("authoring")
+        progress.author_running(author.name)
     workspace = out_dir / "work" / f"{author.name}-author"
     make_workspace(workspace, task_text)
     result = author.complete(
@@ -182,7 +213,10 @@ def _hidden_suite(
         perf = None
     if hidden is None:
         notes.append("No hidden suite. Public asserts in the task are the grader, when they exist.")
-    return hidden, perf, " ".join(notes) or None
+    note = " ".join(notes)
+    if progress is not None:
+        progress.author_finished(ok=result.ok, note=note)
+    return hidden, perf, note or None
 
 
 def _review(
@@ -190,6 +224,7 @@ def _review(
     agents: list[CodingAgent],
     task_text: str,
     out_dir: Path,
+    progress: ProgressBoard | None = None,
 ) -> None:
     jobs = [
         (solution, agent)
@@ -199,8 +234,13 @@ def _review(
     ]
     if not jobs:
         return
+    if progress is not None:
+        progress.set_phase("reviewing")
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
-        notes = [future.result() for future in [pool.submit(_grade, job, task_text, out_dir) for job in jobs]]
+        notes = [
+            future.result()
+            for future in [pool.submit(_grade, job, task_text, out_dir, progress) for job in jobs]
+        ]
     for solution, note in notes:
         if note is not None:
             solution.reviews.append(note)
@@ -210,10 +250,13 @@ def _grade(
     job: tuple[SolutionRun, CodingAgent],
     task_text: str,
     out_dir: Path,
+    progress: ProgressBoard | None = None,
 ) -> tuple[SolutionRun, ReviewNote | None]:
     from ctb.prompts import review_prompt
 
     solution, agent = job
+    if progress is not None:
+        progress.review_started(agent.name, solution.agent)
     print(f"grading {solution.agent} with {agent.name}", file=sys.stderr, flush=True)
     workspace = out_dir / "work" / f"review-{agent.name}-{solution.agent}"
     make_workspace(workspace, task_text)
@@ -225,6 +268,8 @@ def _grade(
         role="review",
     )
     note = parse_review(result.text, agent.name) or parse_review(_raw_text(result.raw), agent.name)
+    if progress is not None:
+        progress.review_finished(agent.name, solution.agent, note)
     return solution, note
 
 
