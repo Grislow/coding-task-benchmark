@@ -143,6 +143,34 @@
     #reviews { margin: 12px 0 0; padding-left: 18px; }
     #reviews li { margin: 4px 0; }
     .empty { color: var(--muted); }
+    #banner {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      background: #f2f2f3;
+      color: #171719;
+      font-size: 64px;
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      padding: 28px 32px;
+    }
+    #banner.visible { display: block; }
+    body.telling main { padding-top: 148px; }
+    #message {
+      width: 100%;
+      height: 40px;
+      background: var(--ground);
+      color: var(--text);
+      border: 1px solid var(--control);
+      border-radius: 6px;
+      padding: 0 12px;
+      font: 400 16px var(--font);
+    }
+    #message:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
     @media (max-width: 800px) {
       main { padding: 16px; }
       .title-row, .split, .agent { grid-template-columns: 1fr; display: grid; }
@@ -151,6 +179,7 @@
   </style>
 </head>
 <body>
+  <div id="banner"></div>
   <main>
     <div class="title-row">
       <h1 id="title">Interview</h1>
@@ -183,6 +212,13 @@
       <label for="mine">Paste the solution you would submit</label>
       <textarea id="mine"></textarea>
       <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
+    </section>
+    <section class="card">
+      <h2>Message</h2>
+      <form id="message-form">
+        <label for="message">Shown across the top of the recording for 5 seconds</label>
+        <input id="message" type="text" autocomplete="off">
+      </form>
     </section>
   </main>
   <script>
@@ -384,6 +420,25 @@
       selected = { agent: slot.dataset.agent, attempt: slot.dataset.attempt };
       for (const button of document.querySelectorAll("button.slot")) button.classList.remove("selected");
       slot.classList.add("selected");
+    });
+
+    let bannerTimer = null;
+    document.getElementById("message-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("message");
+      const text = input.value.trim();
+      if (!text) return;
+      const banner = document.getElementById("banner");
+      banner.textContent = text;
+      banner.classList.add("visible");
+      document.body.classList.add("telling");
+      input.value = "";
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => {
+        banner.classList.remove("visible");
+        banner.textContent = "";
+        document.body.classList.remove("telling");
+      }, 5000);
     });
 
     setInterval(refresh, 1000);
