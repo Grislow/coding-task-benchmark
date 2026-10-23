@@ -7,6 +7,7 @@ from ctb.agents import ClaudeAgent, CodexAgent, GrokAgent
 from ctb.fake_agent import FakeAgent
 from ctb.models import CodingAgent
 from ctb.orchestrate import run_benchmark
+from ctb.preflight import check_all, cli_versions
 from ctb.prompts import TECHS
 from ctb.report import write_report
 from ctb.server import bind
@@ -91,9 +92,21 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--port", type=int, default=8765)
     ui.add_argument("--skip-review", action="store_true")
     ui.add_argument("--tech", choices=TECHS, default="python", help="Default rubric when a task names none.")
+    check = sub.add_parser(
+        "check",
+        help="Before an interview: show CLI versions and give each agent a one-line task to prove it can run.",
+    )
+    check.add_argument(
+        "--agents",
+        default=",".join(INTERVIEW_AGENTS),
+        help="Comma-separated cli, cli:model, or cli:model:effort entries.",
+    )
+    check.add_argument("--test-author", default=INTERVIEW_AUTHOR, help="Same form as --agents, or none.")
     args = parser.parse_args(argv)
     if args.command == "ui":
         return _serve_ui(args)
+    if args.command == "check":
+        return _check(args)
     if args.command == "interview":
         args.attempts = 3
         args.agents = ",".join(INTERVIEW_AGENTS)
@@ -155,7 +168,32 @@ def _serve_ui(args: argparse.Namespace) -> int:
         out_root=Path("runs"),
         tech=args.tech,
     )
+    session.check()
     return _serve(session, args.port)
+
+
+def _check(args: argparse.Namespace) -> int:
+    try:
+        names = _names(args.agents)
+        if args.test_author != "none":
+            names.append(args.test_author)
+        agents = [_build_agent(name, 600, 3.0) for name in dict.fromkeys(names)]
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    for cli, version in cli_versions().items():
+        print(f"{cli:8} {version}")
+    print()
+    print(f"Checking {len(agents)} agents. Each gets a one-line task, so this takes about a minute.")
+    problems = check_all(agents)
+    for agent, problem in zip(agents, problems, strict=True):
+        print(f"{'ok' if problem is None else 'FAIL':4}  {agent.name}")
+        if problem is not None:
+            print("      " + " ".join(problem.split())[:400])
+    failed = sum(problem is not None for problem in problems)
+    print()
+    print("Ready." if not failed else f"{failed} of {len(agents)} agents cannot run. Fix them before the interview.")
+    return 1 if failed else 0
 
 
 def _serve(session: RunSession, port: int) -> int:

@@ -7,7 +7,8 @@ from ctb.checks import readability_report
 from ctb.contract import contract_report
 from ctb.evaluate import evaluate_solution
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
-from ctb.orchestrate import _grade, run_benchmark
+from ctb.orchestrate import _grade, rerun_agent, run_benchmark
+from ctb.preflight import check_agent
 from ctb.progress import ProgressBoard, review_row
 from ctb.score import apply_profile, correctness_score, weighted_score
 
@@ -52,10 +53,73 @@ class RunSession:
         self._default_tech = tech
         self._tech = tech
         self._task_text = ""
+        self._checks: list[dict[str, object]] = []
+
+    def check(self) -> dict[str, object]:
+        with self._lock:
+            if self._active():
+                raise RuntimeError("Wait for the run to finish.")
+            if any(row["state"] == "checking" for row in self._checks):
+                raise RuntimeError("A check is already running.")
+            roles = [(agent, "solver") for agent in self._agents]
+            if self._test_author is not None:
+                roles.append((self._test_author, "test author"))
+            self._checks = [{"agent": agent.name, "role": role, "state": "checking", "note": ""} for agent, role in roles]
+            jobs = list(zip([agent for agent, _ in roles], self._checks, strict=True))
+        for agent, row in jobs:
+            threading.Thread(target=self._check_one, args=(agent, row), daemon=True).start()
+        return self.snapshot()
+
+    def _check_one(self, agent: CodingAgent, row: dict[str, object]) -> None:
+        try:
+            problem = check_agent(agent)
+        except Exception as exc:
+            problem = str(exc)
+        with self._lock:
+            row["state"] = "ready" if problem is None else "failed"
+            row["note"] = problem or ""
+
+    def rerun(self, name: str) -> dict[str, object]:
+        with self._lock:
+            board = self._board
+            solutions = self._report_solutions
+            out_dir = self._out_dir
+            if board is None or self._active():
+                raise RuntimeError("Wait for the run to finish.")
+            if solutions is None or out_dir is None:
+                raise RuntimeError("This run has no results to re-run against.")
+            agent = next((item for item in self._agents if item.name == name), None)
+            if agent is None:
+                raise RuntimeError(f"Unknown agent {name}.")
+            board.set_phase("solving")
+            threading.Thread(target=self._rerun, args=(agent, board, solutions, out_dir), daemon=True).start()
+        return self.snapshot()
+
+    def _rerun(self, agent: CodingAgent, board: ProgressBoard, solutions: list[SolutionRun], out_dir: Path) -> None:
+        try:
+            rerun_agent(
+                solutions,
+                agent,
+                self._agents,
+                self._task_text,
+                self._attempts,
+                self._timeout_s,
+                out_dir,
+                self._review,
+                board,
+                self._tech,
+            )
+            self._publish()
+        except Exception as exc:
+            board.add_note(str(exc))
+            board.set_phase("error")
+
+    def _active(self) -> bool:
+        return self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}
 
     def start(self, task_text: str, tech: str | None = None) -> dict[str, object]:
         with self._lock:
-            if self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}:
+            if self._active():
                 raise RuntimeError("A run is already active.")
             author_name = None if self._test_author is None else self._test_author.name
             board = ProgressBoard(
@@ -83,7 +147,7 @@ class RunSession:
 
     def reset(self) -> dict[str, object]:
         with self._lock:
-            if self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}:
+            if self._active():
                 raise RuntimeError("A run is already active.")
             self._board = None
             self._task_text = ""
@@ -130,7 +194,12 @@ class RunSession:
         with self._lock:
             board = self._board
             view = self._candidate_view
-            metadata = {"tech": self._tech, "task_text": self._task_text, "review_enabled": self._review}
+            metadata = {
+                "tech": self._tech,
+                "task_text": self._task_text,
+                "review_enabled": self._review,
+                "preflight": [dict(row) for row in self._checks],
+            }
         if board is None:
             return {**_IDLE, **metadata}
         snap = {**board.snapshot(), **metadata}

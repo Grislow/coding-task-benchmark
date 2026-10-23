@@ -15,31 +15,20 @@ class ProgressBoard:
             "note": "",
         }
         self._agents = list(agents)
-        self._attempts = [
-            {
-                "agent": agent,
-                "number": number,
-                "state": "waiting",
-                "tests_passed": None,
-                "tests_total": None,
-                "wall_ms": None,
-                "tokens": None,
-                "failure_excerpt": "",
-                "source": None,
-                "chosen": False,
-                "performance_ms": None,
-                "performance_note": "",
-                "readability": None,
-                "readability_notes": "",
-                "public_failed": False,
-                "contract": None,
-                "contract_notes": "",
-            }
-            for agent in agents
-            for number in range(1, attempts + 1)
-        ]
+        self._attempts = [_waiting(agent, number) for agent in agents for number in range(1, attempts + 1)]
         self._reviews: list[dict[str, object]] = []
         self._solutions: list[dict[str, object]] = []
+
+    def reset_agent(self, agent: str) -> None:
+        with self._lock:
+            self._attempts = [
+                _waiting(agent, item["number"]) if item["agent"] == agent else item for item in self._attempts
+            ]
+            self._reviews = [
+                item
+                for item in self._reviews
+                if item["author"] != agent and (item["reviewer"] != agent or item["author"] == "you")
+            ]
 
     def set_phase(self, phase: str) -> None:
         with self._lock:
@@ -73,7 +62,7 @@ class ProgressBoard:
     def attempt_finished(self, agent: str, record: AttemptRecord, source: str) -> None:
         with self._lock:
             item = self._attempt(agent, record.number)
-            item["state"] = "passed" if record.passed else "failed"
+            item["state"] = "setup" if record.setup_error else "passed" if record.passed else "failed"
             item["tests_passed"] = record.tests_passed
             item["tests_total"] = record.tests_total
             item["wall_ms"] = record.wall_ms
@@ -191,4 +180,26 @@ def _pending(reviewer: str, author: str, state: str, attempt: int) -> dict[str, 
         "score": None,
         "summary": "",
         "findings": [],
+    }
+
+
+def _waiting(agent: str, number: int) -> dict[str, object]:
+    return {
+        "agent": agent,
+        "number": number,
+        "state": "waiting",
+        "tests_passed": None,
+        "tests_total": None,
+        "wall_ms": None,
+        "tokens": None,
+        "failure_excerpt": "",
+        "source": None,
+        "chosen": False,
+        "performance_ms": None,
+        "performance_note": "",
+        "readability": None,
+        "readability_notes": "",
+        "public_failed": False,
+        "contract": None,
+        "contract_notes": "",
     }

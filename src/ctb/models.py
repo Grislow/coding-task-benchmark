@@ -73,6 +73,7 @@ class AttemptRecord:
     chosen: bool = False
     performance_note: str = ""
     readability_notes: str = ""
+    setup_error: str | None = None
 
 
 @dataclass(frozen=True)

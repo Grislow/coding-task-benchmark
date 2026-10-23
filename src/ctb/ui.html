@@ -260,6 +260,16 @@
     .slot svg, .result svg { flex: none; }
     .slot b, .result { display: inline-flex; align-items: center; gap: 6px; }
     .slot.waiting { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+    .slot.setup { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); background: repeating-linear-gradient(-45deg, transparent 0 8px, color-mix(in oklab, var(--line) 55%, transparent) 8px 10px); }
+    .slot.setup b, .slot.broken b, .result.setup { color: var(--fail); }
+    .slot.ready { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--pass) 55%, transparent); }
+    .slot.ready b { color: var(--pass); }
+    .slot.broken { height: auto; min-height: 54px; padding-block: 8px; background: color-mix(in oklab, var(--fail) 10%, transparent); box-shadow: inset 0 0 0 2px var(--fail); animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    .slot.broken small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .slot.ready { animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    button.ghost.small { height: 30px; padding: 0 12px; font-size: 13px; line-height: 30px; }
+    .section-head #recheck { align-self: center; margin-left: auto; }
+    .section-head #recheck[hidden] { display: none; }
     .slot.wide { grid-column: 1 / -1; }
     .author-lane { --hue: var(--a2); }
     .author-lane .pos { color: var(--hue); }
@@ -397,7 +407,7 @@
     dialog .hint { margin: 12px 0 0; }
     @media (prefers-reduced-motion: reduce) {
       .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
-      .result.run::before, .wait i, .landed, .tech.swap, [role="tabpanel"]:not([hidden]) { animation: none; }
+      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]) { animation: none; }
       button.action, .tech, [role="tab"] { transition: none; }
     }
     @media (max-width: 960px) {
@@ -470,7 +480,7 @@
       </section>
     </div>
     <section class="card race" id="agents" tabindex="-1" aria-labelledby="agents-title">
-      <div class="section-head"><h2 id="agents-title">Agents</h2><kbd>A</kbd><span id="race-meta" class="muted"></span></div>
+      <div class="section-head"><h2 id="agents-title">Agents</h2><kbd>A</kbd><span id="race-meta" class="muted"></span><button class="ghost small" id="recheck" type="button" hidden>Check again</button></div>
       <div id="board"></div>
     </section>
     <div class="lower">
@@ -551,6 +561,8 @@
     const ICONS = {
       check: '<path d="M20 6 9 17l-5-5"/>',
       x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      alert: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>',
+      redo: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
       eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
     };
 
@@ -706,6 +718,7 @@
         return { key, attempt, jobs, graded, pending, final, parts, score: final ? weighted(parts) : null };
       });
       const tier = (entry) => {
+        if (entry.attempt.state === "setup") return 4;
         if (!finished(entry.attempt)) return 3;
         if (!entry.final) return 1;
         return entry.attempt.state === "passed" ? 0 : 2;
@@ -787,6 +800,11 @@
         if (entry.final) small.replaceChildren(document.createTextNode("score "), scoreText(entry));
         else if (entry.pending) small.textContent = "in review";
         slot.append(mark, small);
+      } else if (attempt.state === "setup") {
+        const mark = el("b");
+        mark.append(icon("alert"), document.createTextNode("Setup"));
+        slot.append(mark, el("small", "", "could not run"));
+        slot.title = attempt.failure_excerpt || "";
       } else if (attempt.state === "running") {
         slot.append(el("b", "", "Running"), el("small", "", "attempt " + attempt.number));
       } else {
@@ -809,6 +827,47 @@
         lane.append(el("span", "pos", String(index + 1)), who, slots, el("div", "best"));
         board.appendChild(lane);
       }
+    }
+
+    function checkLanes(board, checks) {
+      const solvers = checks.filter((row) => row.role === "solver");
+      checks.forEach((row) => {
+        const author = row.role !== "solver";
+        const lane = el("div", "lane" + (author ? " author-lane" : ""));
+        lane.dataset.key = "check:" + row.role + ":" + row.agent;
+        if (!author) lane.style.setProperty("--hue", "var(" + HUES[solvers.indexOf(row) % HUES.length] + ")");
+        const parts = nameParts(row.agent);
+        const who = el("div", "who");
+        const copy = el("div");
+        copy.append(el("b", "", parts.name), el("small", "", (parts.cli ? parts.cli + " · " : "") + row.role));
+        copy.firstChild.title = row.agent;
+        who.append(el("span", "dot"), copy);
+        const slots = el("div", "slots");
+        const slot = el("div", "slot wide " + ({ checking: "running", ready: "ready", failed: "broken" })[row.state]);
+        const mark = el("b");
+        if (row.state === "checking") {
+          mark.textContent = "Checking";
+          slot.append(mark, el("small", "", "login, model and file access"));
+        } else if (row.state === "ready") {
+          mark.append(icon("check"), document.createTextNode("Ready"));
+          slot.append(mark, el("small", "", "read the task and wrote solution.py"));
+        } else {
+          mark.append(icon("alert"), document.createTextNode("Cannot run"));
+          slot.append(mark, el("small", "", row.note));
+          slot.title = row.note;
+        }
+        slots.appendChild(slot);
+        lane.append(el("span", "pos", author ? "T" : "·"), who, slots, el("div", "best"));
+        board.appendChild(lane);
+      });
+    }
+
+    function checkSummary(checks) {
+      const checking = checks.filter((row) => row.state === "checking").length;
+      const failed = checks.filter((row) => row.state === "failed").length;
+      if (checking) return "Preflight · checking " + checks.length + " agents with a one-line task";
+      if (failed) return "Preflight · " + failed + " of " + checks.length + " cannot run. Fix them, then check again";
+      return "Preflight · all " + checks.length + " ready";
     }
 
     function authorLane(snapshot) {
@@ -845,12 +904,20 @@
     function renderBoard(snapshot, entries) {
       const board = document.getElementById("board");
       const before = positions(board, ".lane[data-key]");
+      const active = document.activeElement;
+      const focusedRerun = active && active.matches && active.matches("#board button[data-rerun]") ? active.dataset.rerun : null;
       board.replaceChildren();
       const agents = snapshot.agents || [];
       const meta = document.getElementById("race-meta");
+      const checks = snapshot.preflight || [];
+      const recheck = document.getElementById("recheck");
+      recheck.hidden = snapshot.phase !== "idle" || !checks.length;
+      recheck.disabled = checks.some((row) => row.state === "checking");
       if (!agents.length) {
-        meta.textContent = "";
-        ghostLanes(board);
+        meta.textContent = checks.length ? checkSummary(checks) : "";
+        if (checks.length) checkLanes(board, checks);
+        else ghostLanes(board);
+        flip(board, ".lane[data-key]", before);
         return;
       }
       const attemptsEach = Math.max(...agents.map((agent) => (snapshot.attempts || []).filter((item) => item.agent === agent).length));
@@ -887,10 +954,11 @@
         lane.style.setProperty("--hue", hueOf(item.agent));
         const parts = nameParts(item.agent);
         const who = el("div", "who");
+        const broken = item.attempts.some((attempt) => attempt.state === "setup");
         const copy = el("div");
         copy.append(
           el("b", "", parts.name),
-          el("small", "", item.agent === "you" ? "your paste · same suite" : laneNote(parts.cli, reviewerStatus(item.agent, snapshot)))
+          el("small", "", item.agent === "you" ? "your paste · same suite" : laneNote(parts.cli, broken ? "could not run" : reviewerStatus(item.agent, snapshot)))
         );
         copy.firstChild.title = item.agent;
         who.append(el("span", "dot"), copy);
@@ -900,11 +968,24 @@
         const shown = item.top && (item.tier === 2 || settled) ? item.top : null;
         const value = el("b", shown ? "" : "none");
         value.appendChild(shown ? scoreText(shown) : document.createTextNode("—"));
-        best.append(el("small", "", "Best"), value);
+        if (broken && !shown && (snapshot.phase === "done" || snapshot.phase === "error")) {
+          const again = el("button", "ghost small");
+          again.type = "button";
+          again.dataset.rerun = item.agent;
+          again.setAttribute("aria-label", "Re-run " + item.agent);
+          again.append(icon("redo"), document.createTextNode("Re-run"));
+          best.appendChild(again);
+        } else {
+          best.append(el("small", "", "Best"), value);
+        }
         lane.append(el("span", "pos", ranked ? String(rank + 1) : "·"), who, slots, best);
         board.appendChild(lane);
       });
       flip(board, ".lane[data-key]", before);
+      if (!focusedRerun) return;
+      const again = board.querySelector('button[data-rerun="' + CSS.escape(focusedRerun) + '"]');
+      if (again) again.focus({ preventScroll: true });
+      else document.getElementById("agents").focus({ preventScroll: true });
     }
 
     function rowFor(entry, rank, selectedKey) {
@@ -927,6 +1008,9 @@
       let result;
       if (attempt.state === "running") {
         result = el("span", "result run", "Running");
+      } else if (attempt.state === "setup") {
+        result = el("span", "result setup");
+        result.append(icon("alert"), document.createTextNode("Setup"));
       } else {
         const passed = attempt.state === "passed";
         result = el("span", "result " + (passed ? "pass" : "fail"));
@@ -999,6 +1083,11 @@
     function renderMeasured(box, entry) {
       const attempt = entry.attempt;
       box.replaceChildren();
+      if (attempt.state === "setup") {
+        addMeasure(box, "Setup error", "The agent could not run, so this attempt is not scored and does not rank. It was retried once. The message below is the agent's own. Fix the setup, then re-run the agent from its lane.", true);
+        box.appendChild(el("pre", "excerpt", attempt.failure_excerpt || ""));
+        return;
+      }
       if (!finished(attempt)) {
         addMeasure(box, "Running", "Results land here when this attempt finishes.", true);
         return;
@@ -1033,6 +1122,7 @@
       box.replaceChildren();
       let empty = null;
       if (!latest.review_enabled) empty = "Peer review is off for this run.";
+      else if (attempt.state === "setup") empty = "Not reviewed. The agent could not run.";
       else if (attempt.state === "failed") empty = "Reviewers grade passing attempts only.";
       else if (!entry.jobs.length) {
         empty = SOLVED.includes(latest.phase) && attempt.state === "passed" && attempt.agent !== "you"
@@ -1096,10 +1186,10 @@
       renderMeasured(document.getElementById("measured"), entry);
       renderReviews(document.getElementById("reviews"), entry);
       const pre = document.getElementById("solution");
-      const source = attempt.source || "";
+      const source = attempt.state === "setup" ? "" : attempt.source || "";
       if (pre.textContent !== source) pre.textContent = source;
       let note = "";
-      if (!source) note = finished(attempt) ? "This attempt wrote no solution.py." : "No code until this attempt finishes.";
+      if (!source) note = attempt.state === "setup" ? "The agent could not run, so there is no code." : finished(attempt) ? "This attempt wrote no solution.py." : "No code until this attempt finishes.";
       document.getElementById("solution-note").textContent = note;
       applyBlur();
     }
@@ -1361,6 +1451,24 @@
       }
       notice.textContent = "";
       refresh();
+    });
+
+    async function post(path) {
+      const response = await fetch(path, { method: "POST" });
+      const notice = document.getElementById("notice");
+      if (!response.ok) {
+        notice.textContent = await response.text();
+        return;
+      }
+      notice.textContent = "";
+      refresh();
+    }
+
+    document.getElementById("recheck").addEventListener("click", () => post("/check"));
+
+    document.getElementById("board").addEventListener("click", (event) => {
+      const again = event.target.closest("button[data-rerun]");
+      if (again) post("/rerun?agent=" + encodeURIComponent(again.dataset.rerun));
     });
 
     const leaderboard = document.getElementById("leaderboard");

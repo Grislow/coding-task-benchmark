@@ -78,7 +78,7 @@ def _card(solution: SolutionRun) -> list[str]:
     ]
     details: list[str] = []
     for attempt in solution.attempts:
-        result = "pass" if attempt.passed else "fail"
+        result = "setup error" if attempt.setup_error else "pass" if attempt.passed else "fail"
         if attempt.chosen:
             result = f"{result}, kept"
         tests = f"{attempt.tests_passed}/{attempt.tests_total}"
@@ -87,7 +87,9 @@ def _card(solution: SolutionRun) -> list[str]:
             f"| {attempt.number} | {result} | {tests} | {_seconds(attempt.wall_ms)} | "
             f"{attempt.usage.total} | {usd} |"
         )
-        if attempt.agent_error:
+        if attempt.setup_error:
+            details.extend(["", f"Attempt {attempt.number} could not run: {attempt.setup_error}"])
+        elif attempt.agent_error:
             details.extend(["", f"Attempt {attempt.number} error: {attempt.agent_error}"])
         elif attempt.failure_excerpt:
             details.extend(

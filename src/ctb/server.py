@@ -55,6 +55,23 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json(200, snapshot)
             return
+        if parsed.path == "/check":
+            try:
+                snapshot = self.server.session.check()
+            except RuntimeError as exc:
+                self._text(409, str(exc))
+                return
+            self._json(200, snapshot)
+            return
+        if parsed.path == "/rerun":
+            name = parse_qs(parsed.query).get("agent", [""])[0]
+            try:
+                snapshot = self.server.session.rerun(name)
+            except RuntimeError as exc:
+                self._text(409, str(exc))
+                return
+            self._json(200, snapshot)
+            return
         if parsed.path == "/reset":
             try:
                 snapshot = self.server.session.reset()

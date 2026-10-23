@@ -65,6 +65,16 @@ To open the page without calling a model:
 ctb ui --agents fake --test-author fake --skip-review
 ```
 
+## Before an interview
+
+```bash
+./check
+```
+
+Prints the `claude`, `codex` and `grok` versions, then gives each model in the lineup a one-line task in a real solve folder. It catches a missing login, an unknown model id, or a permission rule that blocks file access. It exits 1 if any model cannot run. `./ui` runs the same check when it starts and shows the result in the Agents section, with a Check again button.
+
+During a run, a model that cannot run is retried once after 5 seconds. If it still fails, the attempt is marked Setup, is not scored or ranked, and shows the model's own message. Once the run finishes, Re-run in that model's lane runs it again on the same suite, with reviews.
+
 ## What a run does
 
 1. Reads the task. Python blocks that contain `assert` become public tests.

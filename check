@@ -1,0 +1,5 @@
+#!/bin/zsh
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")" && pwd)"
+exec "$root/.venv/bin/ctb" check "$@"
