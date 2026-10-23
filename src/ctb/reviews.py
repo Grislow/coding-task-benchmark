@@ -1,19 +1,43 @@
 import json
 
-from ctb.models import ReviewNote
+from ctb.models import Finding, ReviewNote
+from ctb.score import findings_score
+
+_SEVERITIES = ("blocker", "major", "minor")
 
 
-def parse_review(text: str, reviewer: str) -> ReviewNote | None:
+def parse_review(text: str, reviewer: str, rules: frozenset[str], line_count: int) -> ReviewNote | None:
     rubric = _find_rubric(_decode(text))
     if rubric is None:
         return None
+    findings = _findings(rubric.get("findings"), rules, line_count)
     return ReviewNote(
         reviewer=reviewer,
-        readability=_bounded(rubric.get("readability")),
-        extensibility=_bounded(rubric.get("extensibility")),
-        readability_reason=_reason(rubric.get("readability_reason"), rubric.get("summary")),
-        extensibility_reason=_reason(rubric.get("extensibility_reason"), rubric.get("summary")),
+        score=findings_score(findings),
+        findings=findings,
+        summary=_text(rubric.get("summary")),
     )
+
+
+def _findings(value: object, rules: frozenset[str], line_count: int) -> tuple[Finding, ...]:
+    if not isinstance(value, list):
+        return ()
+    kept: dict[tuple[int, str], Finding] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        line = item.get("line")
+        rule = _text(item.get("rule")).upper()
+        severity = _text(item.get("severity")).lower()
+        if isinstance(line, bool) or not isinstance(line, int) or not 1 <= line <= line_count:
+            continue
+        if rule not in rules or severity not in _SEVERITIES:
+            continue
+        kept.setdefault(
+            (line, rule),
+            Finding(line, rule, severity, _text(item.get("issue")), _text(item.get("fix"))),
+        )
+    return tuple(sorted(kept.values(), key=lambda finding: finding.line))
 
 
 def _decode(text: str) -> object:
@@ -40,7 +64,7 @@ def _find_rubric(value: object) -> dict[str, object] | None:
         return _find_rubric(loaded)
     if isinstance(value, dict):
         keyed = {key: item for key, item in value.items() if isinstance(key, str)}
-        if "extensibility" in keyed and "readability" in keyed:
+        if "findings" in keyed:
             return keyed
         for item in keyed.values():
             found = _find_rubric(item)
@@ -62,15 +86,5 @@ def _loads(text: str) -> object | None:
         return None
 
 
-def _reason(value: object, fallback: object) -> str:
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    if isinstance(fallback, str):
-        return fallback.strip()
-    return ""
-
-
-def _bounded(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return 0
-    return max(0, min(100, int(value)))
+def _text(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""

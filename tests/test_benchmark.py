@@ -68,8 +68,9 @@ class ScriptedAgent:
             text = "tests"
         elif role == "review":
             text = (
-                '{"readability": 80, "readability_reason": "Readable loop.", '
-                '"extensibility": 70, "extensibility_reason": "One function can take another case."}'
+                '{"findings": [{"line": 1, "rule": "PY-NAME", "severity": "minor", '
+                '"issue": "N is fine but best is vague.", "fix": "Call it longest_gap."}], '
+                '"summary": "Readable loop."}'
             )
         else:
             source = self.sources[min(self._solves, len(self.sources) - 1)]
@@ -120,7 +121,7 @@ def test_three_attempt_loop_repairs_and_peers_grade_the_other_solution(tmp_path:
     assert fast.prompts[0].startswith("Solve the coding task")
     assert "different approach" in fast.prompts[1]
     assert "passed the tests" in fast.prompts[1]
-    assert len(slow.prompts) == 4
+    assert len(slow.prompts) == 6
     assert slow.sessions[1] == "slow-session"
     assert "failed the tests" in slow.prompts[1]
     assert "test_hidden_sentinel_gap" in slow.prompts[1]
@@ -136,12 +137,14 @@ def test_three_attempt_loop_repairs_and_peers_grade_the_other_solution(tmp_path:
     assert by_name["slow"].attempts[0].passed is False
     assert by_name["slow"].attempts[1].chosen
     assert "while N" in by_name["slow"].source
-    assert by_name["fast"].reviews[0].reviewer == "slow"
-    assert by_name["slow"].reviews[0].reviewer == "fast"
+    assert {review.reviewer for review in by_name["fast"].reviews} == {"slow"}
+    assert {review.reviewer for review in by_name["slow"].reviews} == {"fast"}
+    assert by_name["fast"].review == 97
     assert by_name["fast"].profile is not None and by_name["slow"].profile is not None
     report_text = (tmp_path / "report.md").read_text()
     assert "| 1 | fail |" in report_text
     assert "| 2 | pass, kept |" in report_text
+    assert "line 1, PY-NAME (minor)" in report_text
 
 
 class SleepySolver(ScriptedAgent):
@@ -176,3 +179,35 @@ def test_solvers_start_together(tmp_path: Path) -> None:
         review=False,
     )
     assert abs(first.started - second.started) < 0.3
+
+
+class PeekingSolver(ScriptedAgent):
+    def complete(
+        self,
+        *,
+        cwd: str,
+        prompt: str,
+        session_id: str | None,
+        role: str,
+    ) -> AgentResult:
+        if role == "solve":
+            self.cwd = Path(cwd).resolve()
+            self.visible = sorted(path.name for path in self.cwd.parent.parent.rglob("*"))
+        return super().complete(cwd=cwd, prompt=prompt, session_id=session_id, role=role)
+
+
+def test_solvers_cannot_reach_the_hidden_suite(tmp_path: Path) -> None:
+    solver = PeekingSolver("peek", [_CORRECT], tokens=1)
+    run_benchmark(
+        task_text=_TASK,
+        agents=[solver],
+        test_author=ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        out_dir=tmp_path,
+        review=False,
+    )
+    assert tmp_path.resolve() not in solver.cwd.parents
+    assert "test_hidden.py" not in solver.visible
+    assert (tmp_path / "work" / "peek" / "solution.py").read_text() == _CORRECT
+    assert (tmp_path / "hidden" / "test_hidden.py").exists()

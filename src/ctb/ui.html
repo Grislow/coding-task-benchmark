@@ -4,53 +4,97 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Solution Benchmarker</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='11' width='5' height='11' rx='1.5' fill='%23ffc531'/%3E%3Crect x='9.5' y='2' width='5' height='20' rx='1.5' fill='%23ff6b4a'/%3E%3Crect x='17' y='7' width='5' height='15' rx='1.5' fill='%233fe0a0'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Onest:wght@400;500;600&family=Martian+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ground: #171719;
-      --surface: #131217;
-      --raised: #212023;
-      --text: #ffffff;
-      --muted: #8a8c92;
-      --accent: #4a8ad6;
-      --negative: #e5566f;
-      --positive: #44a282;
-      --gold: #d9a441;
-      --silver: #c6c8ce;
-      --bronze: #c4894a;
-      --control: #3a3a3e;
-      --font: "Public Sans", Inter, system-ui, sans-serif;
-      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ground: #0c0b10;
+      --panel: #16141d;
+      --raised: #201d29;
+      --line: #34303f;
+      --ink: #f4f4f7;
+      --muted: #a29fae;
+      --on-hue: #120f0a;
+      --a1: #ff6b4a;
+      --a2: #ffc531;
+      --a3: #3fe0a0;
+      --a4: #4ea8ff;
+      --a5: #ff5fae;
+      --pass: #3fe0a0;
+      --fail: #ff8a73;
+      --display: "Unbounded", "Onest", system-ui, sans-serif;
+      --font: "Onest", system-ui, sans-serif;
+      --mono: "Martian Mono", ui-monospace, monospace;
     }
+    html { color-scheme: dark; }
     * { box-sizing: border-box; }
+    * { scrollbar-width: thin; scrollbar-color: var(--line) var(--ground); }
+    ::selection { background: var(--a2); color: var(--on-hue); }
     body {
       margin: 0;
       background: var(--ground);
-      color: var(--text);
+      color: var(--ink);
       font-family: var(--font);
-      font-size: 13px;
-      line-height: 20px;
+      font-size: 14px;
+      line-height: 1.45;
     }
-    main { padding: 32px; display: grid; gap: 24px; }
-    h1 {
-      margin: 0;
-      font-size: 26px;
+    main { padding: 28px 32px 48px; display: grid; gap: 20px; max-width: 1480px; margin: 0 auto; }
+    h1 { margin: 0; font: 800 22px/1.1 var(--display); letter-spacing: -0.01em; }
+    h2 { margin: 0; font: 800 18px/1.2 var(--display); letter-spacing: -0.01em; }
+    .muted, .empty, .hint { color: var(--muted); }
+    .hint { max-width: 65ch; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+    .mark { display: inline-flex; gap: 3px; align-items: flex-end; height: 26px; }
+    .mark i { width: 7px; border-radius: 2px; }
+    .mark i:nth-child(1) { height: 14px; background: var(--a2); }
+    .mark i:nth-child(2) { height: 26px; background: var(--a1); }
+    .mark i:nth-child(3) { height: 19px; background: var(--a3); }
+    .steps { display: flex; list-style: none; margin: 0; padding: 0; gap: 6px; }
+    .steps li, .phase {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
       font-weight: 600;
-      letter-spacing: -0.02em;
-      line-height: 1.15;
+      font-size: 13px;
+      line-height: 18px;
     }
-    h2 { margin: 0 0 8px; font-size: 20px; font-weight: 400; color: var(--muted); }
-    .title-row, .section-head, .paste-head {
+    .steps li.done { color: var(--ink); }
+    .steps li { display: inline-flex; align-items: center; gap: 7px; }
+    .steps li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+    .steps li.done::before { width: 4px; height: 8px; border-radius: 0; background: none; border: solid var(--pass); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+    .steps li.now { background: var(--a2); color: var(--on-hue); }
+    .steps li.now::before { background: var(--on-hue); }
+    .steps li.now.done::before { background: none; border-color: var(--on-hue); }
+    .steps li.next { color: var(--a2); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--a2) 55%, transparent); }
+    .steps li.next::before { background: var(--a2); }
+    .steps li.skipped { color: var(--muted); }
+    .steps li.skipped::after { content: "skipped"; font-weight: 400; }
+    .steps li.skipped::before { width: 8px; height: 2px; border-radius: 1px; background: var(--muted); }
+    .phase.stopped { background: var(--fail); color: var(--on-hue); }
+    .notice:empty { display: none; }
+    .notice {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 16px;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: color-mix(in oklab, var(--fail) 14%, var(--panel));
+      box-shadow: inset 0 0 0 1px var(--fail);
+      font-weight: 500;
     }
-    .phase { color: var(--muted); }
-    .notice { min-height: 20px; color: var(--muted); }
+    .notice::before { content: "!"; display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--fail); color: var(--on-hue); font-weight: 800; font-size: 12px; }
     #banner {
       display: none;
       position: fixed;
@@ -58,205 +102,413 @@
       left: 0;
       right: 0;
       z-index: 3;
-      background: #f2f2f3;
-      color: #171719;
-      font-size: 64px;
-      font-weight: 600;
-      line-height: 1.1;
+      background: var(--a2);
+      color: var(--on-hue);
+      font: 800 56px/1.1 var(--display);
       letter-spacing: -0.02em;
       padding: 28px 32px;
     }
-    #banner.visible { display: block; }
-    body.telling main { padding-top: 148px; }
-    .hint { margin: 0 0 16px; color: var(--muted); }
-    .card {
-      background: var(--surface);
-      border-radius: 6px;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
-      padding: 20px;
-    }
-    label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    #banner.visible { display: block; animation: drop 320ms cubic-bezier(.2, .8, .2, 1); }
+    @keyframes drop { from { transform: translateY(-100%); } to { transform: none; } }
+    body.telling main { padding-top: 160px; }
+    .card { background: var(--panel); border-radius: 20px; padding: 22px; }
+    .race .lane { background: none; margin-top: 0; border-radius: 12px; }
+    .race .lane + .lane { box-shadow: 0 -1px 0 #262230; }
+    .race .lane.lead { background: none; box-shadow: inset 0 0 0 2px var(--hue); }
+    .race .lane.lead + .lane { box-shadow: none; }
+    .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+    .paste-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    label { display: block; margin-bottom: 8px; color: var(--muted); }
     textarea, pre, #message {
       width: 100%;
       background: var(--ground);
-      color: var(--text);
-      border: 1px solid var(--control);
-      border-radius: 6px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 12px;
       font-family: var(--mono);
       font-size: 13px;
       line-height: 20px;
     }
-    textarea { min-height: 88px; padding: 12px; resize: vertical; }
-    #message { height: 40px; padding: 0 12px; font: 400 16px var(--font); }
-    textarea:focus-visible, button:focus-visible, #message:focus-visible {
-      outline: 1px solid var(--accent);
-      outline-offset: 2px;
-    }
+    textarea { min-height: 120px; padding: 14px; resize: vertical; display: block; }
+    #message { height: 44px; padding: 0 14px; font: 500 16px var(--font); }
+    textarea:focus-visible, #message:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; border-color: transparent; }
+    button:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
+    .actions { margin-top: 12px; display: flex; gap: 8px; }
+    .actions [hidden] { display: none; }
+    button { font: inherit; cursor: pointer; }
     button.action, button.ghost {
-      height: 34px;
-      padding: 0 14px;
+      height: 38px;
+      padding: 0 16px;
       border: 0;
       border-radius: 999px;
-      font: 500 13px/34px var(--font);
+      font: 600 14px/38px var(--font);
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      transition: transform 120ms ease;
     }
-    button.action { background: #ffffff; color: #171719; }
-    button.action:disabled, button.ghost:disabled { background: var(--raised); color: var(--muted); }
-    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--control); }
+    button.action { background: var(--ink); color: var(--ground); }
+    button.action:hover:not(:disabled) { transform: translateY(-1px); }
+    button.action:disabled { background: var(--raised); color: var(--muted); cursor: not-allowed; }
+    button.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+    button.ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--muted); }
+    button.ghost:disabled { color: var(--muted); cursor: not-allowed; }
     kbd {
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 16px;
-      border: 1px solid var(--control);
-      border-bottom-width: 2px;
+      font: 600 10px/16px var(--mono);
+      border: 1px solid currentColor;
       border-radius: 4px;
       padding: 0 5px;
-      color: var(--muted);
+      opacity: 0.7;
     }
-    button.action kbd { color: #171719; border-color: #c6c8ce; }
-    .statuses { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-    .status {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 12px 12px 12px 14px;
+    .steps li { position: relative; overflow: hidden; }
+    .steps li > * { position: relative; }
+    .steps li.now.busy::before {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: none;
+      border: 2px solid var(--on-hue);
+      border-right-color: transparent;
+      animation: spin 700ms linear infinite;
+    }
+    .steps li.now.busy::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: color-mix(in oklab, var(--on-hue) 16%, transparent);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
+      animation: march 800ms linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+    .inputs > .card { display: flex; flex-direction: column; min-width: 0; }
+    .inputs .editor { display: flex; flex-direction: column; flex: 1; }
+    .inputs textarea { flex: 1; min-height: 168px; }
+    .inputs .editor[hidden], .task-summary[hidden] { display: none; }
+    .paste-head { min-height: 30px; }
+    .paste-head kbd { flex: none; }
+    .tech {
+      --tech: var(--a4);
+      margin-left: auto;
+      height: 30px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--tech) 14%, var(--raised));
+      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tech) 60%, transparent);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font: 600 13px var(--font);
+      transition: background-color 200ms ease, box-shadow 200ms ease;
+    }
+    .tech[data-tech="fastapi"] { --tech: var(--a3); }
+    .tech::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--tech); transform: rotate(45deg); }
+    .tech small { color: var(--muted); font: 400 11px var(--mono); }
+    .tech:disabled { cursor: default; }
+    .tech:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
+    .tech.swap { animation: swap 360ms cubic-bezier(.2, .8, .2, 1); }
+    @keyframes swap { from { transform: scale(0.86); } 60% { transform: scale(1.06); } to { transform: none; } }
+    .task-summary { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+    #task-name { font: 800 16px var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #task-line { margin: 0; max-width: 54ch; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .task-summary .actions { margin-top: auto; }
+    .mine-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .mine-foot .actions { margin: 0; }
+    .lane {
+      --hue: var(--muted);
+      position: relative;
+      display: grid;
+      grid-template-columns: 44px minmax(200px, 250px) 1fr 120px;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border-radius: 14px;
       background: var(--raised);
-      border-radius: 6px;
-      border-left: 3px solid var(--muted);
     }
-    .status.running { border-left-color: var(--accent); }
-    .status.passed { border-left-color: var(--positive); }
-    .status.failed { border-left-color: var(--negative); }
-    .status strong { display: block; font-size: 13px; }
-    .status span { color: var(--muted); }
-    .status.running .state { color: var(--accent); }
-    .status.passed .state { color: var(--positive); }
-    .status.failed .state { color: var(--negative); }
-    .status svg { margin-top: 2px; flex: none; }
+    .lane.lead { background: color-mix(in oklab, var(--hue) 16%, var(--raised)); box-shadow: inset 0 0 0 2px var(--hue); }
+    .pos { font: 800 24px var(--display); color: var(--muted); text-align: center; }
+    .lead .pos { color: var(--hue); }
+    .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .who > div { min-width: 0; }
+    .dot { width: 14px; height: 14px; flex: none; border-radius: 4px; background: var(--hue); transform: rotate(45deg); }
+    .who b { display: block; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .who small { display: block; color: var(--muted); font: 400 12px/16px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .slot { height: 54px; padding: 0 14px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .slot b { display: block; font: 600 16px/1.25 var(--mono); white-space: nowrap; }
+    .slot small { display: block; font-size: 12px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot.passed { background: var(--hue); color: var(--on-hue); }
+    .slot.failed { color: var(--ink); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--hue) 55%, transparent); }
+    .slot.failed b { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: color-mix(in oklab, var(--hue) 75%, transparent); }
+    .slot { position: relative; overflow: hidden; }
+    .slot.running { color: var(--hue); box-shadow: inset 0 0 0 2px var(--hue); }
+    .slot.running > * { position: relative; }
+    .slot.running::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: color-mix(in oklab, var(--hue) 24%, transparent);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
+      animation: march 800ms linear infinite;
+    }
+    @keyframes march { to { -webkit-mask-position: 20px 0; mask-position: 20px 0; } }
+    .slot svg, .result svg { flex: none; }
+    .slot b, .result { display: inline-flex; align-items: center; gap: 6px; }
+    .slot.waiting { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+    .slot.wide { grid-column: 1 / -1; }
+    .author-lane { --hue: var(--a2); }
+    .author-lane .pos { color: var(--hue); }
+    .best { text-align: right; }
+    .best small { display: block; color: var(--muted); font-size: 12px; }
+    .best b { display: block; font: 800 30px/1.1 var(--display); color: var(--hue); }
+    .best b.none { color: var(--muted); }
+    .ghost-lane { opacity: 0.5; }
+    .ghost-lane .slot { box-shadow: inset 0 0 0 1px var(--line); }
+    .ghost-lane .bar { height: 12px; border-radius: 6px; background: var(--line); }
+    .race-empty { margin: 4px 0 6px; }
+    .lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
     .columns {
       display: grid;
-      grid-template-columns: 28px minmax(160px, 1.6fr) 88px 88px 88px 88px;
-      gap: 8px;
+      grid-template-columns: 28px minmax(110px, 1.4fr) 56px 82px 66px 52px 80px 56px;
+      gap: 10px;
       align-items: center;
     }
-    .columns.head { color: var(--muted); font-size: 12px; padding-bottom: 8px; }
+    .columns.head { color: var(--muted); font-size: 12px; padding: 0 10px 8px; }
     .columns.head span:nth-child(n + 3) { text-align: right; }
+    .columns.head span:nth-child(4) { text-align: left; }
     button.row {
+      --hue: var(--muted);
+      position: relative;
       width: 100%;
-      padding: 10px 0;
+      padding: 10px;
       border: 0;
-      border-bottom: 1px solid #1b1a1f;
+      border-radius: 10px;
       background: transparent;
       color: inherit;
       font: inherit;
       text-align: left;
-      cursor: pointer;
     }
-    button.row.selected { box-shadow: inset 0 -1px 0 var(--accent); }
-    .who { display: flex; flex-direction: column; }
-    .who b { font-weight: 600; }
-    .who small { color: var(--muted); }
-    .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
-    .score { font-size: 20px; }
-    .rank { display: flex; align-items: center; justify-content: center; }
-    .rank.gold { color: var(--gold); }
-    .rank.silver { color: var(--silver); }
-    .rank.bronze { color: var(--bronze); }
-    .detail { margin-top: 20px; }
-    .detail[hidden] { display: none; }
-    .detail-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 24px; }
-    #measured, #reviews { display: grid; gap: 12px; }
-    #measured p, .review p { margin: 0; }
-    .measure-label { font-weight: 600; }
-    .review h3 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+    button.row + button.row { border-top: 1px solid #262230; }
+    button.row.first { box-shadow: inset 3px 0 0 var(--hue); }
+    button.row:hover { background: var(--raised); }
+    button.row.selected { background: color-mix(in oklab, var(--hue) 14%, var(--raised)); box-shadow: inset 0 0 0 2px var(--hue); }
+    button.row.moving { z-index: 2; background: var(--raised); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--hue); }
+    button.row.selected.moving { background: color-mix(in oklab, var(--hue) 14%, var(--raised)); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 2px var(--hue); }
+    .lane.moving { z-index: 2; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 2px var(--hue); }
+    button.row:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
+    button.row.running .who-cell, button.row.running .num { color: var(--muted); }
+    .rank { font: 800 15px var(--display); color: var(--muted); text-align: center; }
+    .row.first .rank, .row.first .score { color: var(--hue); }
+    .who-cell { display: flex; align-items: center; gap: 9px; min-width: 0; font-weight: 600; }
+    .who-cell::before { content: ""; width: 10px; height: 10px; flex: none; border-radius: 3px; background: var(--hue); }
+    .who-cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .who-cell .cli { color: var(--muted); font-weight: 400; font-size: 12px; min-width: 0; flex-shrink: 100; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .score, .best b, .slot b, .rank, .pos { font-variant-numeric: tabular-nums; }
+    .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; font-size: 13px; }
+    .result { font-weight: 600; white-space: nowrap; }
+    .result.pass { color: var(--pass); }
+    .result.fail { color: var(--fail); }
+    .result.run { color: var(--hue); }
+    .result.run::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
+    .score { font: 800 18px var(--display); text-align: right; }
+    .wait { display: inline-flex; gap: 3px; justify-content: flex-end; width: 100%; }
+    .wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s ease-in-out infinite; }
+    .wait i:nth-child(2) { animation-delay: 160ms; }
+    .wait i:nth-child(3) { animation-delay: 320ms; }
+    @keyframes blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+    .landed { animation: land 520ms cubic-bezier(.2, .8, .2, 1); display: inline-block; }
+    @keyframes land { from { transform: scale(0.6); opacity: 0; } 55% { transform: scale(1.18); opacity: 1; } to { transform: none; } }
+    .detail { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow: auto; }
+    .detail-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .detail-head::before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 3px; background: var(--hue, var(--line)); transform: rotate(45deg); }
+    #detail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tabs { display: flex; gap: 4px; margin: 16px 0 14px; padding: 4px; border-radius: 999px; background: var(--ground); width: max-content; }
+    .tabs[hidden], [role="tabpanel"][hidden], #detail-empty[hidden], pre[hidden] { display: none; }
+    [role="tab"] {
+      height: 32px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: 600 13px var(--font);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 180ms ease, color 180ms ease;
+    }
+    [role="tab"][aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hue, var(--line)); }
+    [role="tab"]:focus-visible, [role="tabpanel"]:focus-visible, section:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
+    [role="tabpanel"] { border-radius: 12px; }
+    [role="tabpanel"]:not([hidden]) { animation: rise 240ms cubic-bezier(.2, .8, .2, 1); }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    #detail-empty { margin: 14px 0 0; }
+    #measured { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #measured pre.excerpt { grid-column: 1 / -1; margin: 0; min-height: 0; max-height: 160px; font-size: 12px; color: var(--fail); background: var(--ground); }
+    #measured p { margin: 0; padding: 14px; border-radius: 12px; background: var(--raised); color: var(--muted); }
+    #measured p.whole { grid-column: 1 / -1; }
+    #measured .measure-label { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 600; font-size: 15px; }
+    #reviews { display: grid; gap: 10px; margin-top: 14px; }
+    .review { padding: 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+    .review-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .review-head h3 { margin: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .review-head span { margin-left: auto; flex: none; font: 600 13px var(--mono); }
+    .review[data-state="running"] .review-head span { color: var(--muted); font-family: var(--font); font-weight: 500; }
+    .review[data-state="failed"] .review-head span { color: var(--fail); font-family: var(--font); }
+    .review > p { margin: 6px 0 0; color: var(--muted); }
+    .findings { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+    .findings li { padding: 10px 12px; border-radius: 10px; background: var(--raised); }
+    .findings .where { display: flex; gap: 8px; align-items: center; font: 400 12px var(--mono); color: var(--muted); }
+    .sev { padding: 1px 7px; border-radius: 999px; font: 600 11px var(--font); color: var(--on-hue); background: var(--muted); }
+    .sev[data-sev="blocker"] { background: var(--fail); }
+    .sev[data-sev="major"] { background: var(--a2); }
+    .findings p { margin: 6px 0 0; }
+    .findings .fix { color: var(--muted); }
     pre {
       margin: 12px 0 0;
-      min-height: 140px;
-      max-height: 360px;
+      min-height: 160px;
+      max-height: 520px;
       overflow: auto;
-      padding: 12px;
+      padding: 16px;
       white-space: pre-wrap;
     }
     pre.blurred { filter: blur(8px); user-select: none; }
-    .code-head { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
-    .empty { color: var(--muted); }
-    .pastes { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .code-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .code-head [hidden] { display: none; }
+    .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+    .keys li { display: inline-flex; align-items: center; gap: 6px; }
+    .keys kbd, .empty kbd, .hint kbd, .muted kbd { opacity: 1; }
     dialog {
-      width: min(520px, calc(100% - 48px));
+      width: min(560px, calc(100% - 48px));
       border: 0;
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--text);
-      padding: 24px;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+      border-radius: 20px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 26px;
+      box-shadow: inset 0 0 0 2px var(--a2);
     }
-    dialog::backdrop { background: rgba(0, 0, 0, 0.62); }
-    dialog h2 { color: var(--text); }
+    dialog::backdrop { background: rgba(6, 5, 10, 0.72); }
+    dialog h2 { margin-bottom: 14px; }
+    dialog .hint { margin: 12px 0 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
+      .result.run::before, .wait i, .landed, .tech.swap, [role="tabpanel"]:not([hidden]) { animation: none; }
+      button.action, .tech, [role="tab"] { transition: none; }
+    }
+    @media (max-width: 960px) {
+      .lower { grid-template-columns: 1fr; }
+      .detail { position: static; max-height: none; }
+    }
     @media (max-width: 800px) {
       main { padding: 16px; }
-      .detail-grid, .pastes, .title-row { display: grid; }
-      .columns { grid-template-columns: 28px 1fr 72px; }
-      .columns.head span:nth-child(n + 4),
-      button.row .num:nth-child(n + 4) { display: none; }
+      .steps { order: 3; width: 100%; overflow-x: auto; }
+      .inputs { grid-template-columns: 1fr; }
+      .lane { grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; }
+      .lane .slots { grid-column: 1 / -1; }
+      .pos { font-size: 18px; }
+      .best b { font-size: 22px; }
+      .slot { padding: 0 10px; }
+      .columns { grid-template-columns: 22px minmax(0, 1fr) 20px 68px 52px; gap: 8px; }
+      .columns.head span:nth-child(n + 6), button.row > :nth-child(n + 6) { display: none; }
+      .who-cell .cli { display: none; }
+      .columns.head span:nth-child(3) { font-size: 0; }
+      .columns.head span:nth-child(3)::after { content: "#"; font-size: 12px; }
+      #measured { grid-template-columns: 1fr; }
+      #banner { font-size: 36px; }
+      .keys { display: none; }
     }
   </style>
 </head>
 <body>
-  <div id="banner"></div>
+  <div id="banner" role="status"></div>
   <main>
-    <div class="title-row">
-      <div>
+    <header class="top">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
         <h1 id="title">Solution Benchmarker</h1>
       </div>
-      <div class="title-row">
-        <div id="phase" class="phase">Not started</div>
-        <button class="action" id="open-message" type="button">Message <kbd>M</kbd></button>
-      </div>
-    </div>
-    <div id="notice" class="notice"></div>
-    <section class="card" aria-label="Agent status">
-      <h2>Agents</h2>
-      <div id="board"><p class="empty">The agents appear here after the task starts.</p></div>
-    </section>
-    <section class="card">
-      <div class="section-head">
-        <h2>Leaderboard</h2>
-      </div>
-      <p class="hint">Each attempt is its own row. Score is the weighted total. Open a row for the code and the reasons.</p>
-      <div id="leaderboard"><p class="empty">No scores yet.</p></div>
-      <div id="detail" class="detail" hidden>
-        <div class="detail-grid">
-          <div>
-            <h2 id="detail-title">Attempt</h2>
-            <div id="measured"></div>
-            <div id="reviews"></div>
-          </div>
-          <div>
-            <div class="code-head">
-              <h2>Solution</h2>
-              <button class="ghost" id="reveal" type="button">Show solution</button>
-            </div>
-            <pre id="solution"></pre>
+      <ol class="steps" id="steps" aria-hidden="true">
+        <li data-phase="authoring"><span>Tests</span></li>
+        <li data-phase="solving"><span>Solving</span></li>
+        <li data-phase="reviewing"><span>Reviewing</span></li>
+        <li data-phase="done"><span>Finished</span></li>
+      </ol>
+      <div id="phase" class="phase" aria-live="polite">Not started</div>
+      <button class="ghost" id="fresh" type="button">Start fresh</button>
+      <button class="action" id="open-message" type="button">Message <kbd>M</kbd></button>
+    </header>
+    <div id="notice" class="notice" role="alert"></div>
+    <div class="inputs">
+      <section class="card" id="task-card" aria-labelledby="task-title">
+        <div class="paste-head"><h2 id="task-title">Task</h2><kbd>T</kbd><button class="tech" id="tech" type="button" data-tech="python"></button></div>
+        <div class="editor" id="task-editor">
+          <label for="task">Paste the Codility statement</label>
+          <textarea id="task"></textarea>
+          <div class="actions"><button class="action" id="start" type="button">Start the run</button> <button class="ghost" id="cancel-task" type="button" hidden>Cancel <kbd>Esc</kbd></button></div>
+        </div>
+        <div class="task-summary" id="task-summary" hidden>
+          <b id="task-name"></b>
+          <p id="task-line" class="muted"></p>
+          <div class="actions"><button class="ghost" id="edit-task" type="button">Edit <kbd>T</kbd></button></div>
+        </div>
+      </section>
+      <section class="card" id="mine-card" aria-labelledby="mine-title">
+        <div class="paste-head"><h2 id="mine-title">Your solution</h2><kbd>Y</kbd></div>
+        <div class="editor">
+          <label for="mine">Paste the solution you would submit</label>
+          <textarea id="mine"></textarea>
+          <div class="mine-foot">
+            <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
+            <span id="mine-hint" class="muted"></span>
           </div>
         </div>
-      </div>
-    </section>
-    <div class="pastes">
-      <section class="card">
-        <div class="paste-head"><h2>Task</h2><kbd>T</kbd></div>
-        <label for="task">Paste the Codility statement</label>
-        <textarea id="task"></textarea>
-        <div class="actions"><button class="action" id="start" type="button">Start the run</button></div>
-      </section>
-      <section class="card">
-        <div class="paste-head"><h2>Your solution</h2><kbd>Y</kbd></div>
-        <label for="mine">Paste the solution you would submit</label>
-        <textarea id="mine"></textarea>
-        <div class="actions"><button class="action" id="score" type="button" disabled>Score my solution</button></div>
       </section>
     </div>
+    <section class="card race" id="agents" tabindex="-1" aria-labelledby="agents-title">
+      <div class="section-head"><h2 id="agents-title">Agents</h2><kbd>A</kbd><span id="race-meta" class="muted"></span></div>
+      <div id="board"></div>
+    </section>
+    <div class="lower">
+      <section class="card" id="ranking" tabindex="-1" aria-labelledby="ranking-title">
+        <div class="section-head"><h2 id="ranking-title">Leaderboard</h2><kbd>L</kbd></div>
+        <p class="hint">Each attempt gets a row the moment it starts. Its score appears once solving ends and its reviews are in, then the row moves to its place.</p>
+        <div id="leaderboard"><p class="empty">No scores yet.</p></div>
+      </section>
+      <section id="detail" class="card detail" aria-labelledby="detail-title">
+        <div class="detail-head"><h2 id="detail-title">Attempt</h2></div>
+        <p id="detail-empty" class="empty">Pick a row to see its review and code. Press <kbd>L</kbd>, then <kbd>↑</kbd> <kbd>↓</kbd>.</p>
+        <div class="tabs" id="tabs" role="tablist" aria-label="Attempt details" hidden>
+          <button role="tab" id="tab-review" type="button" aria-selected="true" aria-controls="panel-review">Review <kbd>R</kbd></button>
+          <button role="tab" id="tab-solution" type="button" aria-selected="false" aria-controls="panel-solution" tabindex="-1">Solution <kbd>S</kbd></button>
+        </div>
+        <div role="tabpanel" id="panel-review" aria-labelledby="tab-review" tabindex="0" hidden>
+          <div id="measured"></div>
+          <div id="reviews"></div>
+        </div>
+        <div role="tabpanel" id="panel-solution" aria-labelledby="tab-solution" tabindex="0" hidden>
+          <div class="code-head">
+            <span id="solution-note" class="muted"></span>
+            <button class="ghost" id="reveal" type="button">Show solution</button>
+          </div>
+          <pre id="solution"></pre>
+        </div>
+      </section>
+    </div>
+    <ul class="keys" aria-label="Keyboard shortcuts">
+      <li><kbd>T</kbd> task</li>
+      <li><kbd>Y</kbd> your solution</li>
+      <li><kbd>A</kbd> agents</li>
+      <li><kbd>L</kbd> leaderboard, then <kbd>↑</kbd> <kbd>↓</kbd></li>
+      <li><kbd>R</kbd> review</li>
+      <li><kbd>S</kbd> solution</li>
+      <li><kbd>M</kbd> message</li>
+      <li><kbd>Esc</kbd> leave a field</li>
+    </ul>
   </main>
   <dialog id="message-dialog" aria-labelledby="message-title">
     <form id="message-form" method="dialog">
@@ -269,7 +521,15 @@
   <script>
     let selected = null;
     let latest = null;
+    let lastPayload = null;
+    let editingTask = false;
+    let lastPhase = null;
+    let techChoice = null;
+    let authorSince = null;
+    let tab = "review";
     const revealed = new Set();
+    const landed = new Set();
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
 
     const phases = {
       idle: "Not started",
@@ -281,15 +541,17 @@
       error: "Stopped"
     };
 
+    const STEPS = ["authoring", "solving", "reviewing", "done"];
+    const SOLVED = ["reviewing", "done", "error"];
+    const HUES = ["--a1", "--a2", "--a3", "--a4", "--a5"];
+    const WEIGHTS = { correctness: 40, performance: 20, static: 15, review: 15, contract: 10, cost: 10 };
+    const TECHS = { python: "Python", fastapi: "FastAPI" };
+    const EASE = "cubic-bezier(.2, .8, .2, 1)";
+
     const ICONS = {
-      trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
-      medal: '<path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/><path d="M12 18v-2h-.5"/>',
       check: '<path d="M20 6 9 17l-5-5"/>',
       x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-      play: '<polygon points="6 3 20 12 6 21 6 3"/>',
-      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-      eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
-      message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
+      eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
     };
 
     function icon(name) {
@@ -307,6 +569,13 @@
       return svg;
     }
 
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
     function figure(value) {
       if (value === null || value === undefined || Number.isNaN(value)) return "—";
       return Number(value).toFixed(1);
@@ -318,325 +587,694 @@
       return Number(value).toFixed(2) + " ms median";
     }
 
+    function clock(seconds) {
+      return Math.floor(seconds / 60) + ":" + String(Math.floor(seconds % 60)).padStart(2, "0");
+    }
+
+    function hueOf(agent) {
+      if (agent === "you") return "var(--ink)";
+      const index = (latest && latest.agents || []).indexOf(agent);
+      return "var(" + HUES[Math.max(index, 0) % HUES.length] + ")";
+    }
+
+    function nameParts(agent) {
+      const cut = agent.indexOf("-");
+      if (agent === "you" || cut < 0) return { name: agent, cli: "" };
+      return { name: agent.slice(cut + 1), cli: agent.slice(0, cut) };
+    }
+
+    function finished(attempt) {
+      return attempt.state === "passed" || attempt.state === "failed";
+    }
+
+    function wait(label) {
+      const dots = el("span", "wait");
+      dots.setAttribute("role", "img");
+      dots.setAttribute("aria-label", label);
+      dots.append(el("i"), el("i"), el("i"));
+      return dots;
+    }
+
     function weighted(parts) {
-      const weights = {
-        correctness: 40,
-        performance: 20,
-        readability: 15,
-        extensibility: 10,
-        peer: 10,
-        cost: 5
-      };
       let weight = 0;
       let sum = 0;
       for (const [name, value] of Object.entries(parts)) {
         if (value === null || value === undefined) continue;
-        weight += weights[name];
-        sum += value * weights[name];
+        weight += WEIGHTS[name];
+        sum += value * WEIGHTS[name];
       }
-      if (!weight) return null;
-      return sum / weight;
+      return weight ? sum / weight : null;
     }
 
-    function reviewParts(reviews) {
-      const done = (reviews || []).filter((review) => review.readability !== null && review.readability !== undefined);
-      if (!done.length) return { extensibility: null, peer: null, rows: [] };
-      const extensibility = done.reduce((sum, review) => sum + review.extensibility, 0) / done.length;
-      const peer = done.reduce((sum, review) => sum + (review.readability + review.extensibility) / 2, 0) / done.length;
-      return { extensibility, peer, rows: done };
+    function ratios(values, ok) {
+      const eligible = values.filter((value, index) => ok[index] && value > 0);
+      if (!eligible.length) return values.map(() => null);
+      const best = Math.min(...eligible);
+      return values.map((value, index) => (ok[index] && value > 0 ? 100 * best / value : 0));
+    }
+
+    function reviewsOf(snapshot) {
+      const list = (snapshot.reviews || []).slice();
+      const mine = snapshot.candidate;
+      for (const review of (mine && mine.reviews) || []) {
+        if (!list.some((item) => item.reviewer === review.reviewer && item.author === "you")) list.push(review);
+      }
+      return list;
+    }
+
+    function attemptsOf(snapshot) {
+      const attempts = (snapshot.attempts || []).filter((attempt) => attempt.state !== "waiting");
+      const mine = snapshot.candidate;
+      if (!mine) return attempts;
+      if (mine.state === "running") {
+        attempts.push({ agent: "you", number: 1, state: "running" });
+        return attempts;
+      }
+      attempts.push({
+        agent: "you",
+        number: 1,
+        state: mine.passed ? "passed" : "failed",
+        tests_passed: mine.tests_passed,
+        tests_total: mine.tests_total,
+        public_failed: mine.public_failed,
+        performance_ms: mine.performance_ms,
+        performance_note: mine.performance_note,
+        readability: mine.readability,
+        readability_notes: mine.readability_notes,
+        contract: mine.contract,
+        contract_notes: mine.contract_notes,
+        failure_excerpt: mine.failure_excerpt || "",
+        source: mine.source,
+        wall_ms: 0,
+        tokens: 0
+      });
+      return attempts;
     }
 
     function rowsFrom(snapshot) {
-      const attempts = (snapshot.attempts || []).filter((attempt) => attempt.state === "passed" || attempt.state === "failed");
-      const mine = snapshot.candidate;
-      if (mine && mine.tests_total) {
-        attempts.push({
-          agent: "you",
-          number: 1,
-          state: mine.passed ? "passed" : "failed",
-          chosen: true,
-          tests_passed: mine.tests_passed,
-          tests_total: mine.tests_total,
-          performance_ms: mine.performance_ms,
-          performance_note: mine.performance_note,
-          readability: mine.readability,
-          readability_notes: mine.readability_notes,
-          failure_excerpt: mine.failure_excerpt || "",
-          wall_ms: 0,
-          tokens: 0
-        });
-      }
-      const reviews = (snapshot.reviews || []).slice();
-      if (mine && mine.reviews) {
-        for (const review of mine.reviews) {
-          const seen = reviews.some((item) => item.reviewer === review.reviewer && item.author === "you");
-          if (!seen) reviews.push(review);
+      const attempts = attemptsOf(snapshot);
+      const reviews = reviewsOf(snapshot);
+      const done = attempts.filter(finished);
+      const ok = done.map((attempt) => attempt.state === "passed");
+      const speed = ratios(done.map((attempt) => attempt.performance_ms), ok);
+      const tokens = ratios(done.map((attempt) => attempt.tokens), ok);
+      const wall = ratios(done.map((attempt) => attempt.wall_ms), ok);
+      const relative = new Map(done.map((attempt, index) => [attempt, {
+        performance: speed[index],
+        cost: attempt.agent === "you" || tokens[index] === null || wall[index] === null ? null : (tokens[index] + wall[index]) / 2
+      }]));
+      const solved = SOLVED.includes(snapshot.phase);
+      const order = snapshot.agents || [];
+      const entries = attempts.map((attempt) => {
+        const key = attempt.agent + ":" + attempt.number;
+        const jobs = reviews.filter((review) => review.author === attempt.agent && (review.attempt ?? 1) === attempt.number);
+        const graded = jobs.filter((review) => review.state === "done" && typeof review.score === "number");
+        const pending = jobs.some((review) => review.state === "running");
+        let final = finished(attempt) && solved && !pending;
+        if (final && attempt.agent === "you" && attempt.state === "passed" && snapshot.review_enabled && !jobs.length) final = false;
+        let parts = null;
+        if (finished(attempt)) {
+          parts = {
+            correctness: attempt.tests_total ? (attempt.public_failed ? 0 : 100 * attempt.tests_passed / attempt.tests_total) : null,
+            performance: relative.get(attempt).performance,
+            static: attempt.readability,
+            review: graded.length ? graded.reduce((sum, review) => sum + review.score, 0) / graded.length : null,
+            contract: attempt.contract ?? null,
+            cost: relative.get(attempt).cost
+          };
         }
-      }
-      const passing = attempts.filter((item) => item.state === "passed" && item.performance_ms > 0);
-      const bestTime = passing.length ? Math.min(...passing.map((item) => item.performance_ms)) : null;
-      const timed = attempts.filter((item) => item.wall_ms > 0);
-      const bestWall = timed.length ? Math.min(...timed.map((item) => item.wall_ms)) : null;
-      return attempts.map((attempt) => {
-        const correctness = attempt.tests_total ? 100 * attempt.tests_passed / attempt.tests_total : null;
-        let performance = null;
-        if (bestTime) {
-          performance = attempt.state === "passed" && attempt.performance_ms > 0
-            ? 100 * bestTime / attempt.performance_ms
-            : 0;
-        }
-        const judged = attempt.chosen ? reviewParts(reviews.filter((review) => review.author === attempt.agent)) : { extensibility: null, peer: null, rows: [] };
-        let cost = null;
-        if (bestWall && attempt.wall_ms > 0) cost = 100 * bestWall / attempt.wall_ms;
-        else if (bestWall && attempt.agent !== "you") cost = 0;
-        return {
-          attempt,
-          reviews: attempt.chosen ? judged.rows : [],
-          score: weighted({
-            correctness,
-            performance,
-            readability: attempt.readability,
-            extensibility: judged.extensibility,
-            peer: judged.peer,
-            cost
-          })
-        };
-      }).sort((left, right) => (right.score ?? -1) - (left.score ?? -1));
+        return { key, attempt, jobs, graded, pending, final, parts, score: final ? weighted(parts) : null };
+      });
+      const tier = (entry) => {
+        if (!finished(entry.attempt)) return 3;
+        if (!entry.final) return 1;
+        return entry.attempt.state === "passed" ? 0 : 2;
+      };
+      const seat = (agent) => (agent === "you" ? order.length : order.indexOf(agent));
+      return entries.sort((left, right) => tier(left) - tier(right)
+        || (right.score ?? 0) - (left.score ?? 0)
+        || ((right.parts && right.parts.correctness) ?? -1) - ((left.parts && left.parts.correctness) ?? -1)
+        || seat(left.attempt.agent) - seat(right.attempt.agent)
+        || left.attempt.number - right.attempt.number);
     }
 
-    function renderBoard(snapshot) {
+    function positions(root, selector) {
+      const map = new Map();
+      for (const node of root.querySelectorAll(selector)) map.set(node.dataset.key, node.getBoundingClientRect().top);
+      return map;
+    }
+
+    function flip(root, selector, before) {
+      if (still.matches || !before.size) return;
+      const nodes = [...root.querySelectorAll(selector)];
+      const kept = nodes.map((node) => node.dataset.key).filter((key) => before.has(key));
+      const was = [...before.keys()].filter((key) => kept.includes(key));
+      for (const node of nodes) {
+        const top = before.get(node.dataset.key);
+        if (top === undefined) {
+          node.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 360, easing: EASE });
+          continue;
+        }
+        const shift = top - node.getBoundingClientRect().top;
+        if (Math.abs(shift) < 2) continue;
+        const hop = was.indexOf(node.dataset.key) !== kept.indexOf(node.dataset.key);
+        if (!hop) {
+          node.animate([{ transform: "translateY(" + shift + "px)" }, { transform: "none" }], { duration: 360, easing: EASE });
+          continue;
+        }
+        node.classList.add("moving");
+        const move = node.animate([
+          { transform: "translateY(" + shift + "px) scale(1)" },
+          { transform: "translateY(" + shift * 0.55 + "px) scale(1.025)", offset: 0.3 },
+          { transform: "none" }
+        ], { duration: 720, easing: EASE });
+        move.onfinish = () => node.classList.remove("moving");
+      }
+    }
+
+    function reviewSkipped(snapshot) {
+      return snapshot.phase === "done" && !(snapshot.reviews || []).length;
+    }
+
+    function reviewerStatus(agent, snapshot) {
+      if (reviewSkipped(snapshot)) return "no reviews";
+      if (!SOLVED.includes(snapshot.phase)) return "Waiting";
+      const jobs = (snapshot.reviews || []).filter((item) => item.reviewer === agent);
+      const running = jobs.filter((item) => item.state === "running").length;
+      if (!jobs.length) return "Waiting";
+      if (!running) return "reviewed others";
+      return "reviewing others " + (jobs.length - running) + "/" + jobs.length;
+    }
+
+    function laneNote(cli, review) {
+      if (review === "Waiting") return cli;
+      return (cli ? cli + " · " : "") + review;
+    }
+
+    function scoreText(entry) {
+      const node = el("span", "", figure(entry.score));
+      if (entry.final && !landed.has(entry.key)) node.classList.add("landed");
+      return node;
+    }
+
+    function slotFor(entry, attempt) {
+      const slot = el("div", "slot " + attempt.state);
+      if (entry && finished(attempt)) {
+        const mark = el("b");
+        const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total : "no tests";
+        mark.append(icon(attempt.state === "passed" ? "check" : "x"), document.createTextNode(tests));
+        const small = el("small", "", attempt.state === "passed" ? "pass" : "fail");
+        if (entry.final) small.replaceChildren(document.createTextNode("score "), scoreText(entry));
+        else if (entry.pending) small.textContent = "in review";
+        slot.append(mark, small);
+      } else if (attempt.state === "running") {
+        slot.append(el("b", "", "Running"), el("small", "", "attempt " + attempt.number));
+      } else {
+        slot.append(el("b", "", "—"), el("small", "", "attempt " + attempt.number));
+      }
+      return slot;
+    }
+
+    function ghostLanes(board) {
+      board.appendChild(el("p", "empty race-empty", "The agents appear here after the task starts."));
+      for (let index = 0; index < 3; index += 1) {
+        const lane = el("div", "lane ghost-lane");
+        lane.setAttribute("aria-hidden", "true");
+        lane.style.setProperty("--hue", "var(" + HUES[index] + ")");
+        const who = el("div", "who");
+        who.append(el("span", "dot"), el("div", "bar"));
+        who.lastChild.style.width = "120px";
+        const slots = el("div", "slots");
+        for (let n = 0; n < 3; n += 1) slots.appendChild(el("div", "slot"));
+        lane.append(el("span", "pos", String(index + 1)), who, slots, el("div", "best"));
+        board.appendChild(lane);
+      }
+    }
+
+    function authorLane(snapshot) {
+      const author = snapshot.author || {};
+      if (!author.name || (author.state !== "running" && author.state !== "failed")) return null;
+      const lane = el("div", "lane author-lane");
+      lane.dataset.key = "author";
+      const parts = nameParts(author.name);
+      const who = el("div", "who");
+      const copy = el("div");
+      copy.append(el("b", "", parts.name), el("small", "", (parts.cli ? parts.cli + " · " : "") + "test author"));
+      copy.firstChild.title = author.name;
+      who.append(el("span", "dot"), copy);
+      const slots = el("div", "slots");
+      const slot = el("div", "slot wide " + (author.state === "running" ? "running" : "failed"));
+      if (author.state === "running") {
+        const since = el("small", "", "0:00 elapsed");
+        since.dataset.since = "";
+        slot.append(el("b", "", "Writing the hidden suite"), since);
+      } else {
+        slot.append(el("b", "", "No hidden suite"), el("small", "", author.note || "The public asserts grade the run."));
+      }
+      slots.appendChild(slot);
+      lane.append(el("span", "pos", "T"), who, slots, el("div", "best"));
+      return lane;
+    }
+
+    function tickClock() {
+      for (const node of document.querySelectorAll("[data-since]")) {
+        node.textContent = clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed";
+      }
+    }
+
+    function renderBoard(snapshot, entries) {
       const board = document.getElementById("board");
+      const before = positions(board, ".lane[data-key]");
       board.replaceChildren();
       const agents = snapshot.agents || [];
+      const meta = document.getElementById("race-meta");
       if (!agents.length) {
-        const empty = document.createElement("p");
-        empty.className = "empty";
-        empty.textContent = "The agents appear here after the task starts.";
-        board.appendChild(empty);
+        meta.textContent = "";
+        ghostLanes(board);
         return;
       }
-      const wrap = document.createElement("div");
-      wrap.className = "statuses";
-      for (const agent of agents) {
-        const attempts = (snapshot.attempts || []).filter((item) => item.agent === agent);
-        const running = attempts.find((item) => item.state === "running");
-        const kept = attempts.find((item) => item.chosen && (item.state === "passed" || item.state === "failed"));
-        const started = attempts.find((item) => item.state !== "waiting");
-        let state = "waiting";
-        let text = "Waiting";
-        if (running) {
-          state = "running";
-          text = "Attempt " + running.number + " running";
-        } else if (kept) {
-          state = kept.state;
-          text = "Attempt " + kept.number + " kept";
-        } else if (started) {
-          state = started.state;
-          text = "Attempt " + started.number;
-        }
-        const banner = document.createElement("div");
-        banner.className = "status " + state;
-        const glyph = state === "passed" ? "check" : state === "failed" ? "x" : state === "running" ? "play" : "clock";
-        banner.appendChild(icon(glyph));
-        const copy = document.createElement("div");
-        const name = document.createElement("strong");
-        name.textContent = agent;
-        const line = document.createElement("span");
-        line.textContent = text;
-        const word = document.createElement("span");
-        word.className = "state";
-        word.textContent = " " + (state === "passed" ? "pass" : state === "failed" ? "fail" : state);
-        line.appendChild(word);
-        copy.append(name, line);
-        banner.appendChild(copy);
-        wrap.appendChild(banner);
+      const attemptsEach = Math.max(...agents.map((agent) => (snapshot.attempts || []).filter((item) => item.agent === agent).length));
+      const author = snapshot.author || {};
+      meta.textContent = agents.length + (agents.length === 1 ? " agent" : " agents") + " · " + attemptsEach + " attempts each · one frozen suite"
+        + (author.name && author.state === "done" ? " by " + nameParts(author.name).name : "");
+      const writing = authorLane(snapshot);
+      if (writing) board.appendChild(writing);
+      const byKey = new Map(entries.map((entry) => [entry.key, entry]));
+      const racers = agents.slice();
+      if (entries.some((entry) => entry.attempt.agent === "you")) racers.push("you");
+      const lanes = racers.map((agent, index) => {
+        const attempts = agent === "you"
+          ? entries.filter((entry) => entry.attempt.agent === "you").map((entry) => entry.attempt)
+          : (snapshot.attempts || []).filter((item) => item.agent === agent);
+        const scored = attempts.map((item) => byKey.get(agent + ":" + item.number)).filter((entry) => entry && entry.final && entry.score !== null);
+        const top = scored.length ? scored.reduce((best, entry) => (entry.score > best.score ? entry : best)) : null;
+        const pending = attempts.some((item) => {
+          const entry = byKey.get(agent + ":" + item.number);
+          return entry && finished(entry.attempt) && !entry.final;
+        });
+        let tier = pending ? 1 : top ? 0.5 : 0;
+        if (top && top.attempt.state === "passed") tier = 2;
+        return { agent, index, attempts, top, tier, pending };
+      }).sort((left, right) => right.tier - left.tier
+        || (left.tier === 1 ? 0 : ((right.top && right.top.score) ?? -1) - ((left.top && left.top.score) ?? -1))
+        || left.index - right.index);
+      const settled = !lanes.some((item) => item.pending);
+      const unsure = lanes.findIndex((item) => item.tier < 2);
+      lanes.forEach((item, rank) => {
+        const ranked = !!item.top && (settled || (item.tier === 2 && (unsure < 0 || rank < unsure)));
+        const lane = el("div", "lane" + (rank === 0 && ranked ? " lead" : ""));
+        lane.dataset.key = item.agent;
+        lane.style.setProperty("--hue", hueOf(item.agent));
+        const parts = nameParts(item.agent);
+        const who = el("div", "who");
+        const copy = el("div");
+        copy.append(
+          el("b", "", parts.name),
+          el("small", "", item.agent === "you" ? "your paste · same suite" : laneNote(parts.cli, reviewerStatus(item.agent, snapshot)))
+        );
+        copy.firstChild.title = item.agent;
+        who.append(el("span", "dot"), copy);
+        const slots = el("div", "slots");
+        for (const attempt of item.attempts) slots.appendChild(slotFor(byKey.get(item.agent + ":" + attempt.number), attempt));
+        const best = el("div", "best");
+        const shown = item.top && (item.tier === 2 || settled) ? item.top : null;
+        const value = el("b", shown ? "" : "none");
+        value.appendChild(shown ? scoreText(shown) : document.createTextNode("—"));
+        best.append(el("small", "", "Best"), value);
+        lane.append(el("span", "pos", ranked ? String(rank + 1) : "·"), who, slots, best);
+        board.appendChild(lane);
+      });
+      flip(board, ".lane[data-key]", before);
+    }
+
+    function rowFor(entry, rank, selectedKey) {
+      const attempt = entry.attempt;
+      const done = finished(attempt);
+      const button = el("button", "row columns");
+      button.type = "button";
+      button.dataset.key = entry.key;
+      button.style.setProperty("--hue", hueOf(attempt.agent));
+      button.tabIndex = entry.key === selectedKey ? 0 : -1;
+      button.setAttribute("aria-pressed", String(entry.key === selectedKey));
+      if (entry.key === selectedKey) button.classList.add("selected");
+      if (rank === 0 && entry.final) button.classList.add("first");
+      if (attempt.state === "running") button.classList.add("running");
+      const who = el("span", "who-cell");
+      const label = nameParts(attempt.agent);
+      who.title = attempt.agent;
+      who.appendChild(el("span", "", label.name));
+      if (label.cli) who.appendChild(el("small", "cli", label.cli));
+      let result;
+      if (attempt.state === "running") {
+        result = el("span", "result run", "Running");
+      } else {
+        const passed = attempt.state === "passed";
+        result = el("span", "result " + (passed ? "pass" : "fail"));
+        result.append(icon(passed ? "check" : "x"), document.createTextNode(passed ? "Pass" : "Fail"));
       }
-      board.appendChild(wrap);
+      const score = el("span", "score");
+      if (entry.final) score.appendChild(scoreText(entry));
+      else if (done) score.appendChild(wait(entry.pending ? "Score after review" : "Score after solving ends"));
+      let speed = "";
+      if (done) {
+        const ms = attempt.performance_ms;
+        speed = ms === null || ms === undefined ? "—" : Number(ms).toFixed(ms < 1 ? 3 : 2);
+      }
+      button.append(
+        el("span", "rank", rank >= 0 ? String(rank + 1) : ""),
+        who,
+        el("span", "num", String(attempt.number)),
+        result,
+        score,
+        el("span", "num", done ? (attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total : "—") : ""),
+        el("span", "num", speed),
+        el("span", "num", done ? figure(attempt.readability) : "")
+      );
+      return button;
+    }
+
+    function rowNode(key) {
+      return document.querySelector('#leaderboard button.row[data-key="' + CSS.escape(key) + '"]');
     }
 
     function renderTable(entries) {
       const leaderboard = document.getElementById("leaderboard");
+      const active = document.activeElement;
+      const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
+      const before = positions(leaderboard, "button.row");
       leaderboard.replaceChildren();
       if (!entries.length) {
-        const empty = document.createElement("p");
-        empty.className = "empty";
-        empty.textContent = "Finished attempts land here.";
-        leaderboard.appendChild(empty);
+        leaderboard.appendChild(el("p", "empty", "Attempts land here as soon as they start."));
         return;
       }
-      const head = document.createElement("div");
-      head.className = "columns head";
-      for (const text of ["", "Attempt", "Score", "Tests", "Speed", "Clarity"]) {
-        const cell = document.createElement("span");
-        cell.textContent = text;
-        head.appendChild(cell);
+      const head = el("div", "columns head");
+      head.setAttribute("aria-hidden", "true");
+      for (const text of ["", "Agent", "Attempt", "Result", "Score", "Tests", "Speed (ms)", "Static"]) {
+        head.appendChild(el("span", "", text));
       }
       leaderboard.appendChild(head);
+      const selectedKey = selected ? selected.key : null;
+      const hasSelected = entries.some((entry) => entry.key === selectedKey);
+      const ranked = entries.findIndex((entry) => !entry.final);
       entries.forEach((entry, index) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "row columns";
-        button.dataset.agent = entry.attempt.agent;
-        button.dataset.attempt = String(entry.attempt.number);
-        if (selected && selected.agent === entry.attempt.agent && selected.attempt === String(entry.attempt.number)) {
-          button.classList.add("selected");
-        }
-        const rank = document.createElement("span");
-        rank.className = "rank";
-        if (index === 0) {
-          rank.classList.add("gold");
-          rank.appendChild(icon("trophy"));
-        } else if (index === 1) {
-          rank.classList.add("silver");
-          rank.appendChild(icon("medal"));
-        } else if (index === 2) {
-          rank.classList.add("bronze");
-          rank.appendChild(icon("medal"));
-        } else {
-          rank.textContent = String(index + 1);
-        }
-        const who = document.createElement("span");
-        who.className = "who";
-        const name = document.createElement("b");
-        name.textContent = entry.attempt.agent;
-        const meta = document.createElement("small");
-        const label = entry.attempt.state === "passed" ? "pass" : "fail";
-        meta.textContent = "Attempt " + entry.attempt.number + (entry.attempt.chosen ? " · kept · " : " · ") + label;
-        who.append(name, meta);
-        const score = document.createElement("span");
-        score.className = "num score";
-        score.textContent = figure(entry.score);
-        const tests = document.createElement("span");
-        tests.className = "num";
-        tests.textContent = entry.attempt.tests_passed + "/" + entry.attempt.tests_total;
-        const speed = document.createElement("span");
-        speed.className = "num";
-        speed.textContent = entry.attempt.performance_ms === null || entry.attempt.performance_ms === undefined
-          ? "—"
-          : (entry.attempt.performance_ms < 1
-            ? Number(entry.attempt.performance_ms).toFixed(3)
-            : Number(entry.attempt.performance_ms).toFixed(2));
-        const clarity = document.createElement("span");
-        clarity.className = "num";
-        clarity.textContent = figure(entry.attempt.readability);
-        button.append(rank, who, score, tests, speed, clarity);
-        leaderboard.appendChild(button);
+        const row = rowFor(entry, ranked < 0 || index < ranked ? index : -1, selectedKey);
+        if (!hasSelected && index === 0) row.tabIndex = 0;
+        leaderboard.appendChild(row);
       });
+      flip(leaderboard, "button.row", before);
+      if (focusedKey && rowNode(focusedKey)) rowNode(focusedKey).focus({ preventScroll: true });
     }
 
-    function addMeasure(parent, label, detail) {
-      const paragraph = document.createElement("p");
-      const name = document.createElement("span");
-      name.className = "measure-label";
-      name.textContent = label + ". ";
-      paragraph.append(name, document.createTextNode(detail));
+    function addMeasure(parent, label, detail, whole) {
+      const paragraph = el("p", whole ? "whole" : "");
+      paragraph.append(el("span", "measure-label", label), document.createTextNode(detail));
       parent.appendChild(paragraph);
     }
 
-    function currentEntry() {
-      if (!selected || !latest) return null;
-      return rowsFrom(latest).find(
-        (entry) => entry.attempt.agent === selected.agent && String(entry.attempt.number) === selected.attempt
-      ) || null;
+    function part(entry, name) {
+      const value = entry.parts[name];
+      return entry.final && value !== null && value !== undefined ? " " + figure(value) : "";
     }
 
-    function renderDetail() {
-      const detail = document.getElementById("detail");
-      const entry = currentEntry();
-      if (!entry) {
-        detail.hidden = true;
+    function renderMeasured(box, entry) {
+      const attempt = entry.attempt;
+      box.replaceChildren();
+      if (!finished(attempt)) {
+        addMeasure(box, "Running", "Results land here when this attempt finishes.", true);
         return;
       }
-      detail.hidden = false;
-      const attempt = entry.attempt;
-      document.getElementById("detail-title").textContent = attempt.agent + " · attempt " + attempt.number;
-      const box = document.getElementById("measured");
-      box.replaceChildren();
-      const tests = attempt.tests_passed + "/" + attempt.tests_total + " from pytest. "
-        + (attempt.failure_excerpt || "Every test passed.");
-      addMeasure(box, "Correctness", tests);
+      const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from pytest. " : "No tests ran. ";
+      addMeasure(box, "Correctness" + part(entry, "correctness"), tests
+        + (attempt.public_failed ? "A public example failed, so correctness is 0. " : "")
+        + (attempt.failure_excerpt ? "The first failure is below." : "Every test passed."));
       const timing = attempt.performance_ms === null || attempt.performance_ms === undefined
         ? "Not timed. The profiler runs only after every test passes."
         : milliseconds(attempt.performance_ms) + ". " + (attempt.performance_note || "");
-      addMeasure(box, "Performance", timing);
-      addMeasure(box, "Readability", figure(attempt.readability) + ". " + (attempt.readability_notes || "No structure note."));
-      addMeasure(box, "Score", figure(entry.score) + ". Weighted. A missing part is left out and the rest are rescaled.");
-      const reviews = document.getElementById("reviews");
-      reviews.replaceChildren();
-      if (!attempt.chosen) {
-        const note = document.createElement("p");
-        note.className = "empty";
-        note.textContent = "Reviewers grade the kept attempt, so this one has measurements only.";
-        reviews.appendChild(note);
-      } else if (!entry.reviews.length) {
-        const note = document.createElement("p");
-        note.className = "empty";
-        note.textContent = "Reviewers have not graded this attempt yet.";
-        reviews.appendChild(note);
-      } else {
-        for (const review of entry.reviews) {
-          const block = document.createElement("article");
-          block.className = "review";
-          const title = document.createElement("h3");
-          title.textContent = review.reviewer;
-          block.appendChild(title);
-          addMeasure(block, "Readability " + figure(review.readability), review.readability_reason || "No reason given.");
-          addMeasure(block, "Extensibility " + figure(review.extensibility), review.extensibility_reason || "No reason given.");
-          reviews.appendChild(block);
-        }
+      addMeasure(box, "Performance" + part(entry, "performance"), timing);
+      addMeasure(box, "Static" + part(entry, "static"), figure(attempt.readability) + ". " + (attempt.readability_notes || "No lint findings."));
+      if (attempt.contract !== null && attempt.contract !== undefined) {
+        addMeasure(box, "Contract" + part(entry, "contract"), figure(attempt.contract) + ". " + (attempt.contract_notes || "Every contract check passed."));
       }
+      if (attempt.agent !== "you") {
+        addMeasure(box, "Cost" + part(entry, "cost"), Number(attempt.tokens || 0).toLocaleString() + " tokens, " + ((attempt.wall_ms || 0) / 1000).toFixed(1) + " s wall clock.");
+      }
+      let review = "No review counts toward this score.";
+      if (entry.graded.length) review = "Mean of " + entry.graded.length + (entry.graded.length === 1 ? " review." : " reviews.");
+      if (entry.pending) review = "Waiting for " + entry.jobs.filter((job) => job.state === "running").length + " of " + entry.jobs.length + " reviews.";
+      addMeasure(box, "Review" + part(entry, "review"), review);
+      addMeasure(box, "Score " + (entry.final ? figure(entry.score) : "pending"), entry.final
+        ? "Weighted: correctness 40, performance 20, static 15, review 15, contract 10, cost 10. A missing part is left out and the rest are rescaled."
+        : "Shown once solving ends and every review of this attempt is in, so it does not jump.", true);
+      if (attempt.failure_excerpt) box.appendChild(el("pre", "excerpt", attempt.failure_excerpt));
+    }
+
+    function renderReviews(box, entry) {
+      const attempt = entry.attempt;
+      box.replaceChildren();
+      let empty = null;
+      if (!latest.review_enabled) empty = "Peer review is off for this run.";
+      else if (attempt.state === "failed") empty = "Reviewers grade passing attempts only.";
+      else if (!entry.jobs.length) {
+        empty = SOLVED.includes(latest.phase) && attempt.state === "passed" && attempt.agent !== "you"
+          ? "No reviewer from another model family."
+          : "Reviews start after every agent has finished solving.";
+      }
+      if (empty) {
+        box.appendChild(el("p", "empty", empty));
+        return;
+      }
+      for (const job of entry.jobs) {
+        const block = el("article", "review");
+        block.dataset.state = job.state;
+        const head = el("div", "review-head");
+        const name = el("h3", "", job.reviewer);
+        name.title = job.reviewer;
+        let status = figure(job.score) + " / 100";
+        if (job.state === "running") status = "Reviewing…";
+        if (job.state === "failed") status = "No usable review";
+        head.append(name, el("span", "", status));
+        block.appendChild(head);
+        if (job.summary) block.appendChild(el("p", "", job.summary));
+        const findings = job.findings || [];
+        if (job.state === "done" && !findings.length) block.appendChild(el("p", "", "No rubric findings."));
+        if (findings.length) {
+          const list = el("ul", "findings");
+          for (const finding of findings) {
+            const item = el("li");
+            const where = el("div", "where");
+            const severity = el("span", "sev", finding.severity);
+            severity.dataset.sev = finding.severity;
+            where.append(severity, document.createTextNode("line " + finding.line + " · " + finding.rule));
+            item.append(where, el("p", "", finding.issue));
+            if (finding.fix) item.appendChild(el("p", "fix", "Fix: " + finding.fix));
+            list.appendChild(item);
+          }
+          block.appendChild(list);
+        }
+        box.appendChild(block);
+      }
+    }
+
+    function renderDetail(entries) {
+      const detail = document.getElementById("detail");
+      const entry = selected ? entries.find((item) => item.key === selected.key) : null;
+      const title = document.getElementById("detail-title");
+      document.getElementById("detail-empty").hidden = !!entry;
+      document.getElementById("tabs").hidden = !entry;
+      if (!entry) {
+        detail.style.removeProperty("--hue");
+        title.textContent = "Attempt";
+        document.getElementById("panel-review").hidden = true;
+        document.getElementById("panel-solution").hidden = true;
+        return;
+      }
+      const attempt = entry.attempt;
+      detail.style.setProperty("--hue", hueOf(attempt.agent));
+      title.textContent = nameParts(attempt.agent).name + " · attempt " + attempt.number;
+      title.title = attempt.agent;
+      showTab(tab, false);
+      renderMeasured(document.getElementById("measured"), entry);
+      renderReviews(document.getElementById("reviews"), entry);
+      const pre = document.getElementById("solution");
+      const source = attempt.source || "";
+      if (pre.textContent !== source) pre.textContent = source;
+      let note = "";
+      if (!source) note = finished(attempt) ? "This attempt wrote no solution.py." : "No code until this attempt finishes.";
+      document.getElementById("solution-note").textContent = note;
       applyBlur();
+    }
+
+    function showTab(name, focus) {
+      tab = name;
+      for (const id of ["review", "solution"]) {
+        const on = id === name;
+        const button = document.getElementById("tab-" + id);
+        button.setAttribute("aria-selected", String(on));
+        button.tabIndex = on ? 0 : -1;
+        const panel = document.getElementById("panel-" + id);
+        if (panel.hidden === on) panel.hidden = !on;
+      }
+      if (focus) document.getElementById("tab-" + name).focus();
     }
 
     function applyBlur() {
       const pre = document.getElementById("solution");
       const button = document.getElementById("reveal");
+      pre.hidden = !pre.textContent;
       if (!selected || !pre.textContent) {
         pre.classList.remove("blurred");
         pre.removeAttribute("aria-hidden");
         button.hidden = true;
         return;
       }
-      const key = selected.agent + ":" + selected.attempt;
-      const open = revealed.has(key);
+      const open = revealed.has(selected.key);
       pre.classList.toggle("blurred", !open);
       pre.toggleAttribute("aria-hidden", !open);
       button.hidden = false;
       button.replaceChildren(icon("eye"), document.createTextNode(open ? " Hide solution" : " Show solution"));
     }
 
+    function renderPhase(snapshot) {
+      const reviewing = reviewsOf(snapshot).some((review) => review.state === "running");
+      const phase = snapshot.phase === "done" && reviewing ? "reviewing" : snapshot.phase;
+      const label = document.getElementById("phase");
+      label.textContent = phases[phase] || phase;
+      const at = STEPS.indexOf(phase);
+      const skipped = reviewSkipped(snapshot);
+      label.classList.toggle("sr-only", phase !== "error");
+      label.classList.toggle("stopped", phase === "error");
+      for (const step of document.querySelectorAll("#steps li")) {
+        const index = STEPS.indexOf(step.dataset.phase);
+        const isSkipped = skipped && step.dataset.phase === "reviewing";
+        step.classList.toggle("skipped", isSkipped);
+        step.classList.toggle("done", !isSkipped && at >= 0 && (index < at || phase === "done"));
+        step.classList.toggle("now", index === at);
+        step.classList.toggle("busy", index === at && phase !== "done");
+        step.classList.toggle("next", (phase === "idle" || phase === "starting") && index === 0);
+      }
+    }
+
+    function techFor(text) {
+      return techChoice || (/fastapi/i.test(text) ? "fastapi" : "python");
+    }
+
+    function renderTech() {
+      const badge = document.getElementById("tech");
+      const locked = !!(latest && latest.phase && latest.phase !== "idle" && !editingTask);
+      const tech = locked ? latest.tech || "python" : techFor(document.getElementById("task").value);
+      const changed = badge.dataset.tech !== tech;
+      const other = tech === "python" ? "FastAPI" : "Python";
+      badge.dataset.tech = tech;
+      badge.disabled = locked;
+      badge.replaceChildren(document.createTextNode(TECHS[tech] || tech));
+      if (!locked) badge.appendChild(el("small", "", techChoice ? "set" : "auto"));
+      badge.setAttribute("aria-label", "Task type " + (TECHS[tech] || tech) + (locked ? ", fixed for this run" : ". Switch to " + other));
+      badge.title = locked ? "Rubric and checks used for this run" : "Detected from the task text. Click to switch to " + other + ".";
+      if (changed && !still.matches) {
+        badge.classList.remove("swap");
+        void badge.offsetWidth;
+        badge.classList.add("swap");
+      }
+    }
+
+    function renderTask(phase) {
+      const running = phase !== "idle" && phase !== undefined && phase !== null;
+      const collapsed = running && !editingTask;
+      document.getElementById("task-editor").hidden = collapsed;
+      document.getElementById("task-summary").hidden = !collapsed;
+      document.getElementById("cancel-task").hidden = !running;
+      renderTech();
+      if (!collapsed) return;
+      const text = document.getElementById("task").value || (latest && latest.task_text) || "";
+      const lines = text.split("\n").map((line) => line.replace(/^#+\s*/, "").trim()).filter((line) => line && !line.startsWith("```"));
+      const name = document.getElementById("task-name");
+      name.textContent = lines[0] || "";
+      name.hidden = !lines.length;
+      document.getElementById("task-line").textContent = lines.length ? lines.slice(1).join(" ") : "Started before this page loaded, so the text is not shown here.";
+    }
+
+    function renderMine(snapshot) {
+      const hint = document.getElementById("mine-hint");
+      const mine = snapshot.candidate;
+      document.getElementById("score").disabled = snapshot.suite_ready !== true || !!mine;
+      const area = document.getElementById("mine");
+      if (mine && mine.source && !area.value) area.value = mine.source;
+      if (mine) hint.textContent = mine.state === "running" ? "Running the suite…" : "Scored. It races as you.";
+      else hint.textContent = snapshot.suite_ready ? "Runs on the same frozen suite." : "Opens once the tests are written.";
+    }
+
     function render(snapshot) {
+      const settled = (phase) => phase === null || phase === "idle" || phase === "done" || phase === "error";
+      if (lastPhase !== null && settled(lastPhase) && !settled(snapshot.phase)) {
+        selected = null;
+        landed.clear();
+      }
+      const notice = document.getElementById("notice");
+      if (lastPhase !== snapshot.phase && lastPhase !== null) notice.textContent = "";
+      lastPhase = snapshot.phase;
       latest = snapshot;
-      document.getElementById("phase").textContent = phases[snapshot.phase] || snapshot.phase;
-      document.getElementById("score").disabled = snapshot.suite_ready !== true || snapshot.candidate !== null;
+      authorSince = (snapshot.author || {}).state === "running" ? authorSince || Date.now() : null;
+      renderPhase(snapshot);
+      renderTask(snapshot.phase);
+      renderMine(snapshot);
+      document.getElementById("fresh").disabled = !settled(snapshot.phase);
       const notes = snapshot.notes || [];
-      if (notes.length) document.getElementById("notice").textContent = notes.join(" ");
-      renderBoard(snapshot);
-      renderTable(rowsFrom(snapshot));
-      renderDetail();
+      if (notes.length) notice.textContent = notes.join(" ");
+      const entries = rowsFrom(snapshot);
+      renderBoard(snapshot, entries);
+      renderTable(entries);
+      renderDetail(entries);
+      for (const entry of entries) if (entry.final) landed.add(entry.key);
+      tickClock();
     }
 
     async function refresh() {
       const response = await fetch("/status");
       if (!response.ok) return;
-      render(await response.json());
+      const payload = await response.text();
+      if (payload === lastPayload) return;
+      lastPayload = payload;
+      render(JSON.parse(payload));
     }
 
-    async function openAttempt(agent, number) {
-      selected = { agent, attempt: String(number) };
-      const response = await fetch(
-        "/solution?agent=" + encodeURIComponent(agent) + "&attempt=" + number
-      );
-      const pre = document.getElementById("solution");
-      pre.textContent = response.ok ? await response.text() : "";
-      render(latest || { attempts: [], agents: [], reviews: [], solutions: [] });
-      document.getElementById("detail").scrollIntoView({ block: "nearest" });
+    function select(key) {
+      selected = { key };
+      if (latest) render(latest);
     }
 
     function focusField(id) {
+      if (id === "task" && !editingTask) {
+        editingTask = true;
+        const area = document.getElementById("task");
+        if (!area.value && latest) area.value = latest.task_text || "";
+        renderTask(latest && latest.phase);
+      }
       const field = document.getElementById(id);
       field.focus();
       field.scrollIntoView({ block: "center" });
+    }
+
+    function focusSection(id) {
+      const section = document.getElementById(id);
+      section.focus({ preventScroll: true });
+      section.scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
+    }
+
+    function focusRow(key) {
+      select(key);
+      const row = rowNode(key);
+      row.focus({ preventScroll: true });
+      row.scrollIntoView({ block: "nearest", behavior: still.matches ? "auto" : "smooth" });
+    }
+
+    function focusLeaderboard() {
+      const rows = [...document.querySelectorAll("#leaderboard button.row")];
+      if (!rows.length) {
+        focusSection("ranking");
+        return;
+      }
+      focusRow((rows.find((row) => row.tabIndex === 0) || rows[0]).dataset.key);
+      document.getElementById("ranking").scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
     }
 
     function openMessage() {
@@ -659,16 +1297,56 @@
       }, 5000);
     }
 
+    function closeTaskEditor() {
+      editingTask = false;
+      renderTask(latest && latest.phase);
+    }
+
     document.getElementById("start").addEventListener("click", async () => {
       const task = document.getElementById("task").value;
-      const response = await fetch("/task", { method: "POST", body: task });
+      const response = await fetch("/task?tech=" + techFor(task), { method: "POST", body: task });
       const notice = document.getElementById("notice");
       if (!response.ok) {
         notice.textContent = await response.text();
         return;
       }
       notice.textContent = "";
+      editingTask = false;
       refresh();
+    });
+
+    document.getElementById("task").addEventListener("input", (event) => {
+      if (!event.target.value.trim()) techChoice = null;
+      renderTech();
+    });
+
+    document.getElementById("tech").addEventListener("click", () => {
+      techChoice = techFor(document.getElementById("task").value) === "python" ? "fastapi" : "python";
+      renderTech();
+    });
+
+    document.getElementById("edit-task").addEventListener("click", () => focusField("task"));
+
+    document.getElementById("cancel-task").addEventListener("click", closeTaskEditor);
+
+    document.getElementById("fresh").addEventListener("click", async () => {
+      const response = await fetch("/reset", { method: "POST" });
+      const notice = document.getElementById("notice");
+      if (!response.ok) {
+        notice.textContent = await response.text();
+        return;
+      }
+      notice.textContent = "";
+      selected = null;
+      revealed.clear();
+      landed.clear();
+      editingTask = false;
+      techChoice = null;
+      lastPayload = null;
+      document.getElementById("task").value = "";
+      document.getElementById("mine").value = "";
+      await refresh();
+      focusField("task");
     });
 
     document.getElementById("score").addEventListener("click", async () => {
@@ -685,17 +1363,45 @@
       refresh();
     });
 
-    document.getElementById("leaderboard").addEventListener("click", (event) => {
+    const leaderboard = document.getElementById("leaderboard");
+
+    leaderboard.addEventListener("click", (event) => {
       const row = event.target.closest("button.row");
       if (!row) return;
-      openAttempt(row.dataset.agent, row.dataset.attempt);
+      select(row.dataset.key);
+      if (matchMedia("(max-width: 960px)").matches) {
+        document.getElementById("detail").scrollIntoView({ block: "nearest", behavior: still.matches ? "auto" : "smooth" });
+      }
     });
+
+    leaderboard.addEventListener("keydown", (event) => {
+      const row = event.target.closest("button.row");
+      if (!row || event.metaKey || event.ctrlKey || event.altKey) return;
+      const rows = [...leaderboard.querySelectorAll("button.row")];
+      const at = rows.indexOf(row);
+      const moves = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: rows.length - 1 };
+      if (!(event.key in moves)) return;
+      event.preventDefault();
+      focusRow(rows[Math.min(Math.max(moves[event.key], 0), rows.length - 1)].dataset.key);
+    });
+
+    document.getElementById("tabs").addEventListener("keydown", (event) => {
+      const order = ["review", "solution"];
+      const other = order[(order.indexOf(tab) + 1) % 2];
+      const moves = { ArrowRight: other, ArrowLeft: other, Home: "review", End: "solution" };
+      if (!(event.key in moves)) return;
+      event.preventDefault();
+      showTab(moves[event.key], true);
+    });
+
+    for (const name of ["review", "solution"]) {
+      document.getElementById("tab-" + name).addEventListener("click", () => showTab(name, true));
+    }
 
     document.getElementById("reveal").addEventListener("click", () => {
       if (!selected) return;
-      const key = selected.agent + ":" + selected.attempt;
-      if (revealed.has(key)) revealed.delete(key);
-      else revealed.add(key);
+      if (revealed.has(selected.key)) revealed.delete(selected.key);
+      else revealed.add(selected.key);
       applyBlur();
     });
 
@@ -711,23 +1417,36 @@
     });
 
     document.addEventListener("keydown", (event) => {
-      const typing = event.target instanceof Element && event.target.closest("input, textarea");
-      if (typing) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const key = event.key.toLowerCase();
-      if (key === "m") {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        if (document.getElementById("message-dialog").open) return;
+        const active = document.activeElement;
+        if (!active || active === document.body) return;
         event.preventDefault();
-        openMessage();
-      } else if (key === "t") {
-        event.preventDefault();
-        focusField("task");
-      } else if (key === "y") {
-        event.preventDefault();
-        focusField("mine");
+        const leavingTask = active.id === "task" && editingTask && latest && latest.phase !== "idle";
+        active.blur();
+        if (leavingTask) closeTaskEditor();
+        return;
       }
+      if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const actions = {
+        m: openMessage,
+        t: () => focusField("task"),
+        y: () => focusField("mine"),
+        a: () => focusSection("agents"),
+        l: focusLeaderboard,
+        r: () => selected && showTab("review", true),
+        s: () => selected && showTab("solution", true)
+      };
+      const action = actions[event.key.toLowerCase()];
+      if (!action) return;
+      event.preventDefault();
+      action();
     });
 
     setInterval(refresh, 1000);
+    setInterval(tickClock, 1000);
     refresh();
   </script>
 </body>

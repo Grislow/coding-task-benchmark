@@ -63,8 +63,9 @@ class FakeAgent:
             text = "wrote tests"
         elif role == "review":
             text = (
-                '{"readability": 80, "readability_reason": "One loop, names match the task.", '
-                '"extensibility": 75, "extensibility_reason": "A new case fits in the same loop."}'
+                '{"findings": [{"line": 2, "rule": "PY-NAME", "severity": "minor", '
+                '"issue": "best says nothing about gaps.", "fix": "Call it longest_gap."}], '
+                '"summary": "One loop that reads directly."}'
             )
         else:
             self._solves += 1

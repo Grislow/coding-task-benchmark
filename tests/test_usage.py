@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
 
 import pytest
 
 from ctb.agents import agent_name, claude_command, codex_command, grok_command
 from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _split_agent, main
+from ctb.prompts import review_prompt, rubric_rules
 from ctb.reviews import parse_review
 from ctb.usage import result_from_codex_jsonl, result_from_stdout
 
@@ -62,15 +64,45 @@ def test_claude_and_grok_usage_json() -> None:
 
 
 def test_review_json_inside_a_wrapper() -> None:
+    finding = {"line": 3, "rule": "PY-STDLIB", "severity": "major", "issue": "Manual count.", "fix": "Counter."}
     note = parse_review(
-        '{"text": "{\\"readability\\": 70, \\"readability_reason\\": \\"Clear.\\", \\"extensibility\\": 60, \\"extensibility_reason\\": \\"One loop.\\"}"}',
+        json.dumps({"text": json.dumps({"findings": [finding], "summary": "Clear."})}),
         "grok",
+        rubric_rules("python"),
+        10,
     )
     assert note is not None
     assert note.reviewer == "grok"
-    assert note.extensibility == 60
-    assert note.readability_reason == "Clear."
-    assert note.extensibility_reason == "One loop."
+    assert note.summary == "Clear."
+    assert [item.rule for item in note.findings] == ["PY-STDLIB"]
+    assert note.score == 90
+
+
+def test_review_keeps_only_findings_it_can_check() -> None:
+    def item(line: object, rule: str, severity: str = "minor") -> dict[str, object]:
+        return {"line": line, "rule": rule, "severity": severity, "issue": "i", "fix": "f"}
+
+    findings = [
+        item(2, "PY-NAME"),
+        item(2, "PY-NAME", "major"),
+        item(0, "PY-NAME"),
+        item(9, "PY-NAME"),
+        item(3, "MADE-UP"),
+        item(4, "API-VALID"),
+        item("5", "PY-FLOW"),
+        item(5, "CMT-WHAT", "blocker"),
+    ]
+    note = parse_review(json.dumps({"findings": findings, "summary": ""}), "codex", rubric_rules("python"), 8)
+    assert note is not None
+    assert [(finding.line, finding.rule) for finding in note.findings] == [(2, "PY-NAME"), (5, "CMT-WHAT")]
+    assert note.score == 72
+
+
+def test_fastapi_rubric_extends_python() -> None:
+    assert rubric_rules("python") < rubric_rules("fastapi")
+    assert "API-VALID" in rubric_rules("fastapi")
+    assert "CMT-WHAT" in review_prompt("task", "def solution():\n    pass\n", "python")
+    assert "   1  def solution():" in review_prompt("task", "def solution():\n    pass\n", "python")
 
 
 def test_headless_commands_keep_solvers_in_bounds() -> None:
@@ -203,7 +235,7 @@ def test_codex_commands_sandbox_the_first_attempt_only() -> None:
     solve = codex_command("Solve", Path("/tmp/task"), None, "solve", "gpt-5.4", None)
     assert solve[:2] == ["codex", "exec"]
     assert "resume" not in solve
-    assert solve[solve.index("--sandbox") + 1] == "workspace-write"
+    assert "--sandbox" not in solve
     assert "--approve-for-me" in solve
     assert solve[solve.index("-m") + 1] == "gpt-5.4"
     assert "--ignore-user-config" in solve
@@ -212,10 +244,22 @@ def test_codex_commands_sandbox_the_first_attempt_only() -> None:
     review = codex_command("Grade", Path("/tmp/task"), None, "review", None, Path("/tmp/rubric.json"))
     assert review[review.index("--sandbox") + 1] == "read-only"
     assert "--approve-for-me" not in review
-    assert review[review.index("--output-schema") + 1] == "/tmp/rubric.json"
+    assert review[review.index("--output-schema") + 1] == str(Path("/tmp/rubric.json").resolve())
 
     resume = codex_command("Fix", Path("/tmp/task"), "thread-1", "solve", "gpt-5.4", None)
+    schema = Path("runs/x/work/codex/rubric.schema.json")
+    graded = codex_command("Grade", Path("runs/x/work/codex"), None, "review", None, schema)
+    assert graded[graded.index("--output-schema") + 1] == str(schema.resolve())
+
+    relative = codex_command("Solve", Path("runs/x/work/codex"), None, "solve", None, None)
+    assert relative[relative.index("-C") + 1] == str(Path("runs/x/work/codex").resolve())
+
     assert resume[2] == "resume"
     assert resume[-2] == "thread-1"
     assert "--sandbox" not in resume
     assert "--dangerously-bypass-approvals-and-sandbox" in resume
+
+
+def test_grok_cwd_is_absolute() -> None:
+    command = grok_command("Solve", Path("runs/x/work/grok"), None, "solve")
+    assert command[command.index("--cwd") + 1] == str(Path("runs/x/work/grok").resolve())

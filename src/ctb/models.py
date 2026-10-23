@@ -76,12 +76,20 @@ class AttemptRecord:
 
 
 @dataclass(frozen=True)
+class Finding:
+    line: int
+    rule: str
+    severity: str
+    issue: str
+    fix: str
+
+
+@dataclass(frozen=True)
 class ReviewNote:
     reviewer: str
-    readability: int
-    extensibility: int
-    readability_reason: str
-    extensibility_reason: str
+    score: float
+    findings: tuple[Finding, ...]
+    summary: str
 
 
 @dataclass(frozen=True)
@@ -106,10 +114,12 @@ class SolutionRun:
     reviews: list[ReviewNote] = field(default_factory=list)
     correctness: float | None = None
     performance: float | None = None
-    extensibility: float | None = None
-    peer: float | None = None
+    review: float | None = None
+    contract: float | None = None
+    contract_notes: str = ""
     cost: float | None = None
     profile: float | None = None
+    attempt_runs: list["SolutionRun"] = field(default_factory=list)
 
     @property
     def tokens(self) -> int:

@@ -1,13 +1,21 @@
-from ctb.models import AttemptRecord, SolutionRun
+from collections.abc import Iterable
+
+from ctb.models import AttemptRecord, Finding, SolutionRun
 
 WEIGHTS: dict[str, float] = {
     "correctness": 40,
     "performance": 20,
-    "readability": 15,
-    "extensibility": 10,
-    "peer": 10,
-    "cost": 5,
+    "static": 15,
+    "review": 15,
+    "contract": 10,
+    "cost": 10,
 }
+
+SEVERITY_POINTS = {"blocker": 25, "major": 10, "minor": 3}
+
+
+def findings_score(findings: Iterable[Finding]) -> float:
+    return float(max(0, 100 - sum(SEVERITY_POINTS[finding.severity] for finding in findings)))
 
 
 def correctness_score(tests_passed: int, tests_total: int, public_failed: bool) -> float | None:
@@ -65,13 +73,7 @@ def apply_profile(solutions: list[SolutionRun]) -> None:
             )
         solution.performance = performance
         solution.cost = cost
-        solution.extensibility = _mean([review.extensibility for review in solution.reviews])
-        solution.peer = _mean(
-            [
-                (review.readability + review.extensibility) / 2
-                for review in solution.reviews
-            ]
-        )
+        solution.review = _mean([review.score for review in solution.reviews])
         solution.profile = weighted_score(_parts(solution))
 
 
@@ -114,9 +116,9 @@ def _parts(solution: SolutionRun) -> dict[str, float | None]:
     return {
         "correctness": solution.correctness,
         "performance": solution.performance,
-        "readability": solution.readability,
-        "extensibility": solution.extensibility,
-        "peer": solution.peer,
+        "static": solution.readability,
+        "review": solution.review,
+        "contract": solution.contract,
         "cost": solution.cost,
     }
 

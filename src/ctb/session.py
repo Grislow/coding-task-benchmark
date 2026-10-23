@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ctb.checks import readability_report
+from ctb.contract import contract_report
 from ctb.evaluate import evaluate_solution
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
 from ctb.orchestrate import _grade, run_benchmark
-from ctb.progress import ProgressBoard
+from ctb.progress import ProgressBoard, review_row
 from ctb.score import apply_profile, correctness_score, weighted_score
 
 _IDLE = {
@@ -33,6 +34,7 @@ class RunSession:
         timeout_s: int,
         review: bool,
         out_root: Path,
+        tech: str = "python",
     ) -> None:
         self._agents = agents
         self._test_author = test_author
@@ -47,8 +49,11 @@ class RunSession:
         self._you: SolutionRun | None = None
         self._mine_claimed = False
         self._candidate_view: dict[str, object] | None = None
+        self._default_tech = tech
+        self._tech = tech
+        self._task_text = ""
 
-    def start(self, task_text: str) -> dict[str, object]:
+    def start(self, task_text: str, tech: str | None = None) -> dict[str, object]:
         with self._lock:
             if self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}:
                 raise RuntimeError("A run is already active.")
@@ -66,6 +71,8 @@ class RunSession:
             self._you = None
             self._mine_claimed = False
             self._candidate_view = None
+            self._tech = tech or self._default_tech
+            self._task_text = task_text
             thread = threading.Thread(
                 target=self._execute,
                 args=(task_text, board, out_dir),
@@ -74,10 +81,33 @@ class RunSession:
             thread.start()
         return self.snapshot()
 
+    def reset(self) -> dict[str, object]:
+        with self._lock:
+            if self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}:
+                raise RuntimeError("A run is already active.")
+            self._board = None
+            self._task_text = ""
+            self._tech = self._default_tech
+            self._out_dir = None
+            self._report_solutions = None
+            self._you = None
+            self._mine_claimed = False
+            self._candidate_view = None
+        return self.snapshot()
+
     def submit_mine(self, source: str) -> dict[str, object]:
         if self._out_dir is None or self.snapshot()["suite_ready"] is not True:
             raise RuntimeError("The suite is not ready.")
-        you = self._build_you(source)
+        with self._lock:
+            if self._candidate_view is not None:
+                raise RuntimeError("A solution was already submitted.")
+            self._candidate_view = {"agent": "you", "state": "running", "source": source}
+        try:
+            you = self._build_you(source)
+        except Exception:
+            with self._lock:
+                self._candidate_view = None
+            raise
         with self._lock:
             if self._you is not None:
                 raise RuntimeError("A solution was already submitted.")
@@ -85,6 +115,7 @@ class RunSession:
             phase = "idle" if self._board is None else self._board.snapshot()["phase"]
             start_reviews = (
                 self._review
+                and you.passed
                 and phase in {"reviewing", "done", "error"}
                 and not self._mine_claimed
             )
@@ -99,9 +130,10 @@ class RunSession:
         with self._lock:
             board = self._board
             view = self._candidate_view
+            metadata = {"tech": self._tech, "task_text": self._task_text, "review_enabled": self._review}
         if board is None:
-            return dict(_IDLE)
-        snap = board.snapshot()
+            return {**_IDLE, **metadata}
+        snap = {**board.snapshot(), **metadata}
         if view is None:
             snap["candidate"] = None
             return snap
@@ -127,6 +159,7 @@ class RunSession:
                 review=self._review,
                 progress=board,
                 candidate=self._claim_you,
+                tech=self._tech,
             )
             with self._lock:
                 self._report_solutions = report.solutions
@@ -141,7 +174,7 @@ class RunSession:
 
     def _claim_you(self) -> SolutionRun | None:
         with self._lock:
-            if self._you is not None and not self._mine_claimed:
+            if self._you is not None and self._you.passed and not self._mine_claimed:
                 self._mine_claimed = True
                 return self._you
             return None
@@ -151,8 +184,12 @@ class RunSession:
         if out_dir is None:
             return
         task_text = (out_dir / "task.md").read_text()
+        board = self._board
+        if board is not None:
+            for agent in self._agents:
+                board.review_started(agent.name, "you")
         for agent in self._agents:
-            graded = _grade((you, agent), task_text, out_dir, None)
+            graded = _grade((you, agent), task_text, out_dir, board, self._tech)
             if graded[1] is not None:
                 you.reviews.append(graded[1])
         self._publish()
@@ -171,9 +208,9 @@ class RunSession:
                         {
                             "correctness": you.correctness,
                             "performance": you.performance,
-                            "readability": you.readability,
-                            "extensibility": you.extensibility,
-                            "peer": you.peer,
+                            "static": you.readability,
+                            "review": you.review,
+                            "contract": you.contract,
                             "cost": None,
                         }
                     )
@@ -199,7 +236,7 @@ class RunSession:
         tests = _read(hidden / "test_hidden.py")
         perf = _read(hidden / "perf_cases.py")
         evaluation = evaluate_solution(source, public, tests, perf, self._timeout_s)
-        readability, notes = readability_report(source)
+        readability, notes = readability_report(source, self._tech)
         attempt = AttemptRecord(
             number=1,
             session_id=None,
@@ -218,7 +255,7 @@ class RunSession:
             performance_note=evaluation.performance_note,
             readability_notes=notes,
         )
-        return SolutionRun(
+        you = SolutionRun(
             agent="you",
             source=source,
             attempts=[attempt],
@@ -226,6 +263,9 @@ class RunSession:
             readability=readability,
             readability_notes=notes,
         )
+        if self._tech == "fastapi":
+            you.contract, you.contract_notes = contract_report(source, perf, self._timeout_s)
+        return you
 
     def _directory(self) -> Path:
         self._out_root.mkdir(parents=True, exist_ok=True)
@@ -242,6 +282,7 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "agent": you.agent,
         "source": you.source,
         "passed": you.passed,
+        "public_failed": False if attempt is None else attempt.public_failed,
         "tests_passed": None if attempt is None else attempt.tests_passed,
         "tests_total": None if attempt is None else attempt.tests_total,
         "performance_ms": you.performance_ms,
@@ -251,21 +292,12 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "readability_notes": you.readability_notes,
         "correctness": you.correctness,
         "performance": you.performance,
-        "extensibility": you.extensibility,
-        "peer": you.peer,
+        "review": you.review,
+        "contract": you.contract,
+        "contract_notes": you.contract_notes,
         "cost": you.cost,
         "profile": you.profile,
-        "reviews": [
-            {
-                "reviewer": review.reviewer,
-                "author": "you",
-                "readability": review.readability,
-                "extensibility": review.extensibility,
-                "readability_reason": review.readability_reason,
-                "extensibility_reason": review.extensibility_reason,
-            }
-            for review in you.reviews
-        ],
+        "reviews": [{**review_row(review), "author": "you", "attempt": 1, "state": "done"} for review in you.reviews],
     }
 
 

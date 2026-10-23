@@ -31,6 +31,9 @@ class ProgressBoard:
                 "performance_note": "",
                 "readability": None,
                 "readability_notes": "",
+                "public_failed": False,
+                "contract": None,
+                "contract_notes": "",
             }
             for agent in agents
             for number in range(1, attempts + 1)
@@ -81,6 +84,7 @@ class ProgressBoard:
             item["performance_note"] = record.performance_note
             item["readability"] = record.readability
             item["readability_notes"] = record.readability_notes
+            item["public_failed"] = record.public_failed
 
     def mark_chosen(self, agent: str, number: int) -> None:
         with self._lock:
@@ -88,49 +92,32 @@ class ProgressBoard:
                 if item["agent"] == agent:
                     item["chosen"] = item["number"] == number
 
-    def review_started(self, reviewer: str, author: str) -> None:
+    def review_started(self, reviewer: str, author: str, attempt: int = 1) -> None:
         with self._lock:
-            item = self._review(reviewer, author)
+            item = self._review(reviewer, author, attempt)
             if item is None:
-                self._reviews.append(
-                    {
-                        "reviewer": reviewer,
-                        "author": author,
-                        "state": "running",
-                        "readability": None,
-                        "extensibility": None,
-                        "readability_reason": "",
-                        "extensibility_reason": "",
-                    }
-                )
+                self._reviews.append(_pending(reviewer, author, "running", attempt))
                 return
             item["state"] = "running"
 
-    def review_finished(self, reviewer: str, author: str, note: ReviewNote | None) -> None:
+    def review_finished(self, reviewer: str, author: str, note: ReviewNote | None, attempt: int = 1) -> None:
         with self._lock:
-            item = self._review(reviewer, author)
+            item = self._review(reviewer, author, attempt)
             if item is None:
-                item = {
-                    "reviewer": reviewer,
-                    "author": author,
-                    "state": "done",
-                    "readability": None,
-                    "extensibility": None,
-                    "readability_reason": "",
-                    "extensibility_reason": "",
-                }
+                item = _pending(reviewer, author, "done", attempt)
                 self._reviews.append(item)
-            item["state"] = "done"
-            if note is None:
-                return
-            item["readability"] = note.readability
-            item["extensibility"] = note.extensibility
-            item["readability_reason"] = note.readability_reason
-            item["extensibility_reason"] = note.extensibility_reason
+            item["state"] = "done" if note is not None else "failed"
+            if note is not None:
+                item.update(review_row(note))
 
     def set_solutions(self, solutions: list[SolutionRun]) -> None:
         with self._lock:
             self._solutions = [_solution_row(solution) for solution in solutions]
+            for solution in solutions:
+                for run in solution.attempt_runs:
+                    item = self._attempt(solution.agent, run.attempts[0].number)
+                    item["contract"] = run.contract
+                    item["contract_notes"] = run.contract_notes
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
@@ -151,9 +138,9 @@ class ProgressBoard:
                 return item
         raise KeyError((agent, number))
 
-    def _review(self, reviewer: str, author: str) -> dict[str, object] | None:
+    def _review(self, reviewer: str, author: str, attempt: int) -> dict[str, object] | None:
         for item in self._reviews:
-            if item["reviewer"] == reviewer and item["author"] == author:
+            if item["reviewer"] == reviewer and item["author"] == author and item["attempt"] == attempt:
                 return item
         return None
 
@@ -166,11 +153,42 @@ def _solution_row(solution: SolutionRun) -> dict[str, object]:
         "correctness": solution.correctness,
         "performance": solution.performance,
         "readability": solution.readability,
-        "extensibility": solution.extensibility,
-        "peer": solution.peer,
+        "review": solution.review,
+        "contract": solution.contract,
+        "contract_notes": solution.contract_notes,
         "cost": solution.cost,
         "performance_ms": solution.performance_ms,
         "tokens": solution.tokens,
         "wall_ms": solution.wall_ms,
         "readability_notes": solution.readability_notes,
+    }
+
+
+def review_row(note: ReviewNote) -> dict[str, object]:
+    return {
+        "reviewer": note.reviewer,
+        "score": note.score,
+        "summary": note.summary,
+        "findings": [
+            {
+                "line": finding.line,
+                "rule": finding.rule,
+                "severity": finding.severity,
+                "issue": finding.issue,
+                "fix": finding.fix,
+            }
+            for finding in note.findings
+        ],
+    }
+
+
+def _pending(reviewer: str, author: str, state: str, attempt: int) -> dict[str, object]:
+    return {
+        "reviewer": reviewer,
+        "author": author,
+        "attempt": attempt,
+        "state": state,
+        "score": None,
+        "summary": "",
+        "findings": [],
     }

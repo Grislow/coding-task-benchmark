@@ -1,0 +1,475 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T12:14:59.335448+00:00",
+  "title": "Design System: Solution Benchmarker",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Cabinet Black",
+        "purpose": "Page, fields, code panes (--ground)",
+        "canonical": "#0c0b10",
+        "tonalRamp": [
+          "#0b0a0f",
+          "#25242a",
+          "#424147",
+          "#616067",
+          "#828188",
+          "#a5a4ab",
+          "#c9c8d0",
+          "#efedf5"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "purpose": "Cards, strip, steps, dialog (--panel)",
+        "canonical": "#16141d",
+        "tonalRamp": [
+          "#0c0a12",
+          "#25232d",
+          "#42404b",
+          "#625f6b",
+          "#83808c",
+          "#a5a3b0",
+          "#cac7d4",
+          "#efecfa"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "purpose": "Row hover, tiles, disabled button (--raised)",
+        "canonical": "#201d29",
+        "tonalRamp": [
+          "#0c0914",
+          "#26232f",
+          "#43404d",
+          "#625f6d",
+          "#83808f",
+          "#a6a2b2",
+          "#cac6d7",
+          "#efecfd"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "purpose": "Borders and hair rings (--line)",
+        "canonical": "#34303f",
+        "tonalRamp": [
+          "#0c0915",
+          "#262231",
+          "#433f4f",
+          "#635e6f",
+          "#847f91",
+          "#a6a2b4",
+          "#cbc6d9",
+          "#f0ebff"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "purpose": "Rule between lanes and rows (hard-coded #262230)",
+        "canonical": "#262230",
+        "tonalRamp": [
+          "#0c0915",
+          "#262230",
+          "#433f4f",
+          "#635e6f",
+          "#847f91",
+          "#a7a2b4",
+          "#cbc6d9",
+          "#f0ebff"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "purpose": "Text, action fill, the interviewee's hue (--ink)",
+        "canonical": "#f4f4f7",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#252527",
+          "#424244",
+          "#616163",
+          "#828285",
+          "#a5a5a7",
+          "#c9c9cc",
+          "#eeeef1"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "purpose": "Secondary text (--muted)",
+        "canonical": "#a29fae",
+        "tonalRamp": [
+          "#0c0913",
+          "#26232f",
+          "#43404d",
+          "#625f6d",
+          "#83808e",
+          "#a6a3b2",
+          "#cac7d6",
+          "#efecfc"
+        ]
+      },
+      "on-hue": {
+        "role": "neutral",
+        "displayName": "On-Hue",
+        "purpose": "Text on any hue fill (--on-hue)",
+        "canonical": "#120f0a",
+        "tonalRamp": [
+          "#0e0b06",
+          "#28251f",
+          "#45413b",
+          "#65615a",
+          "#86827b",
+          "#a9a49d",
+          "#cdc8c1",
+          "#f2eee6"
+        ]
+      },
+      "coral": {
+        "role": "secondary",
+        "displayName": "Coral",
+        "purpose": "Agent 1 hue (--a1)",
+        "canonical": "#ff6b4a",
+        "tonalRamp": [
+          "#1d0200",
+          "#480c01",
+          "#781b04",
+          "#ac2c0c",
+          "#db4a29",
+          "#fc7759",
+          "#ffb4a2",
+          "#fee9e4"
+        ]
+      },
+      "sun": {
+        "role": "primary",
+        "displayName": "Sun",
+        "purpose": "House accent and agent 2 hue (--a2)",
+        "canonical": "#ffc531",
+        "tonalRamp": [
+          "#110a00",
+          "#312301",
+          "#543e04",
+          "#7a5c0a",
+          "#a37c12",
+          "#cf9c05",
+          "#f9bf27",
+          "#ffedc7"
+        ]
+      },
+      "mint": {
+        "role": "secondary",
+        "displayName": "Mint",
+        "purpose": "Agent 3 hue (--a3)",
+        "canonical": "#3fe0a0",
+        "tonalRamp": [
+          "#000f07",
+          "#012d1c",
+          "#024f34",
+          "#07734e",
+          "#0e9a69",
+          "#1fc287",
+          "#4be9a8",
+          "#c2ffdf"
+        ]
+      },
+      "sky": {
+        "role": "secondary",
+        "displayName": "Sky",
+        "purpose": "Agent 4 hue (--a4)",
+        "canonical": "#4ea8ff",
+        "tonalRamp": [
+          "#000c1c",
+          "#002648",
+          "#004378",
+          "#0363ac",
+          "#2786da",
+          "#56aafc",
+          "#a0cefe",
+          "#e3f0ff"
+        ]
+      },
+      "pink": {
+        "role": "secondary",
+        "displayName": "Pink",
+        "purpose": "Agent 5 hue (--a5)",
+        "canonical": "#ff5fae",
+        "tonalRamp": [
+          "#1c000d",
+          "#480129",
+          "#780449",
+          "#ad0c6b",
+          "#d8398d",
+          "#fd66b0",
+          "#feaecf",
+          "#ffe7f0"
+        ]
+      },
+      "pass": {
+        "role": "tertiary",
+        "displayName": "Pass Green",
+        "purpose": "Pass word, check, done tick (--pass)",
+        "canonical": "#3fe0a0",
+        "tonalRamp": [
+          "#000f07",
+          "#012d1c",
+          "#024f34",
+          "#07734e",
+          "#0e9a69",
+          "#1fc287",
+          "#4be9a8",
+          "#c2ffdf"
+        ]
+      },
+      "fail": {
+        "role": "tertiary",
+        "displayName": "Fail Coral",
+        "purpose": "Fail word, stopped phase, notice, excerpt (--fail)",
+        "canonical": "#ff8a73",
+        "tonalRamp": [
+          "#1e0100",
+          "#4a0801",
+          "#7b1503",
+          "#a43825",
+          "#cb5b46",
+          "#f27f68",
+          "#fdb5a5",
+          "#fee9e4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "banner": {
+        "displayName": "Banner"
+      },
+      "best-score": {
+        "displayName": "Best Score"
+      },
+      "lane-rank": {
+        "displayName": "Lane Rank"
+      },
+      "headline": {
+        "displayName": "Headline"
+      },
+      "title": {
+        "displayName": "Title"
+      },
+      "table-score": {
+        "displayName": "Table Score"
+      },
+      "body": {
+        "displayName": "Body"
+      },
+      "name": {
+        "displayName": "Name"
+      },
+      "label": {
+        "displayName": "Label"
+      },
+      "step": {
+        "displayName": "Step"
+      },
+      "small": {
+        "displayName": "Small"
+      },
+      "slot-figure": {
+        "displayName": "Slot Figure"
+      },
+      "code": {
+        "displayName": "Code"
+      },
+      "mono-small": {
+        "displayName": "Mono Small"
+      },
+      "kbd": {
+        "displayName": "Kbd"
+      }
+    },
+    "shadows": [
+      {
+        "name": "hair-ring",
+        "value": "inset 0 0 0 1px #34303f",
+        "purpose": "Ghost button, waiting slot, review block, field-like edges."
+      },
+      {
+        "name": "player-ring",
+        "value": "inset 0 0 0 2px var(--hue)",
+        "purpose": "Leader lane, running slot, selected leaderboard row; 55% hue on a failed slot."
+      },
+      {
+        "name": "lead-bar",
+        "value": "inset 3px 0 0 var(--hue)",
+        "purpose": "Left edge of the first leaderboard row."
+      },
+      {
+        "name": "accent-ring",
+        "value": "inset 0 0 0 2px #ffc531",
+        "purpose": "Message dialog."
+      },
+      {
+        "name": "lane-divider",
+        "value": "0 -1px 0 #262230",
+        "purpose": "Between lanes, suppressed under the leader."
+      },
+      {
+        "name": "backdrop",
+        "value": "rgba(6, 5, 10, 0.72)",
+        "purpose": "Dialog backdrop dim."
+      }
+    ],
+    "motion": [
+      {
+        "name": "march",
+        "value": "800ms linear infinite",
+        "purpose": "Running-slot stripes slide one 20px tile; still under reduced motion."
+      },
+      {
+        "name": "drop",
+        "value": "320ms cubic-bezier(.2, .8, .2, 1)",
+        "purpose": "Recording banner enters from above; off under reduced motion."
+      },
+      {
+        "name": "lift",
+        "value": "120ms ease, translateY(-1px)",
+        "purpose": "Action button hover; off under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack",
+        "value": "960px",
+        "purpose": "Lower row and detail go single-column."
+      },
+      {
+        "name": "compact",
+        "value": "800px",
+        "purpose": "16px page padding, lanes wrap slots to a second row, leaderboard drops attempt/speed/clarity, banner 36px."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Action Button",
+      "kind": "button",
+      "refersTo": "button-action",
+      "description": "Primary pill action: Start the run, Score my solution, Message.",
+      "html": "<button class=\"ds-btn-action\">Message <kbd class=\"ds-kbd\">M</kbd></button>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-btn-action{height:38px;padding:0 16px;border:0;border-radius:999px;background:var(--ink);color:var(--ground);font:600 14px/38px Onest,system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:transform 120ms ease}.ds-btn-action:hover{transform:translateY(-1px)}.ds-btn-action:focus-visible{outline:2px solid var(--a2);outline-offset:2px}.ds-kbd{font:600 10px/16px 'Martian Mono',ui-monospace,monospace;border:1px solid currentColor;border-radius:4px;padding:0 5px;opacity:.7}@media (prefers-reduced-motion:reduce){.ds-btn-action{transition:none}}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary pill with a hair ring: Edit, Cancel, Show solution.",
+      "html": "<button class=\"ds-btn-ghost\">Edit</button>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-btn-ghost{height:38px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font:600 14px/38px Onest,system-ui,sans-serif;cursor:pointer}.ds-btn-ghost:hover{box-shadow:inset 0 0 0 1px var(--muted)}.ds-btn-ghost:focus-visible{outline:2px solid var(--a2);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Mono paste area on ground with a sun focus outline.",
+      "html": "<textarea class=\"ds-field\" placeholder=\"Paste the solution you would submit\"></textarea>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-field{width:100%;min-height:120px;padding:14px;background:var(--ground);color:var(--ink);border:1px solid var(--line);border-radius:12px;font:13px/20px 'Martian Mono',ui-monospace,monospace;resize:vertical}.ds-field:focus-visible{outline:2px solid var(--a2);outline-offset:1px;border-color:transparent}"
+    },
+    {
+      "name": "Phase Steps",
+      "kind": "nav",
+      "refersTo": "step",
+      "description": "Done, now and pending phase pills.",
+      "html": "<ol class=\"ds-steps\"><li class=\"done\">Tests</li><li class=\"now\">Solving</li><li>Reviewing</li><li>Finished</li></ol>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-steps{display:flex;list-style:none;margin:0;padding:0;gap:6px}.ds-steps li{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:var(--panel);color:var(--muted);font:600 13px/18px Onest,system-ui,sans-serif}.ds-steps li::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--line)}.ds-steps li.done{color:var(--ink)}.ds-steps li.done::before{width:4px;height:8px;border-radius:0;background:none;border:solid var(--pass);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}.ds-steps li.now{background:var(--a2);color:var(--on-hue)}.ds-steps li.now::before{background:var(--on-hue)}"
+    },
+    {
+      "name": "Race Lane",
+      "kind": "custom",
+      "refersTo": "lane",
+      "description": "Signature: one agent's rank, identity, three attempt blocks and best score; leader ringed in its hue.",
+      "html": "<div class=\"ds-lane lead\" style=\"--hue:var(--a3)\"><span class=\"ds-pos\">1</span><div class=\"ds-who\"><span class=\"ds-dot\"></span><div><b>sonnet</b><small>claude · reviewer finished</small></div></div><div class=\"ds-slots\"><div class=\"ds-slot passed\"><b>95.8</b><small>12/12 · pass · kept</small></div><div class=\"ds-slot failed\"><b>41.7</b><small>5/12 · fail</small></div><div class=\"ds-slot running\"><b>Running</b><small>attempt 3</small></div></div><div class=\"ds-best\"><small>Best</small><b>95.8</b></div></div>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-lane{--hue:var(--muted);display:grid;grid-template-columns:44px minmax(180px,230px) 1fr 120px;align-items:center;gap:16px;padding:10px 12px;border-radius:12px;background:var(--panel);color:var(--ink);font:14px/1.45 Onest,system-ui,sans-serif}.ds-lane.lead{box-shadow:inset 0 0 0 2px var(--hue)}.ds-pos{font:800 24px Unbounded,Onest,sans-serif;color:var(--muted);text-align:center}.lead .ds-pos{color:var(--hue)}.ds-who{display:flex;align-items:center;gap:12px}.ds-dot{width:14px;height:14px;border-radius:4px;background:var(--hue);transform:rotate(45deg)}.ds-who b{display:block;font-weight:600;font-size:15px}.ds-who small{display:block;color:var(--muted);font:400 12px/16px 'Martian Mono',monospace}.ds-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ds-slot{position:relative;overflow:hidden;height:54px;padding:0 14px;border-radius:10px;display:flex;flex-direction:column;justify-content:center}.ds-slot>*{position:relative}.ds-slot b{font:600 16px/1.25 'Martian Mono',monospace;font-variant-numeric:tabular-nums}.ds-slot small{font-size:12px;opacity:.85;white-space:nowrap}.ds-slot.passed{background:var(--hue);color:var(--on-hue)}.ds-slot.failed{box-shadow:inset 0 0 0 2px color-mix(in oklab,var(--hue) 55%,transparent)}.ds-slot.failed b{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:color-mix(in oklab,var(--hue) 75%,transparent)}.ds-slot.running{color:var(--hue);box-shadow:inset 0 0 0 2px var(--hue)}.ds-slot.running::before{content:'';position:absolute;inset:0;background:color-mix(in oklab,var(--hue) 24%,transparent);-webkit-mask:repeating-linear-gradient(-45deg,#000 0 7px,transparent 7px 14px);mask:repeating-linear-gradient(-45deg,#000 0 7px,transparent 7px 14px)}.ds-best{text-align:right}.ds-best small{display:block;color:var(--muted);font-size:12px}.ds-best b{display:block;font:800 30px/1.1 Unbounded,Onest,sans-serif;color:var(--hue)}"
+    },
+    {
+      "name": "Leaderboard Row",
+      "kind": "custom",
+      "refersTo": "leaderboard-row",
+      "description": "One finished attempt; first row carries the lead bar, selected row is tinted and ringed.",
+      "html": "<button class=\"ds-row first\" style=\"--hue:var(--a1)\"><span class=\"ds-rank\">1</span><span class=\"ds-agent\">opus <small>claude</small></span><span class=\"ds-res\">Pass</span><span class=\"ds-score\">95.8</span><span class=\"ds-num\">12/12</span></button>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-row{--hue:var(--muted);display:grid;grid-template-columns:32px 1fr 64px 74px 60px;gap:10px;align-items:center;width:100%;padding:10px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:14px Onest,system-ui,sans-serif;text-align:left;cursor:pointer}.ds-row.first{box-shadow:inset 3px 0 0 var(--hue)}.ds-row:hover{background:var(--raised)}.ds-row:focus-visible{outline:2px solid var(--a2);outline-offset:2px}.ds-rank{font:800 15px Unbounded,sans-serif;color:var(--muted);text-align:center}.ds-row.first .ds-rank,.ds-row.first .ds-score{color:var(--hue)}.ds-agent{display:flex;align-items:center;gap:9px;font-weight:600}.ds-agent::before{content:'';width:10px;height:10px;border-radius:3px;background:var(--hue)}.ds-agent small{color:var(--muted);font-weight:400;font-size:12px}.ds-res{color:var(--pass);font-weight:600}.ds-score{font:800 18px Unbounded,sans-serif;text-align:right}.ds-num{font:13px 'Martian Mono',monospace;text-align:right}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Rounded panel holding each block.",
+      "html": "<section class=\"ds-card\"><h2>Leaderboard</h2><p>Each attempt is its own row.</p></section>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-card{background:var(--panel);color:var(--ink);border-radius:20px;padding:22px;font:14px/1.45 Onest,system-ui,sans-serif}.ds-card h2{margin:0 0 14px;font:800 18px/1.2 Unbounded,Onest,sans-serif;letter-spacing:-.01em}.ds-card p{color:var(--muted);margin:0}"
+    },
+    {
+      "name": "Recording Banner",
+      "kind": "custom",
+      "refersTo": "banner",
+      "description": "Full-width sun bar for the recording message, 5 seconds.",
+      "html": "<div class=\"ds-banner\">Back in two minutes</div>",
+      "css": ":host{--ground:#0c0b10;--panel:#16141d;--raised:#201d29;--line:#34303f;--ink:#f4f4f7;--muted:#a29fae;--on-hue:#120f0a;--a1:#ff6b4a;--a2:#ffc531;--a3:#3fe0a0;--a4:#4ea8ff;--a5:#ff5fae;--pass:#3fe0a0;--fail:#ff8a73}.ds-banner{background:var(--a2);color:var(--on-hue);font:800 56px/1.1 Unbounded,Onest,sans-serif;letter-spacing:-.02em;padding:28px 32px;animation:ds-drop 320ms cubic-bezier(.2,.8,.2,1)}@keyframes ds-drop{from{transform:translateY(-100%)}to{transform:none}}@media (prefers-reduced-motion:reduce){.ds-banner{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The arcade cabinet",
+    "overview": "**Creative North Star: \"The arcade cabinet\"**\n\nA near-black cabinet with five lit players. The page answers one question during a recorded interview: who is ahead, and what is each agent doing right now. Every agent owns one bright hue and carries it everywhere it appears: its diamond, its passed attempt blocks, its running stripes, its best score, its leaderboard swatch. The interviewee (`you`) races in ink. The energy comes from those hues, from heavy scoreboard type, and from small motion, not from gradients or glow.\n\nThe race board leads. Each agent is a lane: rank, name, three attempt blocks, best score. The leader's lane is outlined in its own hue and its rank and best score light up. Once a run starts, the task paste collapses to a one-line strip so the race sits near the top. The phase is a row of pill steps, with the current one lit in sun.\n\nSurfaces are flat, rounded, and stepped in tone: ground, then panel, then raised. Lines are inset rings, never drop shadows.\n\n- Near-black ground; rounded panels one tone lighter; raised tiles one tone lighter again.\n- Five agent hues (coral, sun, mint, sky, pink); `you` in ink.\n- Passed is a solid block in the hue, failed is an outline with the score struck through, running is marching stripes.\n- Unbounded 800 for the scoreboard voice, Onest for words, Martian Mono for counts and code.\n- Sun yellow is the house accent: current step, focus ring, text selection, the recording banner, the dialog ring.",
+    "keyCharacteristics": [
+      "Near-black ground; rounded panels one tone lighter; raised tiles one tone lighter again.",
+      "Five agent hues (coral, sun, mint, sky, pink); `you` in ink.",
+      "Passed is a solid block in the hue, failed is an outline with the score struck through, running is marching stripes.",
+      "Unbounded 800 for the scoreboard voice, Onest for words, Martian Mono for counts and code.",
+      "Sun yellow is the house accent: current step, focus ring, text selection, the recording banner, the dialog ring."
+    ],
+    "rules": [
+      {
+        "name": "The One Hue Per Player Rule",
+        "body": "An agent's hue appears only on that agent's own marks. No hue is used for chrome except sun, and sun is still read as \"now\" or \"look here\".",
+        "section": "colors"
+      },
+      {
+        "name": "The Block, Outline, Stripes Rule",
+        "body": "An attempt's state is its form: solid hue fill for passed, hue outline with a struck score for failed, marching hue stripes inside a 2px hue ring for running, a 1px line ring with a dash for waiting. The leaderboard never paints a whole row by result; only the result word is green or red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scoreboard Voice Rule",
+        "body": "Unbounded appears only at 800 and only for headings, ranks, scores, the task name and the banner. Never for sentences or buttons.",
+        "section": "typography"
+      },
+      {
+        "name": "The Stacked Figure Rule",
+        "body": "Every score, rank and count is tabular. Counts, times and code are Martian Mono.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ring Not Shadow Rule",
+        "body": "Emphasis is an inset ring in the owner's hue. Nothing floats.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** give each agent one hue by run order and use it on all of that agent's marks; draw `you` in ink.",
+      "**Do** show attempt state as form: solid block, struck outline, marching stripes, hair ring.",
+      "**Do** mark the leader with a 2px ring in its own hue and light its rank and best score.",
+      "**Do** use sun for \"now\" and \"look here\": current step, focus outline, banner, dialog ring.",
+      "**Do** collapse the task to its strip while a run is live.",
+      "**Do** keep every animation still-able under reduced motion."
+    ],
+    "donts": [
+      "**Don't** use purple-to-cyan gradients, glow halos, gradient text, or drop shadows; edges are inset rings.",
+      "**Don't** paint a whole leaderboard row green or red; only the result word carries pass or fail.",
+      "**Don't** use one agent's hue on another agent's marks or on general chrome.",
+      "**Don't** set sentences or buttons in Unbounded."
+    ]
+  }
+}

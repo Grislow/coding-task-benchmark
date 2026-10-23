@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from ctb.models import BenchmarkReport, SolutionRun
+from ctb.progress import review_row
 from ctb.score import WEIGHTS
 
 
@@ -40,21 +41,21 @@ def _markdown(report: BenchmarkReport) -> str:
         [
             "## Leaderboard",
             "",
-            "| Agent | Profile | Correctness | Performance | Readability | Extensibility | Peer | Cost | Wall | Tokens |",
+            "| Agent | Profile | Correctness | Performance | Static | Review | Contract | Cost | Wall | Tokens |",
             "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
     for solution in ranked:
         lines.append(
-            "| {agent} | {profile} | {correctness} | {performance} | {readability} | "
-            "{extensibility} | {peer} | {cost} | {wall} | {tokens} |".format(
+            "| {agent} | {profile} | {correctness} | {performance} | {static} | "
+            "{review} | {contract} | {cost} | {wall} | {tokens} |".format(
                 agent=solution.agent,
                 profile=_num(solution.profile),
                 correctness=_num(solution.correctness),
                 performance=_num(solution.performance),
-                readability=_num(solution.readability),
-                extensibility=_num(solution.extensibility),
-                peer=_num(solution.peer),
+                static=_num(solution.readability),
+                review=_num(solution.review),
+                contract=_num(solution.contract),
                 cost=_num(solution.cost),
                 wall=_seconds(solution.wall_ms),
                 tokens=solution.tokens,
@@ -103,16 +104,18 @@ def _card(solution: SolutionRun) -> list[str]:
     lines.extend(details)
     if details:
         lines.append("")
+    if solution.contract_notes:
+        lines.extend([f"Contract: {solution.contract_notes}", ""])
     if solution.reviews:
-        lines.append("### Peer grades")
+        lines.append("### Reviews")
         lines.append("")
         for review in solution.reviews:
-            lines.append(
-                f"- {review.reviewer}: readability {review.readability}. {review.readability_reason}"
-            )
-            lines.append(
-                f"  Extensibility {review.extensibility}. {review.extensibility_reason}"
-            )
+            lines.append(f"- {review.reviewer}: {review.score:.0f}. {review.summary}")
+            for finding in review.findings:
+                lines.append(
+                    f"  - line {finding.line}, {finding.rule} ({finding.severity}): "
+                    f"{finding.issue} Fix: {finding.fix}"
+                )
         lines.append("")
     lines.extend(["### solution.py", "", "```python", solution.source.rstrip(), "```", ""])
     return lines
@@ -134,9 +137,10 @@ def _solution_payload(solution: SolutionRun) -> dict[str, object]:
         "profile": solution.profile,
         "correctness": solution.correctness,
         "performance": solution.performance,
-        "readability": solution.readability,
-        "extensibility": solution.extensibility,
-        "peer": solution.peer,
+        "static": solution.readability,
+        "review": solution.review,
+        "contract": solution.contract,
+        "contract_notes": solution.contract_notes,
         "cost": solution.cost,
         "performance_ms": solution.performance_ms,
         "tokens": solution.tokens,
@@ -156,16 +160,7 @@ def _solution_payload(solution: SolutionRun) -> dict[str, object]:
             }
             for attempt in solution.attempts
         ],
-        "reviews": [
-            {
-                "reviewer": review.reviewer,
-                "readability": review.readability,
-                "extensibility": review.extensibility,
-                "readability_reason": review.readability_reason,
-                "extensibility_reason": review.extensibility_reason,
-            }
-            for review in solution.reviews
-        ],
+        "reviews": [review_row(review) for review in solution.reviews],
     }
 
 

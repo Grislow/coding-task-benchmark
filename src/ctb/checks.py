@@ -1,7 +1,14 @@
 import ast
 import json
-import shutil
 import subprocess
+import sys
+from collections import Counter
+
+_RUFF_RULES = {
+    "python": "E,F,I,UP,B,A,SIM,C4,PERF,RET,PL",
+    "fastapi": "E,F,I,UP,B,A,SIM,C4,PERF,RET,PL,FAST,ASYNC",
+}
+_RUFF_IGNORE = {"python": "PLR2004", "fastapi": "PLR2004,PLR0913,PLR0917"}
 
 _BRANCH_NODES = (
     ast.If,
@@ -17,9 +24,9 @@ _BRANCH_NODES = (
 )
 
 
-def readability_report(source: str) -> tuple[float, str]:
+def readability_report(source: str, tech: str = "python") -> tuple[float, str]:
     structure, structure_note = _structure_score(source)
-    ruff_score, ruff_note = _ruff_score(source)
+    ruff_score, ruff_note = _ruff_score(source, tech)
     if ruff_score is None:
         return structure, structure_note
     combined = (0.7 * structure) + (0.3 * ruff_score)
@@ -67,22 +74,44 @@ def _function_length(function: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     return max(1, end - function.lineno + 1)
 
 
-def _ruff_score(source: str) -> tuple[float | None, str]:
-    if shutil.which("ruff") is None:
+def _ruff_score(source: str, tech: str) -> tuple[float | None, str]:
+    try:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ruff",
+                "check",
+                "--isolated",
+                "--select",
+                _RUFF_RULES[tech],
+                "--ignore",
+                _RUFF_IGNORE[tech],
+                "--line-length",
+                "100",
+                "--output-format",
+                "json",
+                "--stdin-filename",
+                "solution.py",
+                "-",
+            ],
+            input=source,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return None, ""
-    completed = subprocess.run(
-        ["ruff", "check", "--output-format", "json", "-"],
-        input=source,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
     try:
         payload = json.loads(completed.stdout or "[]")
     except json.JSONDecodeError:
         return None, ""
     if not isinstance(payload, list):
         return None, ""
-    issues = len(payload)
-    score = float(max(0, 100 - (10 * issues)))
-    return score, f"ruff issues {issues}"
+    codes = Counter(str(item.get("code")) for item in payload if isinstance(item, dict))
+    score = float(max(0, 100 - (10 * sum(codes.values()))))
+    if not codes:
+        return score, "ruff clean"
+    listed = ", ".join(code if count == 1 else f"{code} x{count}" for code, count in sorted(codes.items()))
+    return score, f"ruff {listed}"

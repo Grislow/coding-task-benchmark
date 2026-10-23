@@ -63,6 +63,31 @@ def test_a_second_start_is_rejected_while_the_run_is_active(tmp_path: Path) -> N
     assert snapshot["phase"] == "done"
 
 
+
+def test_reset_is_refused_while_active_and_clears_a_finished_run(tmp_path: Path) -> None:
+    session = RunSession(
+        [SleepySolver("first")],
+        ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+    )
+    session.start(_TASK)
+    try:
+        session.reset()
+    except RuntimeError as exc:
+        assert "already active" in str(exc)
+    else:
+        raise AssertionError("reset was accepted during a run")
+    assert _wait(session)["phase"] == "done"
+    snapshot = session.reset()
+    assert snapshot["phase"] == "idle"
+    assert snapshot["attempts"] == []
+    assert snapshot["candidate"] is None
+    assert session.out_dir() is None
+
+
 class SlowAuthor(ScriptedAgent):
     def complete(
         self,

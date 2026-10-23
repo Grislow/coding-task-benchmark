@@ -155,7 +155,7 @@ def grok_command(
         "--output-format",
         "json",
         "--cwd",
-        str(cwd),
+        str(cwd.resolve()),
         "--no-subagents",
         "--disable-web-search",
     ]
@@ -201,8 +201,8 @@ def codex_command(
     effort: str | None = None,
 ) -> list[str]:
     # `codex exec resume` has no --sandbox flag. Later attempts bypass approvals
-    # so a permission prompt cannot hang the process. The first attempt stays
-    # inside workspace-write.
+    # so a permission prompt cannot hang the process. The first attempt uses
+    # --approve-for-me, which runs in workspace-write and cannot take --sandbox.
     if session_id:
         command = [
             "codex",
@@ -217,28 +217,27 @@ def codex_command(
         _append_model(command, "-m", model)
         _append_effort(command, effort, codex=True)
         if schema_path is not None:
-            command.extend(["--output-schema", str(schema_path)])
+            command.extend(["--output-schema", str(schema_path.resolve())])
         command.extend([session_id, prompt])
         return command
-    sandbox = "read-only" if role == "review" else "workspace-write"
     command = [
         "codex",
         "exec",
         "--json",
         "-C",
-        str(cwd),
-        "--sandbox",
-        sandbox,
+        str(cwd.resolve()),
         "--skip-git-repo-check",
         "--ignore-user-config",
         "--ignore-rules",
     ]
-    if role != "review":
+    if role == "review":
+        command.extend(["--sandbox", "read-only"])
+    else:
         command.append("--approve-for-me")
     _append_model(command, "-m", model)
     _append_effort(command, effort, codex=True)
     if schema_path is not None:
-        command.extend(["--output-schema", str(schema_path)])
+        command.extend(["--output-schema", str(schema_path.resolve())])
     command.append(prompt)
     return command
 

@@ -9,8 +9,10 @@ The solvers are the Claude Code and Grok CLIs in headless mode. The harness neve
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,fastapi]"
 ```
+
+`fastapi` installs FastAPI and httpx, which FastAPI tasks and the contract check need. Ruff is a dependency, so the static check always runs.
 
 During the interview, pass only the task. The lineup is already chosen:
 
@@ -31,7 +33,7 @@ That runs three attempts on each of these models, at the same time. Each row has
 
 Opus at medium and gpt-6.1-sol at xhigh are fixed. The other three are high. Sonnet 5.5's FrontierCode score peaks at xhigh and falls at max, because max makes edits the grader treats as out of scope, and high is the step up from Claude Code's medium default. Astra's DeepSWE score barely moves above high. Grok 4.7's published DeepSWE number is the high-effort run, and high is that model's default. Codex is started with `--ignore-user-config`, so an `xhigh` in `~/.codex/config.toml` would not apply. The catalog default for these Codex models is low.
 
-Claude Sonnet at high also writes the hidden tests before those five start. Change the list in [src/ctb/cli.py](src/ctb/cli.py) before the interview, not during it.
+Claude Opus at high writes the hidden tests before those five start. It is not one of the solvers, so no solver is graded on tests it wrote itself. Change the list in [src/ctb/cli.py](src/ctb/cli.py) before the interview, not during it.
 
 To pick models yourself:
 
@@ -66,20 +68,34 @@ ctb ui --agents fake --test-author fake --skip-review
 ## What a run does
 
 1. Reads the task. Python blocks that contain `assert` become public tests.
-2. The test-author CLI writes `test_hidden.py` and `perf_cases.py` in its own directory. Those files are copied out and frozen. Solvers never get that directory.
+2. The test-author CLI writes `test_hidden.py` and `perf_cases.py` in its own directory. Those files are copied out and frozen. Each solver works in its own temporary directory outside `runs/`, so it cannot reach the author's directory or `hidden/`. Its directory is copied to `runs/<timestamp>/work/` when it finishes.
 3. Each solver gets a fresh git repo containing `task.md` and a `solution.py` stub. A git root in the workspace keeps Grok from treating this benchmark repo as the project. The solvers start together.
 4. Each solver takes its attempts in order. Attempt 1 solves the task. Each later attempt sees the previous score and writes a different approach. The harness keeps the better one: passing tests, then a runtime at least 10 percent lower, then clearer code.
-5. When at least two agents ran, each one grades the other's final code with tools disabled. The grades start together. An agent does not grade itself, and it does not see the test score.
-6. The profile is written from the weights below. A dimension that was not measured is dropped and the remaining weights are rescaled.
+5. For a FastAPI task, the contract check probes each kept solution's app.
+6. After every attempt has finished, each kept solution is reviewed by the agents from other model families. A model never reviews its own family's code. The reviews start together. A reviewer does not see the test score.
+7. The profile is written from the weights below. A dimension that was not measured is dropped and the remaining weights are rescaled.
 
 | Dimension | Weight | Source |
 | --- | ---: | --- |
 | Correctness | 40 | Frozen pytest suite. A failing public example scores 0. |
 | Performance | 20 | Median runtime of `perf_cases.py`, with a cProfile trace of where the time went. Fastest passing solution scores 100. |
-| Readability | 15 | Function length and complexity, plus Ruff when it is installed. |
-| Extensibility | 10 | Mean of the other agents' extensibility grades. |
-| Peer | 10 | Mean of the other agents' readability and extensibility grades. Each of those grades includes a reason. |
-| Cost | 5 | Token total and wall clock, averaged. Lower is better. Dollars are shown when the CLI reports them. |
+| Static | 15 | Function length and complexity (70 percent) and Ruff (30 percent, minus 10 per issue). The rule set depends on `--tech`. |
+| Review | 15 | Mean of the reviewers' scores. Each review is a list of findings, and the score is 100 minus 25 per blocker, 10 per major and 3 per minor. |
+| Contract | 10 | FastAPI only: share of contract checks passed. Dropped for Python tasks. |
+| Cost | 10 | Token total and wall clock, averaged. Lower is better. Dollars are shown when the CLI reports them. |
+
+## Tech, static checks and review
+
+`--tech python` (the default) or `--tech fastapi` on `ctb run`, `ctb interview` and `ctb ui` picks the rule set. On the page, `POST /task?tech=fastapi` picks it per run.
+
+| Tech | Ruff rules | Rubric |
+| --- | --- | --- |
+| python | `E,F,I,UP,B,A,SIM,C4,PERF,RET,PL`, ignoring `PLR2004` | `rubrics/common.md` + `rubrics/python.md` |
+| fastapi | the Python rules plus `FAST,ASYNC`, also ignoring `PLR0913` and `PLR0917` because query parameters are arguments | the Python rubric + `rubrics/fastapi.md` |
+
+The rubrics live in [src/ctb/rubrics](src/ctb/rubrics). Each rule has an id such as `PY-STDLIB` or `API-VALID` and a default severity. The reviewer sees the source with line numbers and replies with findings only: line, rule id, severity, issue and fix. The harness drops a finding whose rule is not in that tech's rubric or whose line does not exist, keeps one finding per line and rule, and computes the score itself. The reviewer is told not to report what a linter catches, not to judge correctness or speed, and never to reward comments. A comment that restates the code is a finding. A missing comment never is.
+
+The contract check builds the app with `solution()`, passing the first `perf_cases.py` arguments when there are any. It checks that every route declares a response model (a 204 route is exempt) and that none answers bad input with a 500: a non-numeric path id, a non-numeric number in the query, and a missing, list or string body on POST, PUT and PATCH.
 
 ## Agents and models
 
@@ -89,7 +105,7 @@ The same CLI can run twice when the models differ. `claude:opus,claude:sonnet` i
 
 Omitting the model uses that CLI's configured default. The default agent list is `claude,grok`.
 
-Codex is `codex exec --json`. The first attempt uses `--sandbox workspace-write`. Later attempts use `codex exec resume`, which has no sandbox flag, so those calls bypass approvals rather than hang on a prompt. Codex token totals come from each `turn.completed` usage object. Cached input is reported inside `input_tokens`, and the harness splits it back out. Dollar cost is not in that stream.
+Codex is `codex exec --json`. The first attempt uses `--approve-for-me`, which runs in the workspace-write sandbox. Later attempts use `codex exec resume`, which has no sandbox flag, so those calls bypass approvals rather than hang on a prompt. Codex token totals come from each `turn.completed` usage object. Cached input is reported inside `input_tokens`, and the harness splits it back out. Dollar cost is not in that stream.
 
 Claude Code:
 
@@ -110,7 +126,7 @@ Grok:
 
 Codex:
 
-- `codex exec --json --sandbox workspace-write --approve-for-me --ignore-user-config`
+- `codex exec --json --approve-for-me --ignore-user-config`. `--approve-for-me` runs in the workspace-write sandbox and cannot be combined with `--sandbox`
 - Review uses `--sandbox read-only` and `--output-schema`
 - Resume with `codex exec resume <thread-id>`
 - Add `-m <model>` when the agent entry is `codex:<model>`

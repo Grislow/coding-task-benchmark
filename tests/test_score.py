@@ -34,9 +34,9 @@ def test_faster_cheaper_pass_ranks_higher() -> None:
         {
             "correctness": 100,
             "performance": 100,
-            "readability": 80,
-            "extensibility": None,
-            "peer": None,
+            "static": 80,
+            "review": None,
+            "contract": None,
             "cost": 100,
         }
     )

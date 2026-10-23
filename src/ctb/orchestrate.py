@@ -1,14 +1,17 @@
+import shutil
 import sys
+import tempfile
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 
 from ctb.checks import readability_report
+from ctb.contract import contract_report
 from ctb.evaluate import compile_source, evaluate_solution, extract_public_tests
 from ctb.models import AttemptRecord, BenchmarkReport, CodingAgent, ReviewNote, SolutionRun
 from ctb.progress import ProgressBoard
-from ctb.prompts import author_prompt, next_approach_prompt, solver_prompt
+from ctb.prompts import author_prompt, next_approach_prompt, rubric_rules, solver_prompt
 from ctb.reviews import parse_review
 from ctb.score import apply_profile, chosen_index
 from ctb.workspace import make_workspace
@@ -24,6 +27,7 @@ def run_benchmark(
     review: bool,
     progress: ProgressBoard | None = None,
     candidate: Callable[[], SolutionRun | None] | None = None,
+    tech: str = "python",
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "task.md").write_text(task_text)
@@ -38,7 +42,7 @@ def run_benchmark(
     if progress is not None:
         progress.set_suite(bool(public_tests or hidden_tests))
     if not public_tests and not hidden_tests:
-        missing = "No tests were produced. Solvers get one attempt and correctness is left blank."
+        missing = "No tests were produced. Correctness is left blank."
         notes.append(missing)
         if progress is not None:
             progress.add_note(missing)
@@ -52,14 +56,18 @@ def run_benchmark(
         timeout_s,
         out_dir,
         progress,
+        tech,
     )
-    if review and len(agents) >= 2:
-        _review(solutions, agents, task_text, out_dir, progress, candidate)
-    elif review:
-        skipped = "Peer review needs two agents, so that dimension was left out."
-        notes.append(skipped)
-        if progress is not None:
-            progress.add_note(skipped)
+    if tech == "fastapi":
+        for solution in solutions:
+            for run in solution.attempt_runs:
+                run.contract, run.contract_notes = contract_report(run.source, perf_cases, timeout_s)
+            chosen = next(run for run in solution.attempt_runs if run.attempts[0].chosen)
+            solution.contract, solution.contract_notes = chosen.contract, chosen.contract_notes
+    if progress is not None:
+        progress.set_solutions(solutions)
+    if review and agents:
+        _review(solutions, agents, task_text, out_dir, progress, candidate, tech)
     apply_profile(solutions)
     if progress is not None:
         progress.set_solutions(solutions)
@@ -77,6 +85,7 @@ def _solve_all(
     timeout_s: int,
     out_dir: Path,
     progress: ProgressBoard | None = None,
+    tech: str = "python",
 ) -> list[SolutionRun]:
     if progress is not None:
         progress.set_phase("solving")
@@ -85,7 +94,7 @@ def _solve_all(
     with ThreadPoolExecutor(max_workers=len(agents)) as pool:
         futures = [
             pool.submit(
-                _solve,
+                _solve_apart,
                 agent,
                 task_text,
                 public_tests,
@@ -95,10 +104,44 @@ def _solve_all(
                 timeout_s,
                 out_dir,
                 progress,
+                tech,
             )
             for agent in agents
         ]
         return [future.result() for future in futures]
+
+
+def _solve_apart(
+    agent: CodingAgent,
+    task_text: str,
+    public_tests: str | None,
+    hidden_tests: str | None,
+    perf_cases: str | None,
+    attempts: int,
+    timeout_s: int,
+    out_dir: Path,
+    progress: ProgressBoard | None = None,
+    tech: str = "python",
+) -> SolutionRun:
+    scratch = Path(tempfile.mkdtemp(prefix="ctb-solve-"))
+    try:
+        return _solve(
+            agent,
+            task_text,
+            public_tests,
+            hidden_tests,
+            perf_cases,
+            attempts,
+            timeout_s,
+            scratch,
+            progress,
+            tech,
+        )
+    finally:
+        produced = scratch / "work" / agent.name
+        if produced.exists():
+            shutil.copytree(produced, out_dir / "work" / agent.name, dirs_exist_ok=True)
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def _solve(
@@ -111,6 +154,7 @@ def _solve(
     timeout_s: int,
     out_dir: Path,
     progress: ProgressBoard | None = None,
+    tech: str = "python",
 ) -> SolutionRun:
     print(f"solving {agent.name}", file=sys.stderr, flush=True)
     workspace = out_dir / "work" / agent.name
@@ -141,7 +185,7 @@ def _solve(
         solution_path = workspace / "solution.py"
         source = solution_path.read_text() if solution_path.exists() else ""
         evaluation = evaluate_solution(source, public_tests, hidden_tests, perf_cases, timeout_s)
-        readability, readability_notes = readability_report(source)
+        readability, readability_notes = readability_report(source, tech)
         excerpt = result.error or evaluation.failure_excerpt
         (workspace / f"attempt-{number}.py").write_text(source)
         sources.append(source)
@@ -166,15 +210,13 @@ def _solve(
         )
         if progress is not None:
             progress.attempt_finished(agent.name, records[-1], source)
-        if evaluation.tests_total == 0:
-            break
     best = chosen_index(records)
     records[best] = replace(records[best], chosen=True)
     if progress is not None:
         progress.mark_chosen(agent.name, records[best].number)
     source = sources[best]
     (workspace / "solution.py").write_text(source)
-    readability, readability_notes = readability_report(source)
+    readability, readability_notes = readability_report(source, tech)
     return SolutionRun(
         agent=agent.name,
         source=source,
@@ -182,6 +224,17 @@ def _solve(
         performance_ms=records[best].performance_ms,
         readability=readability,
         readability_notes=readability_notes,
+        attempt_runs=[
+            SolutionRun(
+                agent=agent.name,
+                source=attempt_source,
+                attempts=[record],
+                performance_ms=record.performance_ms,
+                readability=record.readability,
+                readability_notes=record.readability_notes,
+            )
+            for record, attempt_source in zip(records, sources, strict=True)
+        ],
     )
 
 
@@ -230,28 +283,36 @@ def _review(
     out_dir: Path,
     progress: ProgressBoard | None = None,
     candidate: Callable[[], SolutionRun | None] | None = None,
+    tech: str = "python",
 ) -> None:
     extra = None if candidate is None else candidate()
     jobs = [
-        (solution, agent)
+        (attempt, agent)
         for solution in solutions
+        for attempt in (solution.attempt_runs or [solution])
         for agent in agents
-        if agent.name != solution.agent
+        if attempt.passed and family(agent.name) != family(solution.agent)
     ]
-    if extra is not None:
-        jobs.extend((extra, agent) for agent in agents if agent.name != extra.agent)
+    if extra is not None and extra.passed:
+        jobs.extend((extra, agent) for agent in agents)
     if not jobs:
         return
     if progress is not None:
+        for solution, agent in jobs:
+            progress.review_started(agent.name, solution.agent, solution.attempts[0].number)
         progress.set_phase("reviewing")
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
         notes = [
             future.result()
-            for future in [pool.submit(_grade, job, task_text, out_dir, progress) for job in jobs]
+            for future in [pool.submit(_grade, job, task_text, out_dir, progress, tech) for job in jobs]
         ]
     for solution, note in notes:
         if note is not None:
             solution.reviews.append(note)
+    for solution in solutions:
+        for attempt in solution.attempt_runs:
+            if attempt.attempts[0].chosen:
+                solution.reviews = list(attempt.reviews)
 
 
 def _grade(
@@ -259,25 +320,31 @@ def _grade(
     task_text: str,
     out_dir: Path,
     progress: ProgressBoard | None = None,
+    tech: str = "python",
 ) -> tuple[SolutionRun, ReviewNote | None]:
     from ctb.prompts import review_prompt
 
     solution, agent = job
+    number = solution.attempts[0].number if solution.attempts else 1
     if progress is not None:
-        progress.review_started(agent.name, solution.agent)
+        progress.review_started(agent.name, solution.agent, number)
     print(f"grading {solution.agent} with {agent.name}", file=sys.stderr, flush=True)
-    workspace = out_dir / "work" / f"review-{agent.name}-{solution.agent}"
+    workspace = out_dir / "work" / f"review-{agent.name}-{solution.agent}-attempt-{number}"
     make_workspace(workspace, task_text)
     (workspace / "solution.py").write_text(solution.source)
     result = agent.complete(
         cwd=str(workspace),
-        prompt=review_prompt(task_text, solution.source),
+        prompt=review_prompt(task_text, solution.source, tech),
         session_id=None,
         role="review",
     )
-    note = parse_review(result.text, agent.name) or parse_review(_raw_text(result.raw), agent.name)
+    rules = rubric_rules(tech)
+    lines = max(1, len(solution.source.splitlines()))
+    note = None if not result.ok else parse_review(result.text, agent.name, rules, lines) or parse_review(
+        _raw_text(result.raw), agent.name, rules, lines
+    )
     if progress is not None:
-        progress.review_finished(agent.name, solution.agent, note)
+        progress.review_finished(agent.name, solution.agent, note, number)
     return solution, note
 
 
@@ -307,6 +374,10 @@ def _raw_text(raw: dict[str, object]) -> str:
     import json
 
     return json.dumps(raw)
+
+
+def family(agent_name: str) -> str:
+    return agent_name.split("-", 1)[0]
 
 
 def _title(task_text: str) -> str:

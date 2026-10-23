@@ -7,6 +7,7 @@ from ctb.agents import ClaudeAgent, CodexAgent, GrokAgent
 from ctb.fake_agent import FakeAgent
 from ctb.models import CodingAgent
 from ctb.orchestrate import run_benchmark
+from ctb.prompts import TECHS
 from ctb.report import write_report
 from ctb.server import bind
 from ctb.session import RunSession
@@ -22,7 +23,7 @@ INTERVIEW_AGENTS = (
     "codex:gpt-6.1-sol:xhigh",
     "grok:grok-4.7:high",
 )
-INTERVIEW_AUTHOR = "claude:sonnet:high"
+INTERVIEW_AUTHOR = "claude:opus:high"
 
 # Levels each CLI documents. A model can still reject a level its own menu omits.
 _EFFORTS = {
@@ -62,6 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--budget-usd", type=float, default=2.0)
     run.add_argument("--out", default="runs")
     run.add_argument("--skip-review", action="store_true")
+    run.add_argument("--tech", choices=TECHS, default="python", help="Rubric and checks for the review.")
     interview = sub.add_parser(
         "interview",
         help="Run the fixed five-model lineup. Pass a task file, or pipe the task on stdin.",
@@ -71,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         nargs="?",
         help="Markdown file with the task. Omit it, or pass -, to read stdin.",
     )
+    interview.add_argument("--tech", choices=TECHS, default="python", help="Rubric and checks for the review.")
     ui = sub.add_parser(
         "ui",
         help="Open the interview page on 127.0.0.1. Pass no task; paste it in the browser.",
@@ -87,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ui.add_argument("--port", type=int, default=8765)
     ui.add_argument("--skip-review", action="store_true")
+    ui.add_argument("--tech", choices=TECHS, default="python", help="Default rubric when a task names none.")
     args = parser.parse_args(argv)
     if args.command == "ui":
         return _serve_ui(args)
@@ -125,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         timeout_s=args.timeout,
         out_dir=out_dir,
         review=not args.skip_review,
+        tech=args.tech,
     )
     write_report(report, out_dir)
     print(out_dir / "report.md")
@@ -148,6 +153,7 @@ def _serve_ui(args: argparse.Namespace) -> int:
         timeout_s=600,
         review=not args.skip_review,
         out_root=Path("runs"),
+        tech=args.tech,
     )
     return _serve(session, args.port)
 

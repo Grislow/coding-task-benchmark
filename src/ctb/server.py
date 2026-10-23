@@ -2,6 +2,7 @@ import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from ctb.prompts import TECHS
 from ctb.session import RunSession
 
 
@@ -43,8 +44,20 @@ class Handler(BaseHTTPRequestHandler):
             if not body.strip():
                 self._text(400, "The task description is empty.")
                 return
+            tech = parse_qs(parsed.query).get("tech", [None])[0]
+            if tech is not None and tech not in TECHS:
+                self._text(400, f"Unknown tech. Use one of: {', '.join(TECHS)}.")
+                return
             try:
-                snapshot = self.server.session.start(body)
+                snapshot = self.server.session.start(body, tech)
+            except RuntimeError as exc:
+                self._text(409, str(exc))
+                return
+            self._json(200, snapshot)
+            return
+        if parsed.path == "/reset":
+            try:
+                snapshot = self.server.session.reset()
             except RuntimeError as exc:
                 self._text(409, str(exc))
                 return

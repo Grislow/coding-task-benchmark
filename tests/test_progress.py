@@ -86,12 +86,18 @@ def test_attempt_and_review_progress_follow_the_run(tmp_path: Path) -> None:
 
     reviews = snapshot["reviews"]
     assert isinstance(reviews, list)
-    assert len(reviews) == 2
-    assert {item["reviewer"] for item in reviews} == {"fast", "slow"}
+    assert len(reviews) == 4
+    assert {(item["reviewer"], item["author"], item["attempt"]) for item in reviews} == {
+        ("fast", "slow", 2),
+        ("slow", "fast", 1),
+        ("slow", "fast", 2),
+        ("slow", "fast", 3),
+    }
     assert all(
         item["state"] == "done"
-        and item["readability"] == 80
-        and item["readability_reason"] == "Readable loop."
+        and item["score"] == 97
+        and item["summary"] == "Readable loop."
+        and item["findings"][0]["rule"] == "PY-NAME"
         for item in reviews
     )
     assert kept["failure_excerpt"] == ""

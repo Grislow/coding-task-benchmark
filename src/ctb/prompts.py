@@ -1,27 +1,48 @@
 import json
+import re
+from pathlib import Path
 
 SOLUTION_STUB = '''def solution(*args, **kwargs):
     raise NotImplementedError("replace this with the task's solution function")
 '''
+
+TECHS = ("python", "fastapi")
+_RUBRIC_FILES = {"python": ("common", "python"), "fastapi": ("common", "python", "fastapi")}
+_RUBRIC_DIR = Path(__file__).parent / "rubrics"
 
 RUBRIC_SCHEMA = json.dumps(
     {
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "readability": {"type": "integer", "minimum": 0, "maximum": 100},
-            "readability_reason": {"type": "string"},
-            "extensibility": {"type": "integer", "minimum": 0, "maximum": 100},
-            "extensibility_reason": {"type": "string"},
+            "findings": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "line": {"type": "integer"},
+                        "rule": {"type": "string"},
+                        "severity": {"type": "string", "enum": ["blocker", "major", "minor"]},
+                        "issue": {"type": "string"},
+                        "fix": {"type": "string"},
+                    },
+                    "required": ["line", "rule", "severity", "issue", "fix"],
+                },
+            },
+            "summary": {"type": "string"},
         },
-        "required": [
-            "readability",
-            "readability_reason",
-            "extensibility",
-            "extensibility_reason",
-        ],
+        "required": ["findings", "summary"],
     }
 )
+
+
+def rubric_text(tech: str) -> str:
+    return "\n\n".join((_RUBRIC_DIR / f"{name}.md").read_text().strip() for name in _RUBRIC_FILES[tech])
+
+
+def rubric_rules(tech: str) -> frozenset[str]:
+    return frozenset(re.findall(r"\*\*([A-Z]+-[A-Z]+)\*\*", rubric_text(tech)))
 
 
 def solver_prompt() -> str:
@@ -68,16 +89,21 @@ def author_prompt() -> str:
     )
 
 
-def review_prompt(task_text: str, source: str) -> str:
+def review_prompt(task_text: str, source: str, tech: str) -> str:
+    lines = enumerate(source.splitlines(), 1)
+    numbered = "\n".join(f"{number:>4}  {line}" for number, line in lines)
     return (
-        "Grade this Python solution against the task. You have not seen its test results.\n"
-        "Do not grade correctness or speed. A test suite and a profiler already do that.\n"
-        "Reply with JSON only, matching the requested schema.\n"
-        "Score readability and extensibility from 0 to 100.\n"
-        "Give each score its own reason. Name the code the reason refers to.\n"
-        "Extensibility means a later reader could add a case without rewriting the function.\n\n"
-        "Task:\n"
-        f"{task_text.strip()}\n\n"
-        "Solution:\n"
-        f"{source}"
+        "Review this solution for code quality against the rubric below. You have not seen its test results.\n"
+        "Report only violations of the rubric's rules, each with the line number from the numbered source, "
+        "the rule id, a severity, the issue and a concrete fix.\n"
+        "Use the rule's default severity unless the case is clearly worse (blocker) or milder (minor).\n"
+        "Do not judge correctness or speed. Tests and a profiler measure those.\n"
+        "Do not report formatting, import order, unused names or anything else a linter catches. "
+        "A linter scores those separately.\n"
+        "Do not reward comments or docstrings, and never report their absence.\n"
+        "Clean code gets no findings. An empty list is the right answer when nothing breaks a rule.\n"
+        "Reply with JSON only, matching the requested schema. The summary is one sentence.\n\n"
+        f"Rubric:\n{rubric_text(tech)}\n\n"
+        f"Task:\n{task_text.strip()}\n\n"
+        f"Solution:\n{numbered}"
     )

@@ -1,0 +1,98 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T09:04:49.754Z",
+        "reason": "reference board in .uiux, deliberate mood samples for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T09:04:49.780Z",
+        "reason": "reference board in .uiux, deliberate mood samples for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T09:04:49.807Z",
+        "reason": "reference board in .uiux, deliberate mood samples for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "overused-font",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T09:05:10.786Z",
+        "reason": "reference board in .uiux, deliberate mood samples for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T09:05:10.815Z",
+        "reason": "reference board in .uiux, deliberate mood samples for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "src/ctb/ui.html"
+        ],
+        "createdAt": "2026-10-22T11:57:11.605Z",
+        "reason": "the 'sweep' animation is an indeterminate progress bar on a running attempt slot (content that is changing), not scrolling content; disabled under prefers-reduced-motion"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T12:15:40.797Z",
+        "reason": "reference board in .uiux: deliberate mood samples in other styles for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T12:15:40.823Z",
+        "reason": "reference board in .uiux: deliberate mood samples in other styles for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          ".uiux/runs/2026-10-22-playful-restyle/restyle/board/board.html"
+        ],
+        "createdAt": "2026-10-22T12:15:40.850Z",
+        "reason": "reference board in .uiux: deliberate mood samples in other styles for the user to react to; not shipped UI"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "src/ctb/ui.html"
+        ],
+        "createdAt": "2026-10-22T18:58:09.998Z",
+        "reason": "Claude: the .wait dots mark a score pending live review jobs (real changing data); user asked for added animation"
+      }
+    ]
+  }
+}
