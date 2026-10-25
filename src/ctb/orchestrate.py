@@ -226,7 +226,7 @@ def _solve(
                 tests_passed=evaluation.tests_passed,
                 tests_total=evaluation.tests_total,
                 public_failed=evaluation.public_failed,
-                failure_excerpt="" if evaluation.passed else excerpt[:4000],
+                failure_excerpt="" if evaluation.passed and result.ok else excerpt[:4000],
                 agent_error=result.error,
                 performance_ms=evaluation.performance_ms,
                 readability=readability,

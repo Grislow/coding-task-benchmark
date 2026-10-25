@@ -1,5 +1,6 @@
 import os
 import shutil
+import signal
 import subprocess
 import time
 from collections.abc import Callable
@@ -13,6 +14,13 @@ from ctb.usage import result_from_codex_jsonl, result_from_stdout
 # and drops skills, hooks, plugins, and CLAUDE.md so the user's setup does not solve the task.
 _CLAUDE_SOLVE_TOOLS = "Bash,Read,Edit,Write"
 _GROK_SOLVE_TOOLS = "read_file,grep,list_dir,search_replace,write,run_terminal_cmd"
+
+# Levels each CLI documents. A model can still reject a level its own menu omits.
+EFFORTS = {
+    "claude": frozenset({"low", "medium", "high", "xhigh", "max"}),
+    "grok": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"}),
+    "codex": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}),
+}
 
 
 class ClaudeAgent:
@@ -42,7 +50,7 @@ class ClaudeAgent:
         command = claude_command(
             prompt, session_id, role, self.budget_usd, self.model, self.effort
         )
-        return _invoke(command, Path(cwd), os.environ.copy(), self.timeout_s, result_from_stdout)
+        return _invoke(command, Path(cwd), os.environ.copy(), _role_timeout(self, role), result_from_stdout)
 
 
 class GrokAgent:
@@ -66,7 +74,7 @@ class GrokAgent:
         env = os.environ.copy()
         env["GROK_CLAUDE_SKILLS_ENABLED"] = "false"
         env["GROK_CURSOR_SKILLS_ENABLED"] = "false"
-        return _invoke(command, Path(cwd), env, self.timeout_s, result_from_stdout)
+        return _invoke(command, Path(cwd), env, _role_timeout(self, role), result_from_stdout)
 
 
 class CodexAgent:
@@ -93,7 +101,15 @@ class CodexAgent:
         command = codex_command(
             prompt, Path(cwd), session_id, role, self.model, schema_path, self.effort
         )
-        return _invoke(command, Path(cwd), os.environ.copy(), self.timeout_s, result_from_codex_jsonl)
+        return _invoke(command, Path(cwd), os.environ.copy(), _role_timeout(self, role), result_from_codex_jsonl)
+
+
+def _role_timeout(agent: object, role: str) -> int:
+    if role == "review":
+        review = getattr(agent, "review_timeout_s", None)
+        if isinstance(review, int) and not isinstance(review, bool):
+            return review
+    return int(getattr(agent, "timeout_s"))
 
 
 def agent_name(cli: str, model: str | None, effort: str | None = None) -> str:
@@ -279,23 +295,24 @@ def _invoke(
     parse: Callable[[str, str, int, int], AgentResult],
 ) -> AgentResult:
     started = time.perf_counter()
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
     try:
-        completed = subprocess.run(
-            command,
-            cwd=cwd,
-            env=env,
-            text=True,
-            capture_output=True,
-            timeout=timeout_s,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
         wall_ms = int((time.perf_counter() - started) * 1000)
-        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
-        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
-        return parse(stdout, f"{stderr}\nTimed out after {timeout_s}s.", 124, wall_ms)
+        return parse(stdout or "", f"{stderr or ''}\nTimed out after {timeout_s}s.", 124, wall_ms)
     wall_ms = int((time.perf_counter() - started) * 1000)
-    return parse(completed.stdout, completed.stderr, completed.returncode, wall_ms)
+    return parse(stdout, stderr, process.returncode, wall_ms)
 
 
 def _missing(name: str) -> AgentResult:

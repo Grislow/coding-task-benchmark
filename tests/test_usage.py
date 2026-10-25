@@ -1,10 +1,13 @@
 import json
+import os
+import time
 from pathlib import Path
 
 import pytest
 
 from ctb.agents import agent_name, claude_command, codex_command, grok_command
 from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _split_agent, main
+from ctb.models import AgentResult, TokenUsage
 from ctb.prompts import review_prompt, rubric_rules
 from ctb.reviews import parse_review
 from ctb.usage import result_from_codex_jsonl, result_from_stdout
@@ -169,6 +172,11 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
         seen["review"] = session._review
         seen["attempts"] = session._attempts
         seen["timeout"] = session._timeout_s
+        seen["author_timeout"] = session._author_timeout_s
+        seen["review_timeout"] = session._review_timeout_s
+        seen["author_limit"] = None if author is None else author.timeout_s
+        seen["solve_limits"] = [agent.timeout_s for agent in session._agents]
+        seen["review_limits"] = [agent.review_timeout_s for agent in session._agents]
         return 0
 
     monkeypatch.setattr("ctb.cli._serve", fake_serve)
@@ -178,7 +186,12 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
     assert seen["port"] == 8765
     assert seen["review"] is True
     assert seen["attempts"] == 3
-    assert seen["timeout"] == 600
+    assert seen["timeout"] == 300
+    assert seen["author_timeout"] == 900
+    assert seen["review_timeout"] == 300
+    assert seen["author_limit"] == 900
+    assert seen["solve_limits"] == [300, 300, 300, 300, 300]
+    assert seen["review_limits"] == [300, 300, 300, 300, 300]
 
 
 def test_agent_entries_can_name_a_model() -> None:
@@ -263,3 +276,51 @@ def test_codex_commands_sandbox_the_first_attempt_only() -> None:
 def test_grok_cwd_is_absolute() -> None:
     command = grok_command("Solve", Path("runs/x/work/grok"), None, "solve")
     assert command[command.index("--cwd") + 1] == str(Path("runs/x/work/grok").resolve())
+
+
+def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from ctb.agents import ClaudeAgent
+
+    seen: dict[str, int] = {}
+
+    def fake_invoke(command: list[str], cwd: Path, env: dict[str, str], timeout_s: int, parse: object) -> AgentResult:
+        del command, cwd, env, parse
+        seen["timeout"] = timeout_s
+        return AgentResult(True, "", None, TokenUsage(), 1, None, None, {})
+
+    monkeypatch.setattr("ctb.agents._invoke", fake_invoke)
+    monkeypatch.setattr("ctb.agents.shutil.which", lambda _name: "claude")
+    agent = ClaudeAgent(300, 1.0, "opus", "medium")
+    agent.review_timeout_s = 180
+    agent.complete(cwd=str(tmp_path), prompt="Solve", session_id=None, role="solve")
+    assert seen["timeout"] == 300
+    agent.complete(cwd=str(tmp_path), prompt="Grade", session_id=None, role="review")
+    assert seen["timeout"] == 180
+    author = ClaudeAgent(900, 1.0, "opus", "high")
+    author.review_timeout_s = 300
+    author.complete(cwd=str(tmp_path), prompt="Write tests", session_id=None, role="author")
+    assert seen["timeout"] == 900
+
+
+def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:
+    from ctb.agents import _invoke
+
+    marker = tmp_path / "child.pid"
+    started = time.perf_counter()
+    result = _invoke(
+        ["sh", "-c", f"sleep 30 & echo $! > {marker}; wait"],
+        tmp_path,
+        dict(os.environ),
+        1,
+        lambda stdout, stderr, code, wall_ms: AgentResult(False, stdout, None, TokenUsage(), wall_ms, None, stderr, {}),
+    )
+    assert time.perf_counter() - started < 10
+    assert "Timed out after 1s." in (result.error or "")
+    child = int(marker.read_text())
+    time.sleep(0.2)
+    try:
+        os.kill(child, 0)
+    except ProcessLookupError:
+        pass
+    else:
+        raise AssertionError("the child kept running")

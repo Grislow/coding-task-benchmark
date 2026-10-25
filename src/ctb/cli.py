@@ -3,11 +3,11 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ctb.agents import ClaudeAgent, CodexAgent, GrokAgent
+from ctb.agents import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
 from ctb.fake_agent import FakeAgent
 from ctb.models import CodingAgent
 from ctb.orchestrate import run_benchmark
-from ctb.preflight import check_all, cli_versions
+from ctb.preflight import check_all, cli_versions, model_catalog
 from ctb.prompts import TECHS
 from ctb.report import write_report
 from ctb.server import bind
@@ -25,13 +25,9 @@ INTERVIEW_AGENTS = (
     "grok:grok-4.7:high",
 )
 INTERVIEW_AUTHOR = "claude:opus:high"
-
-# Levels each CLI documents. A model can still reject a level its own menu omits.
-_EFFORTS = {
-    "claude": frozenset({"low", "medium", "high", "xhigh", "max"}),
-    "grok": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"}),
-    "codex": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}),
-}
+SOLVE_TIMEOUT_S = 300
+AUTHOR_TIMEOUT_S = 900
+REVIEW_TIMEOUT_S = 300
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,7 +56,9 @@ def main(argv: list[str] | None = None) -> int:
         default="claude",
         help="Who writes the hidden tests. Same cli or cli:model form, or none.",
     )
-    run.add_argument("--timeout", type=int, default=600)
+    run.add_argument("--timeout", type=int, default=SOLVE_TIMEOUT_S, help="Seconds each solving attempt may take.")
+    run.add_argument("--author-timeout", type=int, default=AUTHOR_TIMEOUT_S, help="Seconds the test author may take.")
+    run.add_argument("--review-timeout", type=int, default=REVIEW_TIMEOUT_S, help="Seconds each review may take.")
     run.add_argument("--budget-usd", type=float, default=2.0)
     run.add_argument("--out", default="runs")
     run.add_argument("--skip-review", action="store_true")
@@ -90,6 +88,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Who writes the hidden tests. Same form as --agents, or none.",
     )
     ui.add_argument("--port", type=int, default=8765)
+    ui.add_argument("--timeout", type=int, default=SOLVE_TIMEOUT_S, help="Seconds each solving attempt may take.")
+    ui.add_argument("--author-timeout", type=int, default=AUTHOR_TIMEOUT_S, help="Seconds the test author may take.")
+    ui.add_argument("--review-timeout", type=int, default=REVIEW_TIMEOUT_S, help="Seconds each review may take.")
     ui.add_argument("--skip-review", action="store_true")
     ui.add_argument("--tech", choices=TECHS, default="python", help="Default rubric when a task names none.")
     check = sub.add_parser(
@@ -111,7 +112,9 @@ def main(argv: list[str] | None = None) -> int:
         args.attempts = 3
         args.agents = ",".join(INTERVIEW_AGENTS)
         args.test_author = INTERVIEW_AUTHOR
-        args.timeout = 600
+        args.timeout = SOLVE_TIMEOUT_S
+        args.author_timeout = AUTHOR_TIMEOUT_S
+        args.review_timeout = REVIEW_TIMEOUT_S
         args.budget_usd = 3.0
         args.out = "runs"
         args.skip_review = False
@@ -124,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         agents = [_build_agent(name, args.timeout, args.budget_usd) for name in _names(args.agents)]
-        author = None if args.test_author == "none" else _build_agent(args.test_author, args.timeout, args.budget_usd)
+        for agent in agents:
+            agent.review_timeout_s = args.review_timeout
+        author = None if args.test_author == "none" else _build_agent(args.test_author, args.author_timeout, args.budget_usd)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -151,8 +156,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _serve_ui(args: argparse.Namespace) -> int:
     try:
-        agents = [_build_agent(name, 600, 3.0) for name in _names(args.agents)]
-        author = None if args.test_author == "none" else _build_agent(args.test_author, 600, 3.0)
+        agents = [_build_agent(name, args.timeout, 3.0) for name in _names(args.agents)]
+        author = None if args.test_author == "none" else _build_agent(args.test_author, args.author_timeout, 3.0)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -163,10 +168,14 @@ def _serve_ui(args: argparse.Namespace) -> int:
         agents,
         author,
         attempts=3,
-        timeout_s=600,
+        timeout_s=args.timeout,
+        author_timeout_s=args.author_timeout,
+        review_timeout_s=args.review_timeout,
         review=not args.skip_review,
         out_root=Path("runs"),
         tech=args.tech,
+        catalog=model_catalog(),
+        build=lambda name: _build_agent(name, args.timeout, 3.0),
     )
     session.check()
     return _serve(session, args.port)
@@ -240,7 +249,7 @@ def _split_agent(raw: str) -> tuple[str, str | None, str | None]:
     level = effort.strip().lower()
     if not level:
         raise ValueError(f"Agent '{raw}' is missing a reasoning level after the model.")
-    allowed = _EFFORTS.get(cli)
+    allowed = EFFORTS.get(cli)
     if allowed is None or level not in allowed:
         raise ValueError(f"Agent '{raw}' has an unknown reasoning level '{level}'.")
     return cli, chosen, level

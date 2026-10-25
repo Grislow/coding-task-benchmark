@@ -1,4 +1,5 @@
 import threading
+import time
 
 from ctb.models import AttemptRecord, ReviewNote, SolutionRun
 
@@ -7,6 +8,7 @@ class ProgressBoard:
     def __init__(self, agents: list[str], attempts: int, author: str | None = None) -> None:
         self._lock = threading.Lock()
         self._phase = "idle"
+        self._timings: dict[str, dict[str, float | None]] = {}
         self._notes: list[str] = []
         self._suite_ready = False
         self._author = {
@@ -32,6 +34,11 @@ class ProgressBoard:
 
     def set_phase(self, phase: str) -> None:
         with self._lock:
+            now = time.time()
+            if phase != self._phase and self._phase in self._timings:
+                self._timings[self._phase]["end"] = now
+            if phase in {"authoring", "solving", "reviewing"} and phase != self._phase:
+                self._timings[phase] = {"start": now, "end": None}
             self._phase = phase
 
     def add_note(self, note: str) -> None:
@@ -58,11 +65,14 @@ class ProgressBoard:
         with self._lock:
             item = self._attempt(agent, number)
             item["state"] = "running"
+            item["started_at"] = time.time()
+            item["finished_at"] = None
 
     def attempt_finished(self, agent: str, record: AttemptRecord, source: str) -> None:
         with self._lock:
             item = self._attempt(agent, record.number)
             item["state"] = "setup" if record.setup_error else "passed" if record.passed else "failed"
+            item["finished_at"] = time.time()
             item["tests_passed"] = record.tests_passed
             item["tests_total"] = record.tests_total
             item["wall_ms"] = record.wall_ms
@@ -112,6 +122,7 @@ class ProgressBoard:
         with self._lock:
             return {
                 "phase": self._phase,
+                "timings": {name: dict(span) for name, span in self._timings.items()},
                 "notes": list(self._notes),
                 "suite_ready": self._suite_ready,
                 "author": dict(self._author),
@@ -200,6 +211,8 @@ def _waiting(agent: str, number: int) -> dict[str, object]:
         "readability": None,
         "readability_notes": "",
         "public_failed": False,
+        "started_at": None,
+        "finished_at": None,
         "contract": None,
         "contract_notes": "",
     }

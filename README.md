@@ -59,6 +59,10 @@ The report is `runs/<timestamp>/report.md`.
 
 The page listens on `127.0.0.1` port 8765 only. `./interview` still runs in the terminal.
 
+The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It switches models on and off, adds others from each CLI's catalog with a reasoning level, sets those three limits, and shows the prompts each role gets. Only the lineup is checked at startup. Models added from the catalog are labelled "Not checked".
+
+Sandboxing the agents in Docker is researched in [docs/docker.md](docs/docker.md), but not built.
+
 To open the page without calling a model:
 
 ```bash

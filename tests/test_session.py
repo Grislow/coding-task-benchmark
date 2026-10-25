@@ -220,3 +220,82 @@ def test_a_paste_during_solving_is_reviewed_with_the_agents(tmp_path: Path) -> N
     solutions = snapshot["solutions"]
     assert isinstance(solutions, list)
     assert all(item["profile"] is not None for item in solutions)
+
+
+def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
+    built: list[str] = []
+
+    def build(spec: str) -> ScriptedAgent:
+        built.append(spec)
+        cli, model, effort = spec.split(":")
+        agent = ScriptedAgent(f"{cli}-{model}-{effort}", [_CORRECT], tokens=1)
+        agent.timeout_s = 1
+        return agent
+
+    opus = ScriptedAgent("claude-opus", [_CORRECT], tokens=1)
+    opus.model = "opus"
+    opus.timeout_s = 300
+    author = ScriptedAgent("author", [], tokens=1)
+    author.timeout_s = 1
+    session = RunSession(
+        [opus],
+        author,
+        attempts=1,
+        timeout_s=300,
+        author_timeout_s=900,
+        review_timeout_s=300,
+        review=False,
+        out_root=tmp_path,
+        catalog={"claude": ["opus", "haiku"]},
+        build=build,
+    )
+    config = session.config()
+    assert [(row["model"], row["enabled"], row["lineup"]) for row in config["models"]] == [
+        ("opus", True, True),
+        ("haiku", False, False),
+    ]
+    assert {prompt["id"] for prompt in config["prompts"]} == {"solver", "retry", "author", "review"}
+    assert config["timeout_s"] == 300
+    assert config["author_timeout_s"] == 900
+    assert config["review_timeout_s"] == 300
+    assert author.timeout_s == 900
+    assert opus.timeout_s == 300
+    assert opus.review_timeout_s == 300
+    session.configure(
+        {
+            "timeout_s": 120,
+            "author_timeout_s": 600,
+            "review_timeout_s": 180,
+            "models": [
+                {"cli": "claude", "model": "opus", "enabled": False},
+                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low"},
+            ],
+        }
+    )
+    assert built == ["claude:haiku:low"]
+    snapshot = session.snapshot()
+    assert snapshot["lineup"] == ["claude-haiku-low"]
+    assert snapshot["timeout_s"] == 120
+    assert snapshot["author_timeout_s"] == 600
+    assert snapshot["review_timeout_s"] == 180
+    assert author.timeout_s == 600
+    haiku = session._agents[0]
+    assert haiku.timeout_s == 120
+    assert haiku.review_timeout_s == 180
+    for bad in (
+        {"timeout_s": 5},
+        {"author_timeout_s": 5},
+        {"review_timeout_s": 4000},
+        {"models": [{"cli": "claude", "model": "haiku", "enabled": False}]},
+    ):
+        try:
+            session.configure(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(bad)
+    session.start(_TASK)
+    done = _wait(session)
+    assert [item["agent"] for item in done["attempts"]] == ["claude-haiku-low"]
+    assert done["attempts"][0]["finished_at"] >= done["attempts"][0]["started_at"]
+    assert done["timings"]["solving"]["end"] >= done["timings"]["solving"]["start"]

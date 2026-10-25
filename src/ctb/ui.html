@@ -53,16 +53,16 @@
       clip: rect(0 0 0 0);
       white-space: nowrap;
     }
-    .top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
     .mark { display: inline-flex; gap: 3px; align-items: flex-end; height: 26px; }
     .mark i { width: 7px; border-radius: 2px; }
     .mark i:nth-child(1) { height: 14px; background: var(--a2); }
     .mark i:nth-child(2) { height: 26px; background: var(--a1); }
     .mark i:nth-child(3) { height: 19px; background: var(--a3); }
-    .steps { display: flex; list-style: none; margin: 0; padding: 0; gap: 6px; }
+    .steps { display: flex; list-style: none; margin: 0 8px 0 0; padding: 0; gap: 4px; }
     .steps li, .phase {
-      padding: 6px 12px;
+      padding: 6px 11px;
       border-radius: 999px;
       background: var(--panel);
       color: var(--muted);
@@ -82,6 +82,8 @@
     .steps li.skipped { color: var(--muted); }
     .steps li.skipped::after { content: "skipped"; font-weight: 400; }
     .steps li.skipped::before { width: 8px; height: 2px; border-radius: 1px; background: var(--muted); }
+    .steps time { font: 400 12px var(--mono); font-variant-numeric: tabular-nums; opacity: 0.8; }
+    .steps time:empty { display: none; }
     .phase.stopped { background: var(--fail); color: var(--on-hue); }
     .notice:empty { display: none; }
     .notice {
@@ -113,9 +115,9 @@
     body.telling main { padding-top: 160px; }
     .card { background: var(--panel); border-radius: 20px; padding: 22px; }
     .race .lane { background: none; margin-top: 0; border-radius: 12px; }
-    .race .lane + .lane { box-shadow: 0 -1px 0 #262230; }
+    .race .lane + .lane { border-top: 1px solid #262230; }
     .race .lane.lead { background: none; box-shadow: inset 0 0 0 2px var(--hue); }
-    .race .lane.lead + .lane { box-shadow: none; }
+    .race .lane.lead + .lane { border-top-color: transparent; }
     .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
     .paste-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     label { display: block; margin-bottom: 8px; color: var(--muted); }
@@ -150,11 +152,11 @@
     button.action { background: var(--ink); color: var(--ground); }
     button.action:hover:not(:disabled) { transform: translateY(-1px); }
     button.action:disabled { background: var(--raised); color: var(--muted); cursor: not-allowed; }
-    button.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
-    button.ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--muted); }
+    button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    button.ghost:hover:not(:disabled) { border-color: var(--muted); }
     button.ghost:disabled { color: var(--muted); cursor: not-allowed; }
     kbd {
-      font: 600 10px/16px var(--mono);
+      font: 600 11px/16px var(--mono);
       border: 1px solid currentColor;
       border-radius: 4px;
       padding: 0 5px;
@@ -193,16 +195,15 @@
       margin-left: auto;
       height: 30px;
       padding: 0 12px;
-      border: 0;
+      border: 1px solid color-mix(in oklab, var(--tech) 60%, transparent);
       border-radius: 999px;
       background: color-mix(in oklab, var(--tech) 14%, var(--raised));
-      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tech) 60%, transparent);
       color: var(--ink);
       display: inline-flex;
       align-items: center;
       gap: 8px;
       font: 600 13px var(--font);
-      transition: background-color 200ms ease, box-shadow 200ms ease;
+      transition: background-color 200ms ease, border-color 200ms ease;
     }
     .tech[data-tech="fastapi"] { --tech: var(--a3); }
     .tech::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--tech); transform: rotate(45deg); }
@@ -260,7 +261,9 @@
     .slot svg, .result svg { flex: none; }
     .slot b, .result { display: inline-flex; align-items: center; gap: 6px; }
     .slot.waiting { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
-    .slot.setup { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); background: repeating-linear-gradient(-45deg, transparent 0 8px, color-mix(in oklab, var(--line) 55%, transparent) 8px 10px); }
+    .slot.setup { color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+    .slot.setup > * { position: relative; }
+    .slot.setup::before { content: ""; position: absolute; inset: 0; background: color-mix(in oklab, var(--line) 45%, transparent); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px; }
     .slot.setup b, .slot.broken b, .result.setup { color: var(--fail); }
     .slot.ready { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--pass) 55%, transparent); }
     .slot.ready b { color: var(--pass); }
@@ -284,8 +287,8 @@
     .lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
     .columns {
       display: grid;
-      grid-template-columns: 28px minmax(110px, 1.4fr) 56px 82px 66px 52px 80px 56px;
-      gap: 10px;
+      grid-template-columns: 22px minmax(110px, 1fr) 22px 76px 52px 44px 64px 44px 44px;
+      gap: 8px;
       align-items: center;
     }
     .columns.head { color: var(--muted); font-size: 12px; padding: 0 10px 8px; }
@@ -333,7 +336,16 @@
     @keyframes blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
     .landed { animation: land 520ms cubic-bezier(.2, .8, .2, 1); display: inline-block; }
     @keyframes land { from { transform: scale(0.6); opacity: 0; } 55% { transform: scale(1.18); opacity: 1; } to { transform: none; } }
-    .detail { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow: auto; }
+    .lower { align-items: stretch; }
+    .board-frame { overflow: clip; overflow-clip-margin: 24px; transition: height 420ms cubic-bezier(.2, .8, .2, 1); }
+    .detail { contain: size; display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
+    .detail-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -22px; padding: 2px 22px 22px; scrollbar-gutter: stable; }
+    .skeleton { display: grid; gap: 10px; padding-top: 30px; }
+    .skeleton i { height: 26px; border-radius: 8px; background: var(--raised); animation: blink 1.4s ease-in-out infinite; }
+    .skeleton i:nth-child(even) { animation-delay: 200ms; }
+    .result.idle { color: var(--muted); font-weight: 500; }
+    #measured p.why { background: color-mix(in oklab, var(--fail) 12%, var(--raised)); box-shadow: inset 3px 0 0 var(--fail); color: var(--ink); }
+    #measured p.why .measure-label { color: var(--fail); }
     .detail-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .detail-head::before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 3px; background: var(--hue, var(--line)); transform: rotate(45deg); }
     #detail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -342,7 +354,7 @@
     [role="tab"] {
       height: 32px;
       padding: 0 14px;
-      border: 0;
+      border: 1px solid transparent;
       border-radius: 999px;
       background: transparent;
       color: var(--muted);
@@ -352,18 +364,18 @@
       gap: 8px;
       transition: background-color 180ms ease, color 180ms ease;
     }
-    [role="tab"][aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hue, var(--line)); }
+    [role="tab"][aria-selected="true"] { background: var(--raised); color: var(--ink); border-color: var(--hue, var(--line)); }
     [role="tab"]:focus-visible, [role="tabpanel"]:focus-visible, section:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
     [role="tabpanel"] { border-radius: 12px; }
     [role="tabpanel"]:not([hidden]) { animation: rise 240ms cubic-bezier(.2, .8, .2, 1); }
     @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     #detail-empty { margin: 14px 0 0; }
     #measured { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    #measured pre.excerpt { grid-column: 1 / -1; margin: 0; min-height: 0; max-height: 160px; font-size: 12px; color: var(--fail); background: var(--ground); }
+    #measured pre.excerpt { grid-column: 1 / -1; margin: 0; min-height: 0; max-height: 220px; font-size: 12px; color: var(--fail); background: var(--ground); }
     #measured p { margin: 0; padding: 14px; border-radius: 12px; background: var(--raised); color: var(--muted); }
     #measured p.whole { grid-column: 1 / -1; }
     #measured .measure-label { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 600; font-size: 15px; }
-    #reviews { display: grid; gap: 10px; margin-top: 14px; }
+    #reviews { display: grid; gap: 10px; }
     .review { padding: 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
     .review-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
     .review-head h3 { margin: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -405,14 +417,53 @@
     dialog::backdrop { background: rgba(6, 5, 10, 0.72); }
     dialog h2 { margin-bottom: 14px; }
     dialog .hint { margin: 12px 0 0; }
+    #config-dialog { width: min(820px, calc(100% - 32px)); max-height: calc(100vh - 48px); padding: 0; }
+    #config-form { display: flex; flex-direction: column; max-height: calc(100vh - 48px); }
+    .config-head { display: flex; align-items: center; gap: 14px; padding: 24px 26px 0; flex-wrap: wrap; }
+    .config-head h2 { margin: 0; margin-right: auto; }
+    .config-head .tabs { margin: 0; }
+    .config-body { overflow: auto; padding: 18px 26px; height: min(640px, calc(100vh - 220px)); }
+    .config-foot { display: flex; align-items: center; gap: 10px; padding: 16px 26px 22px; border-top: 1px solid var(--line); }
+    .config-foot .muted { margin-right: auto; }
+    .config-foot .error { color: var(--fail); margin-right: auto; }
+    .limits { display: grid; gap: 10px; margin-bottom: 18px; }
+    .limit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 12px; background: var(--raised); }
+    .limit label { margin: 0; min-width: 7.5rem; color: var(--ink); font-weight: 600; }
+    .limit p { flex-basis: 100%; margin: 0; }
+    .cli.why { color: var(--fail); }
+    #cpanel-prompts .hint { margin: 0 0 14px; text-wrap: pretty; }
+    .limit input { width: 88px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font: 600 15px var(--mono); }
+    .limit input:focus-visible, .model select:focus-visible, .model input:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
+    .cli-group { margin: 0 0 16px; padding: 0; border: 0; }
+    .cli-group legend { padding: 0; margin-bottom: 6px; color: var(--muted); font: 600 12px var(--mono); text-transform: lowercase; }
+    .model { display: grid; grid-template-columns: 22px minmax(0, 1fr) 110px 112px; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-radius: 10px; }
+    .model + .model { border-top: 1px solid #262230; }
+    .model:has(input:checked) { background: var(--raised); }
+    .model input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--a2); }
+    .model label { margin: 0; color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .model label small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .model select { height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font: 500 13px var(--font); padding: 0 6px; }
+    .model .fixed { color: var(--muted); font: 400 12px var(--mono); padding-left: 7px; }
+    .chip { justify-self: end; padding: 2px 9px; border-radius: 999px; font: 600 12px var(--font); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+    .chip[data-state="ready"] { color: var(--pass); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pass) 55%, transparent); }
+    .chip[data-state="failed"] { color: var(--fail); box-shadow: inset 0 0 0 1px var(--fail); }
+    .chip[data-state="checking"] { color: var(--a2); }
+    .prompt { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 10px; }
+    .prompt summary { padding: 12px 14px; cursor: pointer; font-weight: 600; }
+    .prompt summary:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; border-radius: 12px; }
+    .prompt pre { margin: 0 14px 14px; min-height: 0; max-height: 360px; width: auto; font-size: 12px; }
     @media (prefers-reduced-motion: reduce) {
       .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
-      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]) { animation: none; }
-      button.action, .tech, [role="tab"] { transition: none; }
+      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]), .skeleton i { animation: none; }
+      button.action, .tech, [role="tab"], .board-frame { transition: none; }
+    }
+    @media (max-width: 1240px) {
+      h1 { font-size: 19px; }
     }
     @media (max-width: 960px) {
       .lower { grid-template-columns: 1fr; }
-      .detail { position: static; max-height: none; }
+      .detail { contain: none; padding-bottom: 22px; }
+      .detail-body { overflow: visible; margin: 0; padding: 2px 0 0; }
     }
     @media (max-width: 800px) {
       main { padding: 16px; }
@@ -424,10 +475,10 @@
       .best b { font-size: 22px; }
       .slot { padding: 0 10px; }
       .columns { grid-template-columns: 22px minmax(0, 1fr) 20px 68px 52px; gap: 8px; }
+      .model { grid-template-columns: 22px minmax(0, 1fr) auto; }
+      .model .chip { grid-column: 2 / -1; justify-self: start; }
       .columns.head span:nth-child(n + 6), button.row > :nth-child(n + 6) { display: none; }
       .who-cell .cli { display: none; }
-      .columns.head span:nth-child(3) { font-size: 0; }
-      .columns.head span:nth-child(3)::after { content: "#"; font-size: 12px; }
       #measured { grid-template-columns: 1fr; }
       #banner { font-size: 36px; }
       .keys { display: none; }
@@ -443,13 +494,14 @@
         <h1 id="title">Solution Benchmarker</h1>
       </div>
       <ol class="steps" id="steps" aria-hidden="true">
-        <li data-phase="authoring"><span>Tests</span></li>
-        <li data-phase="solving"><span>Solving</span></li>
-        <li data-phase="reviewing"><span>Reviewing</span></li>
+        <li data-phase="authoring"><span>Tests</span><time></time></li>
+        <li data-phase="solving"><span>Solving</span><time></time></li>
+        <li data-phase="reviewing"><span>Reviewing</span><time></time></li>
         <li data-phase="done"><span>Finished</span></li>
       </ol>
       <div id="phase" class="phase" aria-live="polite">Not started</div>
       <button class="ghost" id="fresh" type="button">Start fresh</button>
+      <button class="ghost" id="open-config" type="button">Config <kbd>C</kbd></button>
       <button class="action" id="open-message" type="button">Message <kbd>M</kbd></button>
     </header>
     <div id="notice" class="notice" role="alert"></div>
@@ -486,26 +538,31 @@
     <div class="lower">
       <section class="card" id="ranking" tabindex="-1" aria-labelledby="ranking-title">
         <div class="section-head"><h2 id="ranking-title">Leaderboard</h2><kbd>L</kbd></div>
-        <p class="hint">Each attempt gets a row the moment it starts. Its score appears once solving ends and its reviews are in, then the row moves to its place.</p>
-        <div id="leaderboard"><p class="empty">No scores yet.</p></div>
+        <p class="hint">Rows appear once the model check has finished and the tests start, one per model in that run. A score appears once solving ends and the attempt's reviews are in, then the row moves to its place.</p>
+        <div class="board-frame" id="leaderboard-frame"><div id="leaderboard"><div class="skeleton" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
       </section>
       <section id="detail" class="card detail" aria-labelledby="detail-title">
         <div class="detail-head"><h2 id="detail-title">Attempt</h2></div>
-        <p id="detail-empty" class="empty">Pick a row to see its review and code. Press <kbd>L</kbd>, then <kbd>↑</kbd> <kbd>↓</kbd>.</p>
+        <p id="detail-empty" class="empty">Pick a row to see its score, reviews and code. Press <kbd>L</kbd>, then <kbd>↑</kbd> <kbd>↓</kbd>.</p>
         <div class="tabs" id="tabs" role="tablist" aria-label="Attempt details" hidden>
-          <button role="tab" id="tab-review" type="button" aria-selected="true" aria-controls="panel-review">Review <kbd>R</kbd></button>
-          <button role="tab" id="tab-solution" type="button" aria-selected="false" aria-controls="panel-solution" tabindex="-1">Solution <kbd>S</kbd></button>
+          <button role="tab" id="tab-score" type="button" aria-selected="true" aria-controls="panel-score">Score <kbd>1</kbd></button>
+          <button role="tab" id="tab-review" type="button" aria-selected="false" aria-controls="panel-review" tabindex="-1">Review <kbd>2</kbd></button>
+          <button role="tab" id="tab-solution" type="button" aria-selected="false" aria-controls="panel-solution" tabindex="-1">Solution <kbd>3</kbd></button>
         </div>
-        <div role="tabpanel" id="panel-review" aria-labelledby="tab-review" tabindex="0" hidden>
-          <div id="measured"></div>
-          <div id="reviews"></div>
-        </div>
-        <div role="tabpanel" id="panel-solution" aria-labelledby="tab-solution" tabindex="0" hidden>
-          <div class="code-head">
-            <span id="solution-note" class="muted"></span>
-            <button class="ghost" id="reveal" type="button">Show solution</button>
+        <div class="detail-body" id="detail-body">
+          <div role="tabpanel" id="panel-score" aria-labelledby="tab-score" tabindex="0" hidden>
+            <div id="measured"></div>
           </div>
-          <pre id="solution"></pre>
+          <div role="tabpanel" id="panel-review" aria-labelledby="tab-review" tabindex="0" hidden>
+            <div id="reviews"></div>
+          </div>
+          <div role="tabpanel" id="panel-solution" aria-labelledby="tab-solution" tabindex="0" hidden>
+            <div class="code-head">
+              <span id="solution-note" class="muted"></span>
+              <button class="ghost" id="reveal" type="button">Show solution</button>
+            </div>
+            <pre id="solution"></pre>
+          </div>
         </div>
       </section>
     </div>
@@ -514,8 +571,9 @@
       <li><kbd>Y</kbd> your solution</li>
       <li><kbd>A</kbd> agents</li>
       <li><kbd>L</kbd> leaderboard, then <kbd>↑</kbd> <kbd>↓</kbd></li>
-      <li><kbd>R</kbd> review</li>
-      <li><kbd>S</kbd> solution</li>
+      <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> score, review, solution</li>
+      <li><kbd>H</kbd> show or hide, on the solution tab</li>
+      <li><kbd>C</kbd> config</li>
       <li><kbd>M</kbd> message</li>
       <li><kbd>Esc</kbd> leave a field</li>
     </ul>
@@ -528,6 +586,51 @@
       <p class="hint">Enter sends it. Escape closes this.</p>
     </form>
   </dialog>
+  <dialog id="config-dialog" aria-labelledby="config-title">
+    <form id="config-form" method="dialog">
+      <div class="config-head">
+        <h2 id="config-title">Config</h2>
+        <div class="tabs" id="config-tabs" role="tablist" aria-label="Config sections">
+          <button role="tab" id="ctab-run" type="button" aria-selected="true" aria-controls="cpanel-run">Run</button>
+          <button role="tab" id="ctab-prompts" type="button" aria-selected="false" aria-controls="cpanel-prompts" tabindex="-1">Prompts</button>
+        </div>
+      </div>
+      <div class="config-body">
+        <div role="tabpanel" id="cpanel-run" aria-labelledby="ctab-run">
+          <div class="limits">
+            <div class="limit">
+              <label for="author-limit">Test author</label>
+              <input id="author-limit" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" aria-describedby="author-limit-help">
+              <span>min</span>
+              <p id="author-limit-help" class="muted">Writing the hidden tests stops at this limit.</p>
+            </div>
+            <div class="limit">
+              <label for="solve-limit">Solving</label>
+              <input id="solve-limit" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" aria-describedby="solve-limit-help">
+              <span>min</span>
+              <p id="solve-limit-help" class="muted">Each attempt stops at this limit and fails as timed out.</p>
+            </div>
+            <div class="limit">
+              <label for="review-limit">Reviewers</label>
+              <input id="review-limit" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" aria-describedby="review-limit-help">
+              <span>min</span>
+              <p id="review-limit-help" class="muted">Each review stops at this limit.</p>
+            </div>
+          </div>
+          <div id="model-list"></div>
+        </div>
+        <div role="tabpanel" id="cpanel-prompts" aria-labelledby="ctab-prompts" hidden>
+          <p class="hint">What each role is told. Read-only here. Edit them in src/ctb/prompts.py and src/ctb/rubrics.</p>
+          <div id="prompt-list"></div>
+        </div>
+      </div>
+      <div class="config-foot">
+        <span id="config-note" class="muted" aria-live="polite"></span>
+        <button class="ghost" id="config-cancel" type="button">Cancel <kbd>Esc</kbd></button>
+        <button class="action" id="config-save" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
   <script>
     let selected = null;
     let latest = null;
@@ -536,7 +639,10 @@
     let lastPhase = null;
     let techChoice = null;
     let authorSince = null;
-    let tab = "review";
+    let tab = "score";
+    let skew = 0;
+    let config = null;
+    const TABS = ["score", "review", "solution"];
     const revealed = new Set();
     const landed = new Set();
     const still = matchMedia("(prefers-reduced-motion: reduce)");
@@ -605,8 +711,30 @@
 
     function hueOf(agent) {
       if (agent === "you") return "var(--ink)";
-      const index = (latest && latest.agents || []).indexOf(agent);
+      const index = ((latest && latest.palette) || seats()).indexOf(agent);
       return "var(" + HUES[Math.max(index, 0) % HUES.length] + ")";
+    }
+
+    function seats() {
+      if (!latest) return [];
+      return latest.agents && latest.agents.length ? latest.agents : latest.lineup || [];
+    }
+
+    function since(start, end) {
+      if (!start) return "";
+      return clock(Math.max(0, (end ?? Date.now() / 1000 - skew) - start));
+    }
+
+    function failureReason(attempt) {
+      const text = attempt.failure_excerpt || "";
+      const timeout = text.match(/Timed out after (\d+)s/);
+      if (attempt.state === "setup") return "could not run";
+      if (timeout) return "timed out at " + clock(Number(timeout[1]));
+      if (attempt.public_failed) return "a public example failed";
+      if (!attempt.tests_total) return text ? "crashed before tests ran" : "no tests ran";
+      if (attempt.tests_passed === attempt.tests_total) return "agent exited with an error";
+      const missed = attempt.tests_total - attempt.tests_passed;
+      return missed + " of " + attempt.tests_total + (attempt.tests_total === 1 ? " test failed" : " tests failed");
     }
 
     function nameParts(agent) {
@@ -654,8 +782,23 @@
       return list;
     }
 
+    function leaderboardReady(snapshot) {
+      const checks = snapshot.preflight || [];
+      if (!checks.length || checks.some((row) => row.state === "checking")) return false;
+      const author = snapshot.author || {};
+      const testerStarted = author.state === "running" || author.state === "done" || author.state === "failed" || snapshot.phase === "authoring";
+      return testerStarted || ["solving", "reviewing", "done", "error"].includes(snapshot.phase);
+    }
+
+    function leaderboardSkeleton() {
+      const skeleton = el("div", "skeleton");
+      skeleton.setAttribute("aria-hidden", "true");
+      for (let index = 0; index < 10; index += 1) skeleton.appendChild(el("i"));
+      return skeleton;
+    }
+
     function attemptsOf(snapshot) {
-      const attempts = (snapshot.attempts || []).filter((attempt) => attempt.state !== "waiting");
+      const attempts = (snapshot.attempts || []).slice();
       const mine = snapshot.candidate;
       if (!mine) return attempts;
       if (mine.state === "running") {
@@ -696,7 +839,7 @@
         cost: attempt.agent === "you" || tokens[index] === null || wall[index] === null ? null : (tokens[index] + wall[index]) / 2
       }]));
       const solved = SOLVED.includes(snapshot.phase);
-      const order = snapshot.agents || [];
+      const order = snapshot.agents && snapshot.agents.length ? snapshot.agents : snapshot.lineup || [];
       const entries = attempts.map((attempt) => {
         const key = attempt.agent + ":" + attempt.number;
         const jobs = reviews.filter((review) => review.author === attempt.agent && (review.attempt ?? 1) === attempt.number);
@@ -718,15 +861,14 @@
         return { key, attempt, jobs, graded, pending, final, parts, score: final ? weighted(parts) : null };
       });
       const tier = (entry) => {
-        if (entry.attempt.state === "setup") return 4;
-        if (!finished(entry.attempt)) return 3;
-        if (!entry.final) return 1;
+        if (!entry.final) return 3;
         return entry.attempt.state === "passed" ? 0 : 2;
       };
       const seat = (agent) => (agent === "you" ? order.length : order.indexOf(agent));
+      const graded = (left, right) => !left.final || !right.final ? 0
+        : (right.score ?? 0) - (left.score ?? 0) || ((right.parts && right.parts.correctness) ?? -1) - ((left.parts && left.parts.correctness) ?? -1);
       return entries.sort((left, right) => tier(left) - tier(right)
-        || (right.score ?? 0) - (left.score ?? 0)
-        || ((right.parts && right.parts.correctness) ?? -1) - ((left.parts && left.parts.correctness) ?? -1)
+        || graded(left, right)
         || seat(left.attempt.agent) - seat(right.attempt.agent)
         || left.attempt.number - right.attempt.number);
     }
@@ -796,8 +938,9 @@
         const mark = el("b");
         const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total : "no tests";
         mark.append(icon(attempt.state === "passed" ? "check" : "x"), document.createTextNode(tests));
-        const small = el("small", "", attempt.state === "passed" ? "pass" : "fail");
-        if (entry.final) small.replaceChildren(document.createTextNode("score "), scoreText(entry));
+        const small = el("small", "", attempt.state === "passed" ? "pass" : failureReason(attempt));
+        if (attempt.state === "failed") slot.title = "Failed: " + failureReason(attempt);
+        if (entry.final) small.replaceChildren(document.createTextNode(attempt.state === "passed" ? "score " : failureReason(attempt) + " · "), scoreText(entry));
         else if (entry.pending) small.textContent = "in review";
         slot.append(mark, small);
       } else if (attempt.state === "setup") {
@@ -806,7 +949,10 @@
         slot.append(mark, el("small", "", "could not run"));
         slot.title = attempt.failure_excerpt || "";
       } else if (attempt.state === "running") {
-        slot.append(el("b", "", "Running"), el("small", "", "attempt " + attempt.number));
+        const small = el("small", "", "attempt " + attempt.number + " · " + since(attempt.started_at));
+        small.dataset.started = attempt.started_at || "";
+        small.dataset.prefix = "attempt " + attempt.number + " · ";
+        slot.append(el("b", "", "Running"), small);
       } else {
         slot.append(el("b", "", "—"), el("small", "", "attempt " + attempt.number));
       }
@@ -829,13 +975,18 @@
       }
     }
 
+    function lineupChecks(snapshot) {
+      const checks = snapshot.preflight || [];
+      const solvers = (snapshot.lineup || []).map((agent) => checks.find((row) => row.agent === agent && row.role === "solver") || { agent, role: "solver", state: "unchecked", note: "" });
+      return [...solvers, ...checks.filter((row) => row.role !== "solver")];
+    }
+
     function checkLanes(board, checks) {
-      const solvers = checks.filter((row) => row.role === "solver");
       checks.forEach((row) => {
         const author = row.role !== "solver";
         const lane = el("div", "lane" + (author ? " author-lane" : ""));
         lane.dataset.key = "check:" + row.role + ":" + row.agent;
-        if (!author) lane.style.setProperty("--hue", "var(" + HUES[solvers.indexOf(row) % HUES.length] + ")");
+        if (!author) lane.style.setProperty("--hue", hueOf(row.agent));
         const parts = nameParts(row.agent);
         const who = el("div", "who");
         const copy = el("div");
@@ -843,11 +994,14 @@
         copy.firstChild.title = row.agent;
         who.append(el("span", "dot"), copy);
         const slots = el("div", "slots");
-        const slot = el("div", "slot wide " + ({ checking: "running", ready: "ready", failed: "broken" })[row.state]);
+        const slot = el("div", "slot wide " + ({ checking: "running", ready: "ready", failed: "broken", unchecked: "waiting" })[row.state]);
         const mark = el("b");
         if (row.state === "checking") {
           mark.textContent = "Checking";
           slot.append(mark, el("small", "", "login, model and file access"));
+        } else if (row.state === "unchecked") {
+          mark.textContent = "Not checked";
+          slot.append(mark, el("small", "", "added from the catalog in Config, so it runs unchecked"));
         } else if (row.state === "ready") {
           mark.append(icon("check"), document.createTextNode("Ready"));
           slot.append(mark, el("small", "", "read the task and wrote solution.py"));
@@ -865,9 +1019,11 @@
     function checkSummary(checks) {
       const checking = checks.filter((row) => row.state === "checking").length;
       const failed = checks.filter((row) => row.state === "failed").length;
-      if (checking) return "Preflight · checking " + checks.length + " agents with a one-line task";
-      if (failed) return "Preflight · " + failed + " of " + checks.length + " cannot run. Fix them, then check again";
-      return "Preflight · all " + checks.length + " ready";
+      const unchecked = checks.filter((row) => row.state === "unchecked").length;
+      const tail = unchecked ? " · " + unchecked + " not checked" : "";
+      if (checking) return "Preflight · checking " + (checks.length - unchecked) + " agents with a one-line task" + tail;
+      if (failed) return "Preflight · " + failed + " of " + checks.length + " cannot run. Fix them, then check again" + tail;
+      return "Preflight · " + (checks.length - unchecked) + " ready" + tail;
     }
 
     function authorLane(snapshot) {
@@ -899,6 +1055,15 @@
       for (const node of document.querySelectorAll("[data-since]")) {
         node.textContent = clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed";
       }
+      for (const node of document.querySelectorAll("[data-started]")) {
+        if (node.dataset.started) node.textContent = (node.dataset.prefix || "") + since(Number(node.dataset.started));
+      }
+      const timings = (latest && latest.timings) || {};
+      for (const step of document.querySelectorAll("#steps li")) {
+        const span = timings[step.dataset.phase];
+        const time = step.querySelector("time");
+        if (time) time.textContent = span ? since(span.start, span.end ?? undefined) : "";
+      }
     }
 
     function renderBoard(snapshot, entries) {
@@ -909,7 +1074,7 @@
       board.replaceChildren();
       const agents = snapshot.agents || [];
       const meta = document.getElementById("race-meta");
-      const checks = snapshot.preflight || [];
+      const checks = lineupChecks(snapshot);
       const recheck = document.getElementById("recheck");
       recheck.hidden = snapshot.phase !== "idle" || !checks.length;
       recheck.disabled = checks.some((row) => row.state === "checking");
@@ -1004,9 +1169,12 @@
       const label = nameParts(attempt.agent);
       who.title = attempt.agent;
       who.appendChild(el("span", "", label.name));
-      if (label.cli) who.appendChild(el("small", "cli", label.cli));
+      if (attempt.state === "failed" || attempt.state === "setup") who.appendChild(el("small", "cli why", failureReason(attempt)));
+      else if (label.cli) who.appendChild(el("small", "cli", label.cli));
       let result;
-      if (attempt.state === "running") {
+      if (attempt.state === "waiting") {
+        result = el("span", "result idle", latest && latest.phase === "idle" ? "Not started" : "Queued");
+      } else if (attempt.state === "running") {
         result = el("span", "result run", "Running");
       } else if (attempt.state === "setup") {
         result = el("span", "result setup");
@@ -1015,7 +1183,11 @@
         const passed = attempt.state === "passed";
         result = el("span", "result " + (passed ? "pass" : "fail"));
         result.append(icon(passed ? "check" : "x"), document.createTextNode(passed ? "Pass" : "Fail"));
+        if (!passed) result.appendChild(el("span", "sr-only", ", " + failureReason(attempt)));
       }
+      const took = attempt.finished_at ? Math.max((attempt.wall_ms || 0) / 1000, attempt.finished_at - attempt.started_at) : null;
+      const time = el("span", "num", took !== null ? clock(took) : since(attempt.started_at));
+      if (attempt.state === "running" && attempt.started_at) time.dataset.started = attempt.started_at;
       const score = el("span", "score");
       if (entry.final) score.appendChild(scoreText(entry));
       else if (done) score.appendChild(wait(entry.pending ? "Score after review" : "Score after solving ends"));
@@ -1032,7 +1204,8 @@
         score,
         el("span", "num", done ? (attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total : "—") : ""),
         el("span", "num", speed),
-        el("span", "num", done ? figure(attempt.readability) : "")
+        el("span", "num", done ? figure(attempt.readability) : ""),
+        time
       );
       return button;
     }
@@ -1047,13 +1220,17 @@
       const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
       const before = positions(leaderboard, "button.row");
       leaderboard.replaceChildren();
+      if (!leaderboardReady(latest || {})) {
+        leaderboard.appendChild(leaderboardSkeleton());
+        return;
+      }
       if (!entries.length) {
         leaderboard.appendChild(el("p", "empty", "Attempts land here as soon as they start."));
         return;
       }
       const head = el("div", "columns head");
       head.setAttribute("aria-hidden", "true");
-      for (const text of ["", "Agent", "Attempt", "Result", "Score", "Tests", "Speed (ms)", "Static"]) {
+      for (const text of ["", "Agent", "#", "Result", "Score", "Tests", "Speed ms", "Static", "Time"]) {
         head.appendChild(el("span", "", text));
       }
       leaderboard.appendChild(head);
@@ -1073,6 +1250,7 @@
       const paragraph = el("p", whole ? "whole" : "");
       paragraph.append(el("span", "measure-label", label), document.createTextNode(detail));
       parent.appendChild(paragraph);
+      return paragraph;
     }
 
     function part(entry, name) {
@@ -1088,14 +1266,26 @@
         box.appendChild(el("pre", "excerpt", attempt.failure_excerpt || ""));
         return;
       }
-      if (!finished(attempt)) {
-        addMeasure(box, "Running", "Results land here when this attempt finishes.", true);
+      if (attempt.state === "waiting") {
+        addMeasure(box, "Not started", latest.phase === "idle" ? "This row fills in once the run starts." : "Starts after this agent's earlier attempt finishes.", true);
         return;
+      }
+      if (!finished(attempt)) {
+        const label = addMeasure(box, "Running " + since(attempt.started_at), "Results land here when this attempt finishes. The limit is " + clock(latest.timeout_s || 0) + ".", true).firstChild;
+        label.dataset.started = attempt.started_at || "";
+        label.dataset.prefix = "Running ";
+        return;
+      }
+      if (attempt.state === "failed") {
+        const why = el("p", "whole why");
+        why.append(el("span", "measure-label", "Why it failed: " + failureReason(attempt)), document.createTextNode(attempt.failure_excerpt ? "The output is below." : "No output was captured."));
+        box.appendChild(why);
+        if (attempt.failure_excerpt) box.appendChild(el("pre", "excerpt", attempt.failure_excerpt));
       }
       const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from pytest. " : "No tests ran. ";
       addMeasure(box, "Correctness" + part(entry, "correctness"), tests
         + (attempt.public_failed ? "A public example failed, so correctness is 0. " : "")
-        + (attempt.failure_excerpt ? "The first failure is below." : "Every test passed."));
+        + (attempt.tests_total && attempt.tests_passed < attempt.tests_total ? "" : attempt.state === "failed" ? "These grade the solution.py it left. The attempt still fails: " + failureReason(attempt) + "." : "Every test passed."));
       const timing = attempt.performance_ms === null || attempt.performance_ms === undefined
         ? "Not timed. The profiler runs only after every test passes."
         : milliseconds(attempt.performance_ms) + ". " + (attempt.performance_note || "");
@@ -1105,16 +1295,15 @@
         addMeasure(box, "Contract" + part(entry, "contract"), figure(attempt.contract) + ". " + (attempt.contract_notes || "Every contract check passed."));
       }
       if (attempt.agent !== "you") {
-        addMeasure(box, "Cost" + part(entry, "cost"), Number(attempt.tokens || 0).toLocaleString() + " tokens, " + ((attempt.wall_ms || 0) / 1000).toFixed(1) + " s wall clock.");
+        addMeasure(box, "Cost" + part(entry, "cost"), Number(attempt.tokens || 0).toLocaleString() + " tokens, " + ((attempt.wall_ms || 0) / 1000).toFixed(1) + " s agent time" + (attempt.started_at && attempt.finished_at ? ", " + since(attempt.started_at, attempt.finished_at) + " with grading." : "."));
       }
       let review = "No review counts toward this score.";
-      if (entry.graded.length) review = "Mean of " + entry.graded.length + (entry.graded.length === 1 ? " review." : " reviews.");
+      if (entry.graded.length) review = "Mean of " + entry.graded.length + (entry.graded.length === 1 ? " review" : " reviews") + ". Each reviewer's findings are under Review.";
       if (entry.pending) review = "Waiting for " + entry.jobs.filter((job) => job.state === "running").length + " of " + entry.jobs.length + " reviews.";
       addMeasure(box, "Review" + part(entry, "review"), review);
       addMeasure(box, "Score " + (entry.final ? figure(entry.score) : "pending"), entry.final
         ? "Weighted: correctness 40, performance 20, static 15, review 15, contract 10, cost 10. A missing part is left out and the rest are rescaled."
         : "Shown once solving ends and every review of this attempt is in, so it does not jump.", true);
-      if (attempt.failure_excerpt) box.appendChild(el("pre", "excerpt", attempt.failure_excerpt));
     }
 
     function renderReviews(box, entry) {
@@ -1123,7 +1312,7 @@
       let empty = null;
       if (!latest.review_enabled) empty = "Peer review is off for this run.";
       else if (attempt.state === "setup") empty = "Not reviewed. The agent could not run.";
-      else if (attempt.state === "failed") empty = "Reviewers grade passing attempts only.";
+      else if (attempt.state === "failed") empty = "Reviewers grade passing attempts only. Why this one failed is under Score.";
       else if (!entry.jobs.length) {
         empty = SOLVED.includes(latest.phase) && attempt.state === "passed" && attempt.agent !== "you"
           ? "No reviewer from another model family."
@@ -1174,8 +1363,8 @@
       if (!entry) {
         detail.style.removeProperty("--hue");
         title.textContent = "Attempt";
-        document.getElementById("panel-review").hidden = true;
-        document.getElementById("panel-solution").hidden = true;
+        title.removeAttribute("title");
+        for (const id of TABS) document.getElementById("panel-" + id).hidden = true;
         return;
       }
       const attempt = entry.attempt;
@@ -1196,7 +1385,7 @@
 
     function showTab(name, focus) {
       tab = name;
-      for (const id of ["review", "solution"]) {
+      for (const id of TABS) {
         const on = id === name;
         const button = document.getElementById("tab-" + id);
         button.setAttribute("aria-selected", String(on));
@@ -1205,6 +1394,7 @@
         if (panel.hidden === on) panel.hidden = !on;
       }
       if (focus) document.getElementById("tab-" + name).focus();
+      if (focus) document.getElementById("detail-body").scrollTop = 0;
     }
 
     function applyBlur() {
@@ -1219,9 +1409,11 @@
       }
       const open = revealed.has(selected.key);
       pre.classList.toggle("blurred", !open);
-      pre.toggleAttribute("aria-hidden", !open);
+      if (open) pre.removeAttribute("aria-hidden");
+      else pre.setAttribute("aria-hidden", "true");
       button.hidden = false;
-      button.replaceChildren(icon("eye"), document.createTextNode(open ? " Hide solution" : " Show solution"));
+      button.replaceChildren(icon("eye"), document.createTextNode(open ? " Hide solution " : " Show solution "), el("kbd", "", "H"));
+      button.setAttribute("aria-keyshortcuts", "H");
     }
 
     function renderPhase(snapshot) {
@@ -1315,16 +1507,19 @@
       renderTable(entries);
       renderDetail(entries);
       for (const entry of entries) if (entry.final) landed.add(entry.key);
+      if (config && document.getElementById("config-dialog").open) renderConfig();
       tickClock();
     }
 
     async function refresh() {
       const response = await fetch("/status");
       if (!response.ok) return;
-      const payload = await response.text();
+      const snapshot = await response.json();
+      if (snapshot.now) skew = Date.now() / 1000 - snapshot.now;
+      const payload = JSON.stringify({ ...snapshot, now: null });
       if (payload === lastPayload) return;
       lastPayload = payload;
-      render(JSON.parse(payload));
+      render(snapshot);
     }
 
     function select(key) {
@@ -1493,25 +1688,28 @@
       focusRow(rows[Math.min(Math.max(moves[event.key], 0), rows.length - 1)].dataset.key);
     });
 
-    document.getElementById("tabs").addEventListener("keydown", (event) => {
-      const order = ["review", "solution"];
-      const other = order[(order.indexOf(tab) + 1) % 2];
-      const moves = { ArrowRight: other, ArrowLeft: other, Home: "review", End: "solution" };
+    function tabKeys(event, order, current, show) {
+      const at = order.indexOf(current);
+      const moves = { ArrowRight: order[(at + 1) % order.length], ArrowLeft: order[(at + order.length - 1) % order.length], Home: order[0], End: order[order.length - 1] };
       if (!(event.key in moves)) return;
       event.preventDefault();
-      showTab(moves[event.key], true);
-    });
+      show(moves[event.key], true);
+    }
 
-    for (const name of ["review", "solution"]) {
+    document.getElementById("tabs").addEventListener("keydown", (event) => tabKeys(event, TABS, tab, showTab));
+
+    for (const name of TABS) {
       document.getElementById("tab-" + name).addEventListener("click", () => showTab(name, true));
     }
 
-    document.getElementById("reveal").addEventListener("click", () => {
-      if (!selected) return;
+    function toggleReveal() {
+      if (!selected || document.getElementById("reveal").hidden) return;
       if (revealed.has(selected.key)) revealed.delete(selected.key);
       else revealed.add(selected.key);
       applyBlur();
-    });
+    }
+
+    document.getElementById("reveal").addEventListener("click", toggleReveal);
 
     document.getElementById("open-message").addEventListener("click", openMessage);
 
@@ -1527,7 +1725,7 @@
     document.addEventListener("keydown", (event) => {
       if (event.defaultPrevented) return;
       if (event.key === "Escape") {
-        if (document.getElementById("message-dialog").open) return;
+        if (document.querySelector("dialog[open]")) return;
         const active = document.activeElement;
         if (!active || active === document.body) return;
         event.preventDefault();
@@ -1537,20 +1735,201 @@
         return;
       }
       if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.altKey || document.querySelector("dialog[open]")) return;
+      const pick = (name) => () => selected && showTab(name, true);
       const actions = {
         m: openMessage,
+        c: openConfig,
+        1: pick("score"),
+        2: pick("review"),
+        3: pick("solution"),
+        h: () => {
+          const active = document.activeElement;
+          if (!(active instanceof Element) || !active.closest("#tab-solution, #panel-solution")) return false;
+          toggleReveal();
+        },
         t: () => focusField("task"),
         y: () => focusField("mine"),
         a: () => focusSection("agents"),
-        l: focusLeaderboard,
-        r: () => selected && showTab("review", true),
-        s: () => selected && showTab("solution", true)
+        l: focusLeaderboard
       };
       const action = actions[event.key.toLowerCase()];
-      if (!action) return;
+      if (!action || action() === false) return;
       event.preventDefault();
-      action();
+    });
+
+    const frame = document.getElementById("leaderboard-frame");
+    new ResizeObserver(() => {
+      frame.style.height = document.getElementById("leaderboard").offsetHeight + "px";
+    }).observe(document.getElementById("leaderboard"));
+
+    let configTab = "run";
+
+    function showConfigTab(name, focus) {
+      configTab = name;
+      for (const id of ["run", "prompts"]) {
+        const on = id === name;
+        const button = document.getElementById("ctab-" + id);
+        button.setAttribute("aria-selected", String(on));
+        button.tabIndex = on ? 0 : -1;
+        document.getElementById("cpanel-" + id).hidden = !on;
+      }
+      if (focus) document.getElementById("ctab-" + name).focus();
+    }
+
+    function checkState(name) {
+      const row = ((latest && latest.preflight) || []).find((item) => item.agent === name && item.role === "solver");
+      return row ? row.state : null;
+    }
+
+    function renderConfig() {
+      const list = document.getElementById("model-list");
+      const checking = ((latest && latest.preflight) || []).some((row) => row.state === "checking");
+      const locked = config.locked;
+      const open = document.getElementById("config-dialog").open;
+      const kept = new Map(open ? [...list.querySelectorAll("input, select")].map((node) => [node.id, node.type === "checkbox" ? node.checked : node.value]) : []);
+      const focused = open && list.contains(document.activeElement) ? document.activeElement.id || null : null;
+      for (const [id, seconds] of [["author-limit", config.author_timeout_s], ["solve-limit", config.timeout_s], ["review-limit", config.review_timeout_s]]) {
+        const input = document.getElementById(id);
+        if (!open) input.value = seconds / 60;
+        input.disabled = locked;
+      }
+      document.getElementById("config-save").disabled = locked;
+      const note = document.getElementById("config-note");
+      note.className = "muted";
+      note.textContent = locked ? "Locked while a run is going." : checking ? "Models can be switched once the lineup check finishes." : "";
+      list.replaceChildren();
+      const groups = new Map();
+      for (const model of config.models) {
+        if (!groups.has(model.cli)) groups.set(model.cli, []);
+        groups.get(model.cli).push(model);
+      }
+      for (const [cli, models] of groups) {
+        const group = el("fieldset", "cli-group");
+        group.appendChild(el("legend", "", cli));
+        for (const model of models) {
+          const row = el("div", "model");
+          const id = "model-" + model.cli + "-" + model.model;
+          const box = el("input");
+          box.type = "checkbox";
+          box.id = id;
+          box.checked = kept.has(id) ? kept.get(id) : model.enabled;
+          box.dataset.cli = model.cli;
+          box.dataset.model = model.model;
+          const state = model.lineup ? checkState(model.name) || "unchecked" : "unchecked";
+          box.disabled = locked || checking || (!model.enabled && state === "failed");
+          const label = el("label", "", model.model);
+          label.htmlFor = id;
+          if (model.lineup) label.append(" ", el("small", "", "lineup"));
+          let effort;
+          if (model.lineup) {
+            effort = el("span", "fixed", model.effort || "default");
+          } else {
+            effort = el("select");
+            effort.dataset.effortFor = id;
+            effort.id = id + "-effort";
+            effort.setAttribute("aria-label", model.model + " reasoning level");
+            effort.disabled = locked;
+            for (const level of model.efforts) {
+              const option = el("option", "", level);
+              option.value = level;
+              option.selected = level === (kept.has(effort.id) ? kept.get(effort.id) : model.effort);
+              effort.appendChild(option);
+            }
+          }
+          const chip = el("span", "chip", { ready: "Ready", failed: "Cannot run", checking: "Checking", unchecked: "Not checked" }[state] || state);
+          chip.dataset.state = state;
+          if (state === "failed") chip.title = ((latest.preflight || []).find((item) => item.agent === model.name) || {}).note || "";
+          row.append(box, label, effort, chip);
+          group.appendChild(row);
+        }
+        list.appendChild(group);
+      }
+      if (focused && document.getElementById(focused)) document.getElementById(focused).focus();
+      configSummary();
+      const prompts = document.getElementById("prompt-list");
+      if (!prompts.childElementCount) {
+        for (const prompt of config.prompts) {
+          const block = el("details", "prompt");
+          block.append(el("summary", "", prompt.title), el("pre", "", prompt.text));
+          prompts.appendChild(block);
+        }
+      }
+    }
+
+    function configSummary() {
+      const note = document.getElementById("config-note");
+      if (config.locked || note.className === "error" || ((latest && latest.preflight) || []).some((row) => row.state === "checking")) return;
+      const on = [...document.querySelectorAll("#model-list input[type=checkbox]:checked")];
+      const unchecked = on.map((box) => config.models.find((model) => model.cli === box.dataset.cli && model.model === box.dataset.model)).filter((model) => !model.lineup).map((model) => model.model);
+      const tests = Number(document.getElementById("author-limit").value) || 0;
+      const solving = Number(document.getElementById("solve-limit").value) || 0;
+      const reviews = Number(document.getElementById("review-limit").value) || 0;
+      note.textContent = on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
+        + (unchecked.length ? " · not checked: " + unchecked.join(", ") : "");
+    }
+
+    async function openConfig() {
+      const response = await fetch("/config");
+      if (!response.ok) return;
+      config = await response.json();
+      renderConfig();
+      showConfigTab("run", false);
+      const dialog = document.getElementById("config-dialog");
+      dialog.showModal();
+      const first = dialog.querySelector("#model-list input:not(:disabled)") || document.getElementById("ctab-run");
+      first.focus();
+    }
+
+    document.getElementById("open-config").addEventListener("click", openConfig);
+    document.getElementById("config-form").addEventListener("input", () => {
+      document.getElementById("config-note").className = "muted";
+      configSummary();
+    });
+    document.getElementById("config-cancel").addEventListener("click", () => document.getElementById("config-dialog").close());
+    document.getElementById("config-tabs").addEventListener("keydown", (event) => tabKeys(event, ["run", "prompts"], configTab, showConfigTab));
+    for (const name of ["run", "prompts"]) document.getElementById("ctab-" + name).addEventListener("click", () => showConfigTab(name, true));
+
+    document.getElementById("model-list").addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      if (!event.target.matches("input[type=checkbox]")) return;
+      const boxes = [...document.querySelectorAll("#model-list input[type=checkbox]:not(:disabled)")];
+      const at = boxes.indexOf(event.target);
+      const next = boxes[at + (event.key === "ArrowDown" ? 1 : -1)];
+      if (!next) return;
+      event.preventDefault();
+      next.focus();
+    });
+
+    document.getElementById("config-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const models = [...document.querySelectorAll("#model-list input[type=checkbox]")].map((box) => {
+        const effort = document.querySelector('[data-effort-for="' + CSS.escape(box.id) + '"]');
+        return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined };
+      });
+      const response = await fetch("/config", {
+        method: "POST",
+        body: JSON.stringify({
+          author_timeout_s: Math.round(Number(document.getElementById("author-limit").value) * 60),
+          timeout_s: Math.round(Number(document.getElementById("solve-limit").value) * 60),
+          review_timeout_s: Math.round(Number(document.getElementById("review-limit").value) * 60),
+          models
+        })
+      });
+      if (!response.ok) {
+        const note = document.getElementById("config-note");
+        note.className = "error";
+        note.textContent = await response.text();
+        return;
+      }
+      config = await response.json();
+      document.getElementById("config-dialog").close();
+      const button = document.getElementById("open-config");
+      button.replaceChildren(icon("check"), document.createTextNode("Saved"));
+      clearTimeout(openConfig.timer);
+      openConfig.timer = setTimeout(() => button.replaceChildren(document.createTextNode("Config "), el("kbd", "", "C")), 2000);
+      lastPayload = null;
+      refresh();
     });
 
     setInterval(refresh, 1000);

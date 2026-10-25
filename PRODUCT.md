@@ -30,7 +30,7 @@ Used once, beside a Codility tab, for the length of one task. The task text is c
 
 ## Capabilities and Constraints
 
-- Paste a task and start the fixed interview lineup: Claude Opus medium, Claude Sonnet high, Codex gpt-6-astra high, Codex gpt-6.1-sol xhigh, Grok 4.7 high. Claude Opus high, which is not a solver, writes the hidden tests. Three attempts, 600 second timeout, $3 Claude budget, review on. A model never reviews its own family's code.
+- Paste a task and start the fixed interview lineup: Claude Opus medium, Claude Sonnet high, Codex gpt-6-astra high, Codex gpt-6.1-sol xhigh, Grok 4.7 high. Claude Opus high, which is not a solver, writes the hidden tests. Three attempts, 300 seconds per attempt (set in the config dialog), $3 Claude budget, review on. A model never reviews its own family's code.
 - One run at a time. A second task waits until the current one is done.
 - Show each attempt as waiting, running, passed, or failed, with the test count when it has finished.
 - Open any finished attempt's `solution.py`, and the kept solution.

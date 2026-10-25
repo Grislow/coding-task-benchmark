@@ -25,6 +25,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/status":
             self._json(200, self.server.session.snapshot())
             return
+        if parsed.path == "/config":
+            self._json(200, self.server.session.config())
+            return
         if parsed.path == "/solution":
             source = _solution(self.server.session.snapshot(), parse_qs(parsed.query))
             if source is None:
@@ -54,6 +57,24 @@ class Handler(BaseHTTPRequestHandler):
                 self._text(409, str(exc))
                 return
             self._json(200, snapshot)
+            return
+        if parsed.path == "/config":
+            try:
+                payload = json.loads(body or "{}")
+            except ValueError:
+                payload = None
+            if not isinstance(payload, dict):
+                self._text(400, "Send a JSON object.")
+                return
+            try:
+                config = self.server.session.configure(payload)
+            except RuntimeError as exc:
+                self._text(409, str(exc))
+                return
+            except ValueError as exc:
+                self._text(400, str(exc))
+                return
+            self._json(200, config)
             return
         if parsed.path == "/check":
             try:

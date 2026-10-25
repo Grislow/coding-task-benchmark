@@ -1,16 +1,26 @@
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ctb.agents import EFFORTS, agent_name
 from ctb.checks import readability_report
 from ctb.contract import contract_report
 from ctb.evaluate import evaluate_solution
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
-from ctb.orchestrate import _grade, rerun_agent, run_benchmark
+from ctb.orchestrate import _grade, family, rerun_agent, run_benchmark
 from ctb.preflight import check_agent
 from ctb.progress import ProgressBoard, review_row
+from ctb.prompts import (
+    author_prompt,
+    next_approach_prompt,
+    review_prompt,
+    solver_prompt,
+)
 from ctb.score import apply_profile, correctness_score, weighted_score
+
+LEVELS = ("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
 
 _IDLE = {
     "phase": "idle",
@@ -36,11 +46,26 @@ class RunSession:
         review: bool,
         out_root: Path,
         tech: str = "python",
+        catalog: dict[str, list[str]] | None = None,
+        build: Callable[[str], CodingAgent] | None = None,
+        author_timeout_s: int | None = None,
+        review_timeout_s: int | None = None,
     ) -> None:
         self._agents = agents
+        self._lineup = list(agents)
+        self._build = build
+        self._models = [_model_row(agent) for agent in agents]
+        taken = {(row["cli"], row["model"]) for row in self._models}
+        for cli, models in (catalog or {}).items():
+            for model in models:
+                if (cli, model) not in taken:
+                    taken.add((cli, model))
+                    self._models.append({"cli": cli, "model": model, "effort": "high", "lineup": False, "enabled": False})
         self._test_author = test_author
         self._attempts = attempts
         self._timeout_s = timeout_s
+        self._author_timeout_s = timeout_s if author_timeout_s is None else author_timeout_s
+        self._review_timeout_s = timeout_s if review_timeout_s is None else review_timeout_s
         self._review = review
         self._out_root = out_root
         self._lock = threading.Lock()
@@ -54,6 +79,7 @@ class RunSession:
         self._tech = tech
         self._task_text = ""
         self._checks: list[dict[str, object]] = []
+        self._apply_timeouts()
 
     def check(self) -> dict[str, object]:
         with self._lock:
@@ -61,7 +87,7 @@ class RunSession:
                 raise RuntimeError("Wait for the run to finish.")
             if any(row["state"] == "checking" for row in self._checks):
                 raise RuntimeError("A check is already running.")
-            roles = [(agent, "solver") for agent in self._agents]
+            roles = [(agent, "solver") for agent in self._agents if agent in self._lineup]
             if self._test_author is not None:
                 roles.append((self._test_author, "test author"))
             self._checks = [{"agent": agent.name, "role": role, "state": "checking", "note": ""} for agent, role in roles]
@@ -69,6 +95,81 @@ class RunSession:
         for agent, row in jobs:
             threading.Thread(target=self._check_one, args=(agent, row), daemon=True).start()
         return self.snapshot()
+
+    def config(self) -> dict[str, object]:
+        with self._lock:
+            locked = self._active()
+            models = [
+                {**row, "name": _row_name(row), "efforts": [level for level in LEVELS if level in EFFORTS.get(row["cli"], ())]}
+                for row in self._models
+            ]
+            timeout_s = self._timeout_s
+            author_timeout_s = self._author_timeout_s
+            review_timeout_s = self._review_timeout_s
+            tech = self._tech
+        return {
+            "locked": locked,
+            "timeout_s": timeout_s,
+            "author_timeout_s": author_timeout_s,
+            "review_timeout_s": review_timeout_s,
+            "attempts": self._attempts,
+            "author": None if self._test_author is None else self._test_author.name,
+            "models": models,
+            "prompts": _prompts(tech),
+        }
+
+    def configure(self, payload: dict[str, object]) -> dict[str, object]:
+        timeout_s = _bounded_timeout(payload.get("timeout_s", self._timeout_s))
+        author_timeout_s = _bounded_timeout(payload.get("author_timeout_s", self._author_timeout_s))
+        review_timeout_s = _bounded_timeout(payload.get("review_timeout_s", self._review_timeout_s))
+        wanted = {
+            (item.get("cli"), item.get("model")): item
+            for item in payload.get("models", [])
+            if isinstance(item, dict)
+        }
+        with self._lock:
+            if self._active():
+                raise RuntimeError("Wait for the run to finish.")
+            rows = [dict(row) for row in self._models]
+            for row in rows:
+                item = wanted.get((row["cli"], row["model"]))
+                if item is None:
+                    continue
+                row["enabled"] = item.get("enabled") is True
+                effort = item.get("effort")
+                if not row["lineup"] and effort is not None:
+                    if effort not in EFFORTS.get(row["cli"], ()):
+                        raise ValueError(f"{row['cli']} has no reasoning level '{effort}'.")
+                    row["effort"] = effort
+            built = {agent.name: agent for agent in [*self._lineup, *self._agents]}
+            agents = []
+            for row in rows:
+                if not row["enabled"]:
+                    continue
+                name = _row_name(row)
+                if name not in built:
+                    if self._build is None:
+                        raise ValueError(f"This page cannot start {name}.")
+                    built[name] = self._build(f"{row['cli']}:{row['model']}:{row['effort']}")
+                agents.append(built[name])
+            if not agents:
+                raise ValueError("Switch on at least one model.")
+            self._models = rows
+            self._agents = agents
+            self._timeout_s = timeout_s
+            self._author_timeout_s = author_timeout_s
+            self._review_timeout_s = review_timeout_s
+            self._apply_timeouts()
+        return self.config()
+
+    def _apply_timeouts(self) -> None:
+        for agent in self._agents:
+            if hasattr(agent, "timeout_s"):
+                agent.timeout_s = self._timeout_s
+            agent.review_timeout_s = self._review_timeout_s
+        author = self._test_author
+        if author is not None and hasattr(author, "timeout_s"):
+            author.timeout_s = self._author_timeout_s
 
     def _check_one(self, agent: CodingAgent, row: dict[str, object]) -> None:
         try:
@@ -199,6 +300,13 @@ class RunSession:
                 "task_text": self._task_text,
                 "review_enabled": self._review,
                 "preflight": [dict(row) for row in self._checks],
+                "lineup": [agent.name for agent in self._agents],
+                "palette": [agent.name for agent in self._lineup] + [agent.name for agent in self._agents if agent not in self._lineup],
+                "attempts_per_agent": self._attempts,
+                "timeout_s": self._timeout_s,
+                "author_timeout_s": self._author_timeout_s,
+                "review_timeout_s": self._review_timeout_s,
+                "now": time.time(),
             }
         if board is None:
             return {**_IDLE, **metadata}
@@ -368,6 +476,42 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "profile": you.profile,
         "reviews": [{**review_row(review), "author": "you", "attempt": 1, "state": "done"} for review in you.reviews],
     }
+
+
+def _bounded_timeout(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 30 <= value <= 3600:
+        raise ValueError("The time limit must be between 30 and 3600 seconds.")
+    return value
+
+
+def _model_row(agent: CodingAgent) -> dict[str, object]:
+    return {
+        "cli": family(agent.name),
+        "model": getattr(agent, "model", None) or agent.name,
+        "effort": getattr(agent, "effort", None),
+        "lineup": True,
+        "enabled": True,
+        "name": agent.name,
+    }
+
+
+def _row_name(row: dict[str, object]) -> str:
+    if row["lineup"]:
+        return str(row["name"])
+    return agent_name(str(row["cli"]), str(row["model"]), str(row["effort"]))
+
+
+def _prompts(tech: str) -> list[dict[str, str]]:
+    return [
+        {"id": "solver", "title": "Solver, attempt 1", "text": solver_prompt()},
+        {
+            "id": "retry",
+            "title": "Solver, attempts 2 and 3",
+            "text": next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first pytest failure, up to 4000 characters>"),
+        },
+        {"id": "author", "title": "Test author", "text": author_prompt()},
+        {"id": "review", "title": "Reviewer", "text": review_prompt("<task.md>", "<solution.py>", tech)},
+    ]
 
 
 def _read(path: Path) -> str | None:

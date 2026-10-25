@@ -1,3 +1,5 @@
+import json
+import re
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -44,3 +46,33 @@ def cli_versions() -> dict[str, str]:
         output = (completed.stdout or completed.stderr).strip()
         versions[cli] = output.splitlines()[0] if output else f"exited {completed.returncode}"
     return versions
+
+
+CLAUDE_MODELS = ("fable", "opus", "sonnet", "haiku")
+
+
+def model_catalog() -> dict[str, list[str]]:
+    return {"claude": list(CLAUDE_MODELS), "codex": _codex_models(), "grok": _grok_models()}
+
+
+def _codex_models() -> list[str]:
+    output = _output(["codex", "debug", "models"])
+    try:
+        models = json.loads(output).get("models", [])
+    except (ValueError, AttributeError):
+        return []
+    return [item["slug"] for item in models if item.get("visibility") == "list" and item.get("slug")]
+
+
+def _grok_models() -> list[str]:
+    return re.findall(r"^\s*[-*]\s+(\S+)", _output(["grok", "models"]), flags=re.MULTILINE)
+
+
+def _output(command: list[str]) -> str:
+    if shutil.which(command[0]) is None:
+        return ""
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    except subprocess.TimeoutExpired:
+        return ""
+    return completed.stdout
