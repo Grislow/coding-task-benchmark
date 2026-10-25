@@ -29,7 +29,7 @@ Pass the tokens with `--env-file`, never in the command line. `ps` and the run l
 
 ## Recommended shape
 
-1. **One image**, `ctb-agent`: Debian slim, Node 22, Python 3.12, pytest, ruff, fastapi, httpx, and the three CLIs pinned to the versions `./check` prints. Build it once before the interview.
+1. **One image**, `ctb-agent`: Debian slim, Node 22, Python 3.12, pytest, ruff, fastapi, httpx, and the three CLIs pinned to the versions `ctb check` prints. Build it once before the interview.
 2. **One container per agent per run**, started with `docker run -d --rm` and the workspace bind-mounted at `/work`. Each attempt is a `docker exec`. The container keeps each CLI's session files (`~/.claude/projects`, `~/.codex/sessions`, Grok's sessions) between attempts, so `--resume`, `exec resume` and `-r` still work. A fresh container per attempt would break the retry prompts, because they continue the same session.
 3. **The CLIs' own sandboxes off inside the container.** Codex's Landlock sandbox and Grok's strict profile often can't start in an unprivileged container, and the container already sets the limit. So the flags would become: Codex always `--dangerously-bypass-approvals-and-sandbox`, Grok `--sandbox off` (check the exact name).
 4. **Network**: the solvers need their API hosts. Start with the default bridge network. An egress allowlist (api.anthropic.com, api.openai.com / chatgpt.com, the grok.com API) via a small proxy is a later step.
@@ -40,7 +40,7 @@ Pass the tokens with `--env-file`, never in the command line. `ps` and the run l
 
 - Startup: `docker run` takes about 1 s per agent per run. `docker exec` adds about 100 ms per attempt. That's small next to minute-long agent calls.
 - macOS bind mounts are slower than native disk. Workspaces are tiny, so it shouldn't matter. Keep `runs/` on the host and copy results out at the end, as `_solve_apart` already does.
-- Docker Desktop has to be running during the interview. That's one more thing that can fail live, so `./check` should check it too.
+- Docker Desktop has to be running during the interview. That's one more thing that can fail live, so the startup check should check it too.
 - The Grok login is the biggest unknown. Prove it works in a container before building the rest.
 
 ## Where it would plug in

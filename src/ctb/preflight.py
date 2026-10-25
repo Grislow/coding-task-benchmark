@@ -51,8 +51,20 @@ def cli_versions() -> dict[str, str]:
 CLAUDE_MODELS = ("fable", "opus", "sonnet", "haiku")
 
 
+def installed_clis() -> frozenset[str]:
+    return frozenset(cli for cli in CLIS if shutil.which(cli) is not None)
+
+
 def model_catalog() -> dict[str, list[str]]:
-    return {"claude": list(CLAUDE_MODELS), "codex": _codex_models(), "grok": _grok_models()}
+    installed = installed_clis()
+    catalog: dict[str, list[str]] = {}
+    if "claude" in installed:
+        catalog["claude"] = list(CLAUDE_MODELS)
+    if "codex" in installed:
+        catalog["codex"] = _codex_models()
+    if "grok" in installed:
+        catalog["grok"] = _grok_models()
+    return catalog
 
 
 def _codex_models() -> list[str]:

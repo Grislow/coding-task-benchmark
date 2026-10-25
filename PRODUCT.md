@@ -26,7 +26,7 @@ The page is the harness, not a Codility client. Five headless coding CLIs solve 
 
 ## Operating Context
 
-Used once, beside a Codility tab, for the length of one task. The task text is copied from Codility. The chosen solution is copied back by hand. A recording is already running. The CLI `./interview` still works and is unchanged.
+Used once, beside a Codility tab, for the length of one task. The task text is copied from Codility. The chosen solution is copied back by hand. A recording is already running. Start it with `make start`.
 
 ## Capabilities and Constraints
 

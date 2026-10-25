@@ -7,7 +7,7 @@ from ctb.agents import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
 from ctb.fake_agent import FakeAgent
 from ctb.models import CodingAgent
 from ctb.orchestrate import run_benchmark
-from ctb.preflight import check_all, cli_versions, model_catalog
+from ctb.preflight import check_all, cli_versions, installed_clis, model_catalog
 from ctb.prompts import TECHS
 from ctb.report import write_report
 from ctb.server import bind
@@ -126,10 +126,15 @@ def main(argv: list[str] | None = None) -> int:
         print("The task description is empty.", file=sys.stderr)
         return 2
     try:
-        agents = [_build_agent(name, args.timeout, args.budget_usd) for name in _names(args.agents)]
+        names = _present(_names(args.agents))
+        if not names:
+            print("None of those CLIs are on PATH.", file=sys.stderr)
+            return 2
+        agents = [_build_agent(name, args.timeout, args.budget_usd) for name in names]
         for agent in agents:
             agent.review_timeout_s = args.review_timeout
-        author = None if args.test_author == "none" else _build_agent(args.test_author, args.author_timeout, args.budget_usd)
+        author_name = _present_author(args.test_author)
+        author = None if author_name == "none" else _build_agent(author_name, args.author_timeout, args.budget_usd)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -156,8 +161,10 @@ def main(argv: list[str] | None = None) -> int:
 
 def _serve_ui(args: argparse.Namespace) -> int:
     try:
-        agents = [_build_agent(name, args.timeout, 3.0) for name in _names(args.agents)]
-        author = None if args.test_author == "none" else _build_agent(args.test_author, args.author_timeout, 3.0)
+        names = _present(_names(args.agents))
+        agents = [_build_agent(name, args.timeout, 3.0) for name in names]
+        author_name = _present_author(args.test_author)
+        author = None if author_name == "none" else _build_agent(author_name, args.author_timeout, 3.0)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -183,9 +190,10 @@ def _serve_ui(args: argparse.Namespace) -> int:
 
 def _check(args: argparse.Namespace) -> int:
     try:
-        names = _names(args.agents)
-        if args.test_author != "none":
-            names.append(args.test_author)
+        names = _present(_names(args.agents))
+        author_name = _present_author(args.test_author)
+        if author_name != "none":
+            names.append(author_name)
         agents = [_build_agent(name, 600, 3.0) for name in dict.fromkeys(names)]
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -253,6 +261,31 @@ def _split_agent(raw: str) -> tuple[str, str | None, str | None]:
     if allowed is None or level not in allowed:
         raise ValueError(f"Agent '{raw}' has an unknown reasoning level '{level}'.")
     return cli, chosen, level
+
+
+def _present(names: list[str]) -> list[str]:
+    installed = installed_clis() | {"fake"}
+    kept = []
+    skipped = []
+    for name in names:
+        cli = _split_agent(name)[0]
+        if cli in installed:
+            kept.append(name)
+        else:
+            skipped.append(name)
+    if skipped:
+        print("Leaving out " + ", ".join(skipped) + " because that CLI is not on PATH.", file=sys.stderr)
+    return kept
+
+
+def _present_author(name: str) -> str:
+    if name == "none":
+        return "none"
+    cli = _split_agent(name)[0]
+    if cli in installed_clis() or cli == "fake":
+        return name
+    print(f"{cli} is not on PATH, so no model will write the hidden tests.", file=sys.stderr)
+    return "none"
 
 
 def _names(raw: str) -> list[str]:

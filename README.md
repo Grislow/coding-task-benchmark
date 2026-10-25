@@ -4,24 +4,18 @@ Paste a Codility-style task. The harness gives each coding agent its own directo
 
 The solvers are the Claude Code and Grok CLIs in headless mode. The harness never logs into Codility. You read the report and submit the solution you are willing to defend.
 
-## Run
+## Setup
+
+You need Python 3.11 or newer, `make`, and `git`. A solver is included only when its CLI is on `PATH`, so a machine with one of Claude, Codex, or Grok still starts. If Claude is missing, no model writes the hidden tests. The project is MIT licensed.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,fastapi]"
+make setup
+make start
 ```
 
-`fastapi` installs FastAPI and httpx, which FastAPI tasks and the contract check need. Ruff is a dependency, so the static check always runs.
+`make setup` creates `.venv` and installs the package, including pytest and the FastAPI extra. Ruff is a dependency, so the static check always runs. `make start` serves the page at <http://127.0.0.1:8765>. Paste the task in the browser. `make test` runs the tests.
 
-During the interview, pass only the task. The lineup is already chosen:
-
-```bash
-pbpaste | ./interview
-./interview task.md
-```
-
-That runs three attempts on each of these models, at the same time. Each row has its own reasoning level, because that changes the code the model writes:
+The page runs three attempts on each of these models, at the same time. Each row has its own reasoning level, because that changes the code the model writes:
 
 | Solver | Model | Reasoning |
 | --- | --- | --- |
@@ -33,49 +27,37 @@ That runs three attempts on each of these models, at the same time. Each row has
 
 Opus at medium and gpt-6.1-sol at xhigh are fixed. The other three are high. Sonnet 5.5's FrontierCode score peaks at xhigh and falls at max, because max makes edits the grader treats as out of scope, and high is the step up from Claude Code's medium default. Astra's DeepSWE score barely moves above high. Grok 4.7's published DeepSWE number is the high-effort run, and high is that model's default. Codex is started with `--ignore-user-config`, so an `xhigh` in `~/.codex/config.toml` would not apply. The catalog default for these Codex models is low.
 
-Claude Opus at high writes the hidden tests before those five start. It is not one of the solvers, so no solver is graded on tests it wrote itself. Change the list in [src/ctb/cli.py](src/ctb/cli.py) before the interview, not during it.
+Claude Opus at high writes the hidden tests before those five start. It is not one of the solvers, so no solver is graded on tests it wrote itself. Change the lineup in the config dialog before the run. The default list is in [src/ctb/cli.py](src/ctb/cli.py).
 
 To pick models yourself:
 
 ```bash
-ctb run examples/binary_gap.md --agents claude,grok
+.venv/bin/ctb run examples/binary_gap.md --agents claude,grok
 ```
 
 Offline walkthrough, with no model calls. The `fake` agent only knows the bundled BinaryGap sample, and it misses on purpose on attempt 1:
 
 ```bash
-ctb run examples/binary_gap.md --agents fake --test-author fake --skip-review
+.venv/bin/ctb run examples/binary_gap.md --agents fake --test-author fake --skip-review
 ```
 
 The report is `runs/<timestamp>/report.md`.
 
-## Local page
+## The page
 
-`./ui` opens the same five models in a browser on this machine. Paste the task there, watch each attempt, open a solution, and paste your own to score it on that run's suite. A line entered on the page is shown across the top for 5 seconds. It is not stored and not sent anywhere.
-
-```bash
-./ui
-```
-
-The page listens on `127.0.0.1` port 8765 only. `./interview` still runs in the terminal.
+Paste the task, watch each attempt, open a solution, and paste your own to score it on that run's suite. A line entered on the page is shown across the top for 5 seconds. It is not stored and not sent anywhere. The page listens on `127.0.0.1` port 8765 only.
 
 The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It switches models on and off, adds others from each CLI's catalog with a reasoning level, sets those three limits, and shows the prompts each role gets. Only the lineup is checked at startup. Models added from the catalog are labelled "Not checked".
+
+When the page starts it gives each lineup model a one-line task in a real solve folder. That catches a missing login, an unknown model id, or a permission rule that blocks file access. The result is in the Agents section, with a Check again button. The same check from a terminal is `.venv/bin/ctb check`.
 
 Sandboxing the agents in Docker is researched in [docs/docker.md](docs/docker.md), but not built.
 
 To open the page without calling a model:
 
 ```bash
-ctb ui --agents fake --test-author fake --skip-review
+.venv/bin/ctb ui --agents fake --test-author fake --skip-review
 ```
-
-## Before an interview
-
-```bash
-./check
-```
-
-Prints the `claude`, `codex` and `grok` versions, then gives each model in the lineup a one-line task in a real solve folder. It catches a missing login, an unknown model id, or a permission rule that blocks file access. It exits 1 if any model cannot run. `./ui` runs the same check when it starts and shows the result in the Agents section, with a Check again button.
 
 During a run, a model that cannot run is retried once after 5 seconds. If it still fails, the attempt is marked Setup, is not scored or ranked, and shows the model's own message. Once the run finishes, Re-run in that model's lane runs it again on the same suite, with reviews.
 

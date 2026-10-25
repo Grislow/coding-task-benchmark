@@ -14,6 +14,7 @@ from ctb.preflight import check_agent
 from ctb.progress import ProgressBoard, review_row
 from ctb.prompts import (
     author_prompt,
+    deadline_note,
     next_approach_prompt,
     review_prompt,
     solver_prompt,
@@ -115,7 +116,7 @@ class RunSession:
             "attempts": self._attempts,
             "author": None if self._test_author is None else self._test_author.name,
             "models": models,
-            "prompts": _prompts(tech),
+            "prompts": _prompts(tech, timeout_s, author_timeout_s, review_timeout_s),
         }
 
     def configure(self, payload: dict[str, object]) -> dict[str, object]:
@@ -501,16 +502,16 @@ def _row_name(row: dict[str, object]) -> str:
     return agent_name(str(row["cli"]), str(row["model"]), str(row["effort"]))
 
 
-def _prompts(tech: str) -> list[dict[str, str]]:
+def _prompts(tech: str, solve_s: int, author_s: int, review_s: int) -> list[dict[str, str]]:
     return [
-        {"id": "solver", "title": "Solver, attempt 1", "text": solver_prompt()},
+        {"id": "solver", "title": "Solver, attempt 1", "text": deadline_note(solve_s) + solver_prompt()},
         {
             "id": "retry",
             "title": "Solver, attempts 2 and 3",
-            "text": next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first pytest failure, up to 4000 characters>"),
+            "text": deadline_note(solve_s) + next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first pytest failure, up to 4000 characters>"),
         },
-        {"id": "author", "title": "Test author", "text": author_prompt()},
-        {"id": "review", "title": "Reviewer", "text": review_prompt("<task.md>", "<solution.py>", tech)},
+        {"id": "author", "title": "Test author", "text": deadline_note(author_s) + author_prompt()},
+        {"id": "review", "title": "Reviewer", "text": deadline_note(review_s) + review_prompt("<task.md>", "<solution.py>", tech)},
     ]
 
 

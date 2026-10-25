@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ctb.models import AgentResult, TokenUsage
-from ctb.prompts import RUBRIC_SCHEMA
+from ctb.prompts import RUBRIC_SCHEMA, deadline_note
 from ctb.usage import result_from_codex_jsonl, result_from_stdout
 
 # --bare skips keychain and OAuth. --safe-mode keeps the signed-in subscription
@@ -47,10 +47,11 @@ class ClaudeAgent:
     ) -> AgentResult:
         if shutil.which("claude") is None:
             return _missing(self.name)
+        limit = _role_timeout(self, role)
         command = claude_command(
-            prompt, session_id, role, self.budget_usd, self.model, self.effort
+            deadline_note(limit) + prompt, session_id, role, self.budget_usd, self.model, self.effort
         )
-        return _invoke(command, Path(cwd), os.environ.copy(), _role_timeout(self, role), result_from_stdout)
+        return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_stdout)
 
 
 class GrokAgent:
@@ -70,11 +71,12 @@ class GrokAgent:
     ) -> AgentResult:
         if shutil.which("grok") is None:
             return _missing(self.name)
-        command = grok_command(prompt, Path(cwd), session_id, role, self.model, self.effort)
+        limit = _role_timeout(self, role)
+        command = grok_command(deadline_note(limit) + prompt, Path(cwd), session_id, role, self.model, self.effort)
         env = os.environ.copy()
         env["GROK_CLAUDE_SKILLS_ENABLED"] = "false"
         env["GROK_CURSOR_SKILLS_ENABLED"] = "false"
-        return _invoke(command, Path(cwd), env, _role_timeout(self, role), result_from_stdout)
+        return _invoke(command, Path(cwd), env, limit, result_from_stdout)
 
 
 class CodexAgent:
@@ -94,14 +96,15 @@ class CodexAgent:
     ) -> AgentResult:
         if shutil.which("codex") is None:
             return _missing(self.name)
+        limit = _role_timeout(self, role)
         schema_path = None
         if role == "review":
             schema_path = Path(cwd) / "rubric.schema.json"
             schema_path.write_text(RUBRIC_SCHEMA)
         command = codex_command(
-            prompt, Path(cwd), session_id, role, self.model, schema_path, self.effort
+            deadline_note(limit) + prompt, Path(cwd), session_id, role, self.model, schema_path, self.effort
         )
-        return _invoke(command, Path(cwd), os.environ.copy(), _role_timeout(self, role), result_from_codex_jsonl)
+        return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_codex_jsonl)
 
 
 def _role_timeout(agent: object, role: str) -> int:
@@ -295,6 +298,7 @@ def _invoke(
     parse: Callable[[str, str, int, int], AgentResult],
 ) -> AgentResult:
     started = time.perf_counter()
+    _plant_clock(cwd, timeout_s)
     process = subprocess.Popen(
         command,
         cwd=cwd,
@@ -313,6 +317,13 @@ def _invoke(
         return parse(stdout or "", f"{stderr or ''}\nTimed out after {timeout_s}s.", 124, wall_ms)
     wall_ms = int((time.perf_counter() - started) * 1000)
     return parse(stdout, stderr, process.returncode, wall_ms)
+
+
+def _plant_clock(cwd: Path, timeout_s: int) -> None:
+    deadline = int(time.time()) + timeout_s
+    script = cwd / "time-left"
+    script.write_text(f"#!/bin/sh\necho $(( {deadline} - $(date +%s) ))\n")
+    script.chmod(0o755)
 
 
 def _missing(name: str) -> AgentResult:

@@ -163,6 +163,8 @@ def test_interview_lineup_is_five_distinct_models() -> None:
 
 def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok"}))
+    monkeypatch.setattr("ctb.cli.model_catalog", lambda: {})
 
     def fake_serve(session: object, port: int) -> int:
         seen["agents"] = [agent.name for agent in session._agents]
@@ -192,6 +194,34 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
     assert seen["author_limit"] == 900
     assert seen["solve_limits"] == [300, 300, 300, 300, 300]
     assert seen["review_limits"] == [300, 300, 300, 300, 300]
+
+
+def test_a_missing_cli_is_left_out_of_the_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"grok"}))
+    monkeypatch.setattr("ctb.cli.model_catalog", lambda: {"grok": ["grok-4.7", "grok-4"]})
+
+    def fake_serve(session: object, port: int) -> int:
+        del port
+        seen["agents"] = [agent.name for agent in session._agents]
+        author = session._test_author
+        seen["author"] = None if author is None else author.name
+        seen["clis"] = {row["cli"] for row in session._models}
+        return 0
+
+    monkeypatch.setattr("ctb.cli._serve", fake_serve)
+    assert main(["ui"]) == 0
+    assert seen["agents"] == ["grok-grok-4.7-high"]
+    assert seen["author"] is None
+    assert seen["clis"] == {"grok"}
+
+
+def test_catalog_skips_a_cli_that_is_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from ctb.preflight import model_catalog
+
+    monkeypatch.setattr("ctb.preflight.shutil.which", lambda name: "/bin/grok" if name == "grok" else None)
+    monkeypatch.setattr("ctb.preflight._grok_models", lambda: ["grok-4.7"])
+    assert model_catalog() == {"grok": ["grok-4.7"]}
 
 
 def test_agent_entries_can_name_a_model() -> None:
@@ -282,10 +312,12 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
     from ctb.agents import ClaudeAgent
 
     seen: dict[str, int] = {}
+    seen_prompt: dict[str, str] = {}
 
     def fake_invoke(command: list[str], cwd: Path, env: dict[str, str], timeout_s: int, parse: object) -> AgentResult:
-        del command, cwd, env, parse
+        del cwd, env, parse
         seen["timeout"] = timeout_s
+        seen_prompt["text"] = command[2]
         return AgentResult(True, "", None, TokenUsage(), 1, None, None, {})
 
     monkeypatch.setattr("ctb.agents._invoke", fake_invoke)
@@ -294,12 +326,28 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
     agent.review_timeout_s = 180
     agent.complete(cwd=str(tmp_path), prompt="Solve", session_id=None, role="solve")
     assert seen["timeout"] == 300
+    assert seen_prompt["text"].startswith("You have 5 minutes.")
+    assert "sh time-left" in seen_prompt["text"]
+    assert seen_prompt["text"].endswith("Solve")
     agent.complete(cwd=str(tmp_path), prompt="Grade", session_id=None, role="review")
     assert seen["timeout"] == 180
+    assert seen_prompt["text"].startswith("You have 3 minutes.")
     author = ClaudeAgent(900, 1.0, "opus", "high")
     author.review_timeout_s = 300
     author.complete(cwd=str(tmp_path), prompt="Write tests", session_id=None, role="author")
     assert seen["timeout"] == 900
+    assert seen_prompt["text"].startswith("You have 15 minutes.")
+
+
+def test_time_left_reports_the_seconds_remaining(tmp_path: Path) -> None:
+    import subprocess
+
+    from ctb.agents import _plant_clock
+
+    _plant_clock(tmp_path, 600)
+    completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
+    left = int(completed.stdout.strip())
+    assert 590 <= left <= 600
 
 
 def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:
