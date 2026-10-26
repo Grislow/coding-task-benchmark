@@ -9,3 +9,6 @@ build/
 .taste-skill/
 
 .uiux/
+/.claude/settings.local.json
+/.codex/config.toml
+/.grok/config.toml
