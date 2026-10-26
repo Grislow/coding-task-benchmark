@@ -257,7 +257,7 @@
       background: color-mix(in oklab, var(--hue) 24%, transparent);
       -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
       mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
-      animation: march 800ms linear infinite;
+      animation: march 800ms linear var(--sync, 0ms) infinite;
     }
     @keyframes march { to { -webkit-mask-position: 20px 0; mask-position: 20px 0; } }
     .slot svg, .result svg { flex: none; }
@@ -269,9 +269,9 @@
     .slot.setup b, .slot.broken b, .result.setup { color: var(--fail); }
     .slot.ready { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--pass) 55%, transparent); }
     .slot.ready b { color: var(--pass); }
-    .slot.broken { height: auto; min-height: 54px; padding-block: 8px; background: color-mix(in oklab, var(--fail) 10%, transparent); box-shadow: inset 0 0 0 2px var(--fail); animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    .slot.broken { height: auto; min-height: 54px; padding-block: 8px; background: color-mix(in oklab, var(--fail) 10%, transparent); box-shadow: inset 0 0 0 2px var(--fail); }
     .slot.broken small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .slot.ready { animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    .slot.ready.fresh, .slot.broken.fresh { animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
     button.ghost.small { height: 30px; padding: 0 12px; font-size: 13px; line-height: 30px; }
     .section-head #recheck { align-self: center; margin-left: auto; }
     .section-head #recheck[hidden] { display: none; }
@@ -329,12 +329,12 @@
     .result.pass { color: var(--pass); }
     .result.fail { color: var(--fail); }
     .result.run { color: var(--hue); }
-    .result.run::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
+    .result.run::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear var(--sync, 0ms) infinite; }
     .score { font: 800 18px var(--display); text-align: right; }
     .wait { display: inline-flex; gap: 3px; justify-content: flex-end; width: 100%; }
-    .wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s ease-in-out infinite; }
-    .wait i:nth-child(2) { animation-delay: 160ms; }
-    .wait i:nth-child(3) { animation-delay: 320ms; }
+    .wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s ease-in-out var(--sync, 0ms) infinite; }
+    .wait i:nth-child(2) { animation-delay: calc(var(--sync, 0ms) + 160ms); }
+    .wait i:nth-child(3) { animation-delay: calc(var(--sync, 0ms) + 320ms); }
     @keyframes blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
     .landed { animation: land 520ms cubic-bezier(.2, .8, .2, 1); display: inline-block; }
     @keyframes land { from { transform: scale(0.6); opacity: 0; } 55% { transform: scale(1.18); opacity: 1; } to { transform: none; } }
@@ -488,7 +488,7 @@
     .prompt pre { margin: 0 14px 14px; min-height: 0; max-height: 360px; width: auto; font-size: 12px; }
     @media (prefers-reduced-motion: reduce) {
       .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
-      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]), .skeleton i, .podium i, button.action.busy::before { animation: none; }
+      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready.fresh, .slot.broken.fresh, [role="tabpanel"]:not([hidden]), .skeleton i, .podium i, button.action.busy::before { animation: none; }
       button.action, .tech, [role="tab"], .board-frame, .detail { transition: none; }
     }
     @media (max-width: 1240px) {
@@ -688,6 +688,7 @@
     const TABS = ["score", "review", "solution"];
     const revealed = new Set();
     const landed = new Set();
+    const laneStates = new Map();
     const still = matchMedia("(prefers-reduced-motion: reduce)");
 
     const phases = {
@@ -1078,6 +1079,8 @@
         who.append(el("span", "dot"), copy);
         const slots = el("div", "slots");
         const slot = el("div", "slot wide " + ({ checking: "running", ready: "ready", failed: "broken", unchecked: "waiting" })[row.state]);
+        if (laneStates.get(lane.dataset.key) !== row.state) slot.classList.add("fresh");
+        laneStates.set(lane.dataset.key, row.state);
         const mark = el("b");
         if (row.state === "checking") {
           mark.textContent = "Checking";
@@ -1134,18 +1137,22 @@
       return lane;
     }
 
+    function setText(node, text) {
+      if (node.textContent !== text) node.textContent = text;
+    }
+
     function tickClock() {
       for (const node of document.querySelectorAll("[data-since]")) {
-        node.textContent = clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed";
+        setText(node, clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed");
       }
       for (const node of document.querySelectorAll("[data-started]")) {
-        if (node.dataset.started) node.textContent = (node.dataset.prefix || "") + since(Number(node.dataset.started));
+        if (node.dataset.started) setText(node, (node.dataset.prefix || "") + since(Number(node.dataset.started)));
       }
       const timings = (latest && latest.timings) || {};
       for (const step of document.querySelectorAll("#steps li")) {
         const span = timings[step.dataset.phase];
         const time = step.querySelector("time");
-        if (time) time.textContent = span ? since(span.start, span.end ?? undefined) : "";
+        if (time) setText(time, span ? since(span.start, span.end ?? undefined) : "");
       }
     }
 
@@ -1302,12 +1309,16 @@
       const active = document.activeElement;
       const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
       const before = positions(leaderboard, "button.row");
+      const idle = !latest || (latest.phase === "idle" && !entries.length);
+      const view = idle ? "init:" + ((latest && latest.lineup) || []).join() + ":" + ((latest && latest.attempts_per_agent) || 0) : leaderboardReady(latest) ? "table" : "skeleton";
+      if (view !== "table" && leaderboard.dataset.view === view) return;
+      leaderboard.dataset.view = view;
       leaderboard.replaceChildren();
-      if (!latest || (latest.phase === "idle" && !entries.length)) {
+      if (idle) {
         leaderboard.appendChild(initBoard(latest || {}));
         return;
       }
-      if (!leaderboardReady(latest)) {
+      if (view === "skeleton") {
         leaderboard.appendChild(leaderboardSkeleton());
         return;
       }
@@ -1594,6 +1605,7 @@
       if (lastPhase !== snapshot.phase && lastPhase !== null) notice.textContent = "";
       lastPhase = snapshot.phase;
       latest = snapshot;
+      document.documentElement.style.setProperty("--sync", -(document.timeline.currentTime % 16800) + "ms");
       authorSince = (snapshot.author || {}).state === "running" ? authorSince || Date.now() : null;
       renderPhase(snapshot);
       renderTask(snapshot.phase);
