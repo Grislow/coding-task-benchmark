@@ -171,37 +171,35 @@ def _solve(
     workspace = out_dir / "work" / agent.name
     make_workspace(workspace, task_text, tech)
     solution_path = workspace / toolchain.SOLUTION
-    session_id: str | None = None
     records: list[AttemptRecord] = []
     sources: list[str] = []
     for number in range(1, attempts + 1):
         if progress is not None:
             progress.attempt_started(agent.name, number)
-        previous = next((record for record in reversed(records) if record.setup_error is None), None)
+        previous = next((index for index in reversed(range(len(records))) if records[index].setup_error is None), None)
         prompt = solver_prompt(tech) if previous is None else next_approach_prompt(
-            previous.number,
-            previous.passed,
-            previous.tests_passed,
-            previous.tests_total,
-            previous.performance_ms,
-            previous.readability,
-            previous.failure_excerpt,
+            records[previous].number,
+            records[previous].passed,
+            records[previous].tests_passed,
+            records[previous].tests_total,
+            records[previous].performance_ms,
+            records[previous].readability,
+            records[previous].failure_excerpt,
+            sources[previous],
             tech,
         )
         result = _with_retry(
-            partial(agent.complete, cwd=str(workspace), prompt=prompt, session_id=session_id, role="solve"),
+            partial(agent.complete, cwd=str(workspace), prompt=prompt, session_id=None, role="solve"),
             lambda attempt: setup_error(attempt, _source(solution_path), tech) is not None,
         )
-        session_id = result.session_id or session_id
         source = _source(solution_path)
-        (workspace / f"attempt-{number}{solution_path.suffix}").write_text(source)
         sources.append(source)
         problem = setup_error(result, source, tech)
         if problem is not None:
             records.append(
                 AttemptRecord(
                     number=number,
-                    session_id=session_id,
+                    session_id=result.session_id,
                     usage=result.usage,
                     wall_ms=result.wall_ms,
                     cost_usd=result.cost_usd,
@@ -223,7 +221,7 @@ def _solve(
         records.append(
             AttemptRecord(
                 number=number,
-                session_id=session_id,
+                session_id=result.session_id,
                 usage=result.usage,
                 wall_ms=result.wall_ms,
                 cost_usd=result.cost_usd,
@@ -241,6 +239,8 @@ def _solve(
         )
         if progress is not None:
             progress.attempt_finished(agent.name, records[-1], source)
+    for number, attempt_source in enumerate(sources, 1):
+        (workspace / f"attempt-{number}{solution_path.suffix}").write_text(attempt_source)
     best = chosen_index(records)
     records[best] = replace(records[best], chosen=True)
     if progress is not None:

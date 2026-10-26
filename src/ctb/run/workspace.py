@@ -6,6 +6,7 @@ from ctb.langs import lang
 from ctb.models import AgentResult
 
 TIMED_OUT = "Timed out after"
+SCRATCH = Path.home() / ".cache" / "ctb"
 
 
 def make_workspace(path: Path, task_text: str, tech: str = "python") -> None:
@@ -14,19 +15,13 @@ def make_workspace(path: Path, task_text: str, tech: str = "python") -> None:
     (path / "task.md").write_text(task_text)
     (path / toolchain.SOLUTION).write_text(toolchain.STUB)
     toolchain.prepare(path)
-    subprocess.run(
-        ["git", "init", "-q"],
-        cwd=path,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    if not path.resolve().is_relative_to(SCRATCH.resolve()):
+        subprocess.run(["git", "init", "-q"], cwd=path, check=True, capture_output=True, text=True)
 
 
 def scratch_dir(prefix: str) -> Path:
-    root = Path.home() / ".cache" / "ctb"
-    root.mkdir(parents=True, exist_ok=True)
-    return Path(tempfile.mkdtemp(prefix=prefix, dir=root))
+    SCRATCH.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=prefix, dir=SCRATCH))
 
 
 def setup_error(result: AgentResult, source: str, tech: str = "python") -> str | None:

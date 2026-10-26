@@ -122,7 +122,7 @@ def test_three_attempt_loop_repairs_and_peers_grade_the_other_solution(tmp_path:
     assert "different approach" in fast.prompts[1]
     assert "passed the tests" in fast.prompts[1]
     assert len(slow.prompts) == 6
-    assert slow.sessions[1] == "slow-session"
+    assert slow.sessions == [None] * len(slow.sessions)
     assert "failed the tests" in slow.prompts[1]
     assert "test_hidden_sentinel_gap" in slow.prompts[1]
     assert "different approach" in slow.prompts[1]

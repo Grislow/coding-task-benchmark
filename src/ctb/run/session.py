@@ -596,8 +596,8 @@ def _prompts(tech: str, solve_s: int, author_s: int, review_s: int) -> list[dict
         {
             "id": "retry",
             "title": "Solver, attempts 2 and 3",
-            "text": deadline_note(solve_s) + next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first test failure, up to 4000 characters>", tech),
+            "text": deadline_note(solve_s) + next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first test failure, up to 4000 characters>", "<the previous attempt's code>", tech),
         },
-        {"id": "author", "title": "Test author", "text": deadline_note(author_s) + author_prompt(tech)},
-        {"id": "review", "title": "Reviewer", "text": deadline_note(review_s) + review_prompt("<task.md>", f"<{lang(tech).SOLUTION}>", tech)},
+        {"id": "author", "title": "Test author", "text": deadline_note(author_s, "author") + author_prompt(tech)},
+        {"id": "review", "title": "Reviewer", "text": deadline_note(review_s, "review") + review_prompt("<task.md>", f"<{lang(tech).SOLUTION}>", tech)},
     ]

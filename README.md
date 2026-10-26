@@ -65,8 +65,8 @@ During a run, a model that cannot run is retried once after 5 seconds. If it sti
 
 1. Reads the task. Code blocks that contain `assert` become public tests: `python` blocks for Python and FastAPI, `js` or `javascript` blocks for JavaScript and Express.
 2. The test-author CLI writes the hidden tests and performance cases in its own directory: `test_hidden.py` and `perf_cases.py` for Python, `hidden.test.js` and `perf_cases.js` for JavaScript. Those files are copied out and frozen. Each solver works in its own temporary directory outside `runs/`, so it cannot reach the author's directory or `hidden/`. Its directory is copied to `runs/<timestamp>/work/` when it finishes.
-3. Each solver gets a fresh git repo containing `task.md` and a `solution.py` or `solution.js` stub. A JavaScript workspace also links the toolchain's `node_modules`, so Express loads without `npm install`. A git root in the workspace keeps Grok from treating this benchmark repo as the project. The solvers start together.
-4. Each solver takes its attempts in order. Attempt 1 solves the task. Each later attempt sees the previous score and writes a different approach. The harness keeps the better one: passing tests, then a runtime at least 10 percent lower, then clearer code.
+3. Each solver gets a fresh directory in `~/.cache/ctb`, outside any git repo, containing `task.md` and a `solution.py` or `solution.js` stub. A JavaScript workspace also links the toolchain's `node_modules`, so Express loads without `npm install`. The test author and reviewer directories sit under `runs/`, so each gets its own git root to keep the agent from treating this benchmark repo as the project. The solvers start together.
+4. Each solver takes its attempts in order. Attempt 1 solves the task. Each later attempt starts a fresh session whose prompt carries the previous attempt's code, score and failure output, and writes a different approach. No session is resumed, so every Codex attempt runs in its sandbox. The harness keeps the better one: passing tests, then a runtime at least 10 percent lower, then clearer code.
 5. For a FastAPI or Express task, the contract check probes each kept solution's app.
 6. After every attempt has finished, each kept solution is reviewed by the agents from other model families. A model never reviews its own family's code. The reviews start together. A reviewer does not see the test score.
 7. The profile is written from the weights below. A dimension that was not measured is dropped and the remaining weights are rescaled.
@@ -105,22 +105,21 @@ The same CLI can run twice when the models differ. `claude:opus,claude:sonnet` i
 
 Omitting the model uses that CLI's configured default. The default agent list is `claude,grok`.
 
-Codex is `codex exec --json`. The first attempt uses `--approve-for-me`, which runs in the workspace-write sandbox. Later attempts use `codex exec resume`, which has no sandbox flag, so those calls bypass approvals rather than hang on a prompt. Codex token totals come from each `turn.completed` usage object. Cached input is reported inside `input_tokens`, and the harness splits it back out. Dollar cost is not in that stream.
+Codex is `codex exec --json`. Every attempt uses `--approve-for-me`, which runs in the workspace-write sandbox. Codex token totals come from each `turn.completed` usage object. Cached input is reported inside `input_tokens`, and the harness splits it back out. Dollar cost is not in that stream.
 
 Claude Code:
 
 - `claude -p --output-format json --safe-mode --disable-slash-commands --strict-mcp-config`
 - Solvers use `--permission-mode bypassPermissions` so they can run Python in the workspace
 - `--max-budget-usd` defaults to 2 per call
-- Resume with `--resume`
 - Add `--model <model>` when the agent entry is `claude:<model>`
 - Add `--effort <level>` when the entry is `claude:<model>:<effort>` (`low`, `medium`, `high`, `xhigh`, `max`)
 
 Grok:
 
 - `grok -p --output-format json --sandbox strict --max-turns 25 --no-subagents --disable-web-search`
+- Reviews run with `--sandbox read-only --max-turns 2` and every built-in tool removed, because the code and task are in the prompt
 - `GROK_CLAUDE_SKILLS_ENABLED=false` and `GROK_CURSOR_SKILLS_ENABLED=false` for that process
-- Resume with `-r`
 - Add `-m <model>` when the agent entry is `grok:<model>`
 - Add `--effort <level>` when the entry is `grok:<model>:<effort>` (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`)
 
@@ -128,9 +127,8 @@ Codex:
 
 - `codex exec --json --approve-for-me --ignore-user-config`. `--approve-for-me` runs in the workspace-write sandbox and cannot be combined with `--sandbox`
 - Review uses `--sandbox read-only` and `--output-schema`
-- Resume with `codex exec resume <thread-id>`
 - Add `-m <model>` when the agent entry is `codex:<model>`
-- Add `-c model_reasoning_effort="<level>"` on the first attempt and on resume. `--ignore-user-config` would otherwise drop it. Levels include `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
+- Add `-c model_reasoning_effort="<level>"`. `--ignore-user-config` would otherwise drop it. Levels include `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
 
 Token counts are whatever that invocation's JSON `usage` object reports. Wall clock is the process time around the CLI. Grok often omits dollar cost on subscription logins. The cost score still uses tokens and time.
 
@@ -156,6 +154,3 @@ Claude with Bash can still read other files your user can read. Hidden tests liv
 
 The first real Grok run in a new folder may stop on a trust prompt. Run Grok's own trust command in that workspace if it says the folder is untrusted.
 
-Codex attempts after the first bypass approvals. `codex exec resume` does not accept a sandbox flag, and a prompt would hang the run. Those later attempts can read files outside the workspace.
-
-Usage on a resumed Grok session is stored as reported. If a live run shows cumulative totals, the next change is to store the difference between attempts.

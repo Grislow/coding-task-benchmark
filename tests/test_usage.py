@@ -116,32 +116,31 @@ def test_fastapi_rubric_extends_python() -> None:
 
 
 def test_headless_commands_keep_solvers_in_bounds() -> None:
-    solve = claude_command("Solve the task", None, "solve", 2)
+    solve = claude_command("Solve the task", "solve", 2)
     assert "--safe-mode" in solve
     assert "--bare" not in solve
     assert "bypassPermissions" in solve
     assert "--resume" not in solve
     assert "--effort" not in solve
 
-    resumed = claude_command("Fix it", "abc", "solve", 2)
-    assert resumed[resumed.index("--resume") + 1] == "abc"
-
-    review = claude_command("Grade", None, "review", 2)
+    review = claude_command("Grade", "review", 2)
     assert review[review.index("--tools") + 1] == ""
     assert "bypassPermissions" not in review
 
-    grok = grok_command("Solve", Path("/tmp/task"), None, "solve")
+    grok = grok_command("Solve", Path("/tmp/task"), "solve")
     assert grok[grok.index("--sandbox") + 1] == "strict"
     assert "--always-approve" in grok
     assert "--disable-web-search" in grok
 
-    grok_review = grok_command("Grade", Path("/tmp/task"), "sid", "review")
+    grok_review = grok_command("Grade", Path("/tmp/task"), "review")
     assert grok_review[grok_review.index("--sandbox") + 1] == "read-only"
-    assert grok_review[grok_review.index("-r") + 1] == "sid"
+    assert "-r" not in grok_review
+    removed = grok_review[grok_review.index("--disallowed-tools") + 1].split(",")
+    assert {"read_file", "list_dir", "grep", "run_terminal_command", "ask_user_question"} <= set(removed)
 
-    claude_model = claude_command("Solve", None, "solve", 2, "opus")
+    claude_model = claude_command("Solve", "solve", 2, "opus")
     assert claude_model[claude_model.index("--model") + 1] == "opus"
-    grok_model = grok_command("Solve", Path("/tmp/task"), None, "solve", "grok-4")
+    grok_model = grok_command("Solve", Path("/tmp/task"), "solve", "grok-4")
     assert grok_model[grok_model.index("-m") + 1] == "grok-4"
 
 
@@ -155,16 +154,16 @@ def test_interview_lineup_is_five_distinct_models() -> None:
         ("grok-grok-4.7-high", "grok-4.7", "high"),
     ]
     opus, sonnet, astra, sol, grok = agents
-    opus_cmd = claude_command("Solve", None, "solve", 1, opus.model, opus.effort)
+    opus_cmd = claude_command("Solve", "solve", 1, opus.model, opus.effort)
     assert opus_cmd[opus_cmd.index("--effort") + 1] == "medium"
-    sonnet_cmd = claude_command("Solve", None, "solve", 1, sonnet.model, sonnet.effort)
+    sonnet_cmd = claude_command("Solve", "solve", 1, sonnet.model, sonnet.effort)
     assert sonnet_cmd[sonnet_cmd.index("--effort") + 1] == "high"
-    astra_cmd = codex_command("Solve", Path("/tmp/task"), None, "solve", astra.model, None, astra.effort)
+    astra_cmd = codex_command("Solve", Path("/tmp/task"), "solve", astra.model, None, astra.effort)
     assert astra_cmd[astra_cmd.index("-c") + 1] == 'model_reasoning_effort="high"'
-    sol_cmd = codex_command("Again", Path("/tmp/task"), "thread-1", "solve", sol.model, None, sol.effort)
+    sol_cmd = codex_command("Again", Path("/tmp/task"), "solve", sol.model, None, sol.effort)
     assert sol_cmd[sol_cmd.index("-c") + 1] == 'model_reasoning_effort="xhigh"'
     assert "--ignore-user-config" in sol_cmd
-    grok_cmd = grok_command("Solve", Path("/tmp/task"), None, "solve", grok.model, grok.effort)
+    grok_cmd = grok_command("Solve", Path("/tmp/task"), "solve", grok.model, grok.effort)
     assert grok_cmd[grok_cmd.index("--effort") + 1] == "high"
 
 
@@ -299,8 +298,8 @@ def test_codex_jsonl_reports_thread_and_split_cache() -> None:
     assert failed.error == "stream ended"
 
 
-def test_codex_commands_sandbox_the_first_attempt_only() -> None:
-    solve = codex_command("Solve", Path("/tmp/task"), None, "solve", "gpt-5.4", None)
+def test_codex_commands_always_run_sandboxed() -> None:
+    solve = codex_command("Solve", Path("/tmp/task"), "solve", "gpt-5.4", None)
     assert solve[:2] == ["codex", "exec"]
     assert "resume" not in solve
     assert "--sandbox" not in solve
@@ -309,27 +308,22 @@ def test_codex_commands_sandbox_the_first_attempt_only() -> None:
     assert "--ignore-user-config" in solve
     assert "-c" not in solve
 
-    review = codex_command("Grade", Path("/tmp/task"), None, "review", None, Path("/tmp/rubric.json"))
+    review = codex_command("Grade", Path("/tmp/task"), "review", None, Path("/tmp/rubric.json"))
     assert review[review.index("--sandbox") + 1] == "read-only"
     assert "--approve-for-me" not in review
     assert review[review.index("--output-schema") + 1] == str(Path("/tmp/rubric.json").resolve())
 
-    resume = codex_command("Fix", Path("/tmp/task"), "thread-1", "solve", "gpt-5.4", None)
     schema = Path("runs/x/work/codex/rubric.schema.json")
-    graded = codex_command("Grade", Path("runs/x/work/codex"), None, "review", None, schema)
+    graded = codex_command("Grade", Path("runs/x/work/codex"), "review", None, schema)
     assert graded[graded.index("--output-schema") + 1] == str(schema.resolve())
 
-    relative = codex_command("Solve", Path("runs/x/work/codex"), None, "solve", None, None)
+    relative = codex_command("Solve", Path("runs/x/work/codex"), "solve", None, None)
     assert relative[relative.index("-C") + 1] == str(Path("runs/x/work/codex").resolve())
 
-    assert resume[2] == "resume"
-    assert resume[-2] == "thread-1"
-    assert "--sandbox" not in resume
-    assert "--dangerously-bypass-approvals-and-sandbox" in resume
 
 
 def test_grok_cwd_is_absolute() -> None:
-    command = grok_command("Solve", Path("runs/x/work/grok"), None, "solve")
+    command = grok_command("Solve", Path("runs/x/work/grok"), "solve")
     assert command[command.index("--cwd") + 1] == str(Path("runs/x/work/grok").resolve())
 
 
@@ -357,6 +351,7 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
     agent.complete(cwd=str(tmp_path), prompt="Grade", session_id=None, role="review")
     assert seen["timeout"] == 180
     assert seen_prompt["text"].startswith("You have 3 minutes.")
+    assert "time-left" not in seen_prompt["text"]
     author = ClaudeAgent(900, 1.0, "opus", "high")
     author.review_timeout_s = 300
     author.complete(cwd=str(tmp_path), prompt="Write tests", session_id=None, role="author")
@@ -364,19 +359,23 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert seen_prompt["text"].startswith("You have 15 minutes.")
 
 
-def test_time_left_reports_the_seconds_remaining(tmp_path: Path) -> None:
+def test_time_left_reports_the_seconds_remaining(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import subprocess
+    from time import time as real_time
 
     from ctb.agents.clis import _plant_clock
+    from ctb.run.prompts import wrap_up_s
 
     _plant_clock(tmp_path, 600)
     completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
     left = int(completed.stdout.split()[0])
     assert 590 <= left <= 600
     assert "Wrap up" not in completed.stdout
-    _plant_clock(tmp_path, 30)
+    monkeypatch.setattr("ctb.agents.clis.time.time", lambda: real_time() - 550)
+    _plant_clock(tmp_path, 600)
     completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
     assert "Wrap up now" in completed.stdout
+    assert [wrap_up_s(limit) for limit in (30, 90, 300, 900)] == [10, 30, 60, 180]
 
 
 def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:

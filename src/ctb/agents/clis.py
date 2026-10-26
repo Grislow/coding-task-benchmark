@@ -13,7 +13,13 @@ from ctb.run.prompts import RUBRIC_SCHEMA, deadline_note, wrap_up_s
 # --bare skips keychain and OAuth. --safe-mode keeps the signed-in subscription
 # and drops skills, hooks, plugins, and CLAUDE.md so the user's setup does not solve the task.
 _CLAUDE_SOLVE_TOOLS = "Bash,Read,Edit,Write"
-_GROK_SOLVE_TOOLS = "read_file,grep,list_dir,search_replace,write,run_terminal_cmd"
+_GROK_SOLVE_TOOLS = "read_file,grep,list_dir,search_replace,write,run_terminal_command"
+_GROK_ALL_TOOLS = (
+    "run_terminal_command,read_file,search_replace,list_dir,grep,write,kill_command_or_subagent,todo_write,"
+    "get_command_or_subagent_output,scheduler_create,scheduler_delete,scheduler_list,monitor,search_tool,use_tool,"
+    "workflow,enter_plan_mode,exit_plan_mode,ask_user_question,send_feedback,image_gen,image_edit,image_to_video,"
+    "reference_to_video"
+)
 
 # Levels each CLI documents. A model can still reject a level its own menu omits.
 EFFORTS = {
@@ -48,9 +54,8 @@ class ClaudeAgent:
         if shutil.which("claude") is None:
             return _missing(self.name)
         limit = _role_timeout(self, role)
-        command = claude_command(
-            deadline_note(limit) + prompt, session_id, role, self.budget_usd, self.model, self.effort
-        )
+        del session_id
+        command = claude_command(deadline_note(limit, role) + prompt, role, self.budget_usd, self.model, self.effort)
         return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_stdout)
 
 
@@ -72,7 +77,8 @@ class GrokAgent:
         if shutil.which("grok") is None:
             return _missing(self.name)
         limit = _role_timeout(self, role)
-        command = grok_command(deadline_note(limit) + prompt, Path(cwd), session_id, role, self.model, self.effort)
+        del session_id
+        command = grok_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, self.effort)
         env = os.environ.copy()
         env["GROK_CLAUDE_SKILLS_ENABLED"] = "false"
         env["GROK_CURSOR_SKILLS_ENABLED"] = "false"
@@ -101,9 +107,8 @@ class CodexAgent:
         if role == "review":
             schema_path = Path(cwd) / "rubric.schema.json"
             schema_path.write_text(RUBRIC_SCHEMA)
-        command = codex_command(
-            deadline_note(limit) + prompt, Path(cwd), session_id, role, self.model, schema_path, self.effort
-        )
+        del session_id
+        command = codex_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, schema_path, self.effort)
         return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_codex_jsonl)
 
 
@@ -126,7 +131,6 @@ def agent_name(cli: str, model: str | None, effort: str | None = None) -> str:
 
 def claude_command(
     prompt: str,
-    session_id: str | None,
     role: str,
     budget_usd: float,
     model: str | None = None,
@@ -154,15 +158,12 @@ def claude_command(
         )
     _append_model(command, "--model", model)
     _append_effort(command, effort)
-    if session_id:
-        command.extend(["--resume", session_id])
     return command
 
 
 def grok_command(
     prompt: str,
     cwd: Path,
-    session_id: str | None,
     role: str,
     model: str | None = None,
     effort: str | None = None,
@@ -188,7 +189,7 @@ def grok_command(
                 "--json-schema",
                 RUBRIC_SCHEMA,
                 "--disallowed-tools",
-                "write,search_replace,run_terminal_cmd",
+                _GROK_ALL_TOOLS,
             ]
         )
     else:
@@ -205,40 +206,17 @@ def grok_command(
         )
     _append_model(command, "-m", model)
     _append_effort(command, effort)
-    if session_id:
-        command.extend(["-r", session_id])
     return command
 
 
 def codex_command(
     prompt: str,
     cwd: Path,
-    session_id: str | None,
     role: str,
     model: str | None,
     schema_path: Path | None,
     effort: str | None = None,
 ) -> list[str]:
-    # `codex exec resume` has no --sandbox flag. Later attempts bypass approvals
-    # so a permission prompt cannot hang the process. The first attempt uses
-    # --approve-for-me, which runs in workspace-write and cannot take --sandbox.
-    if session_id:
-        command = [
-            "codex",
-            "exec",
-            "resume",
-            "--json",
-            "--skip-git-repo-check",
-            "--ignore-user-config",
-            "--ignore-rules",
-            "--dangerously-bypass-approvals-and-sandbox",
-        ]
-        _append_model(command, "-m", model)
-        _append_effort(command, effort, codex=True)
-        if schema_path is not None:
-            command.extend(["--output-schema", str(schema_path.resolve())])
-        command.extend([session_id, prompt])
-        return command
     command = [
         "codex",
         "exec",

@@ -128,6 +128,9 @@ class JsAgent:
             assert "solution.js" in prompt
             assert (root / "node_modules").is_symlink()
             self.solves += 1
+            if self.solves == 2:
+                assert "function solution() { return 0; }" in prompt
+                assert not list(root.glob("attempt-*"))
             source = "function solution() { return 0; }\nmodule.exports = { solution };\n" if self.solves == 1 else _GAP + "\nmodule.exports = { solution };\n"
             (root / "solution.js").write_text(source)
         return AgentResult(True, text, "s", TokenUsage(input_tokens=10), 5, None, None, {})

@@ -42,16 +42,18 @@ def rubric_rules(tech: str) -> frozenset[str]:
 
 
 def wrap_up_s(timeout_s: int) -> int:
-    return max(60, timeout_s // 5)
+    return min(max(60, timeout_s // 5), timeout_s // 3)
 
 
-def deadline_note(timeout_s: int) -> str:
+def deadline_note(timeout_s: int, role: str = "solve") -> str:
     amount = f"{timeout_s // 60} minutes" if timeout_s % 60 == 0 else f"{timeout_s} seconds"
+    if role == "review":
+        return f"You have {amount}. This process is killed when that time is up, and an unfinished reply is lost, so reply well before then.\n\n"
     return (
         f"You have {amount}. This process is killed when that time is up.\n"
+        "Only what your files hold at that moment counts. Save a working version within the first half of the time, then improve it.\n"
         "Run `sh time-left` in this directory between steps to see the seconds you have left. Do not edit or delete that file.\n"
-        f"When {wrap_up_s(timeout_s)} seconds or fewer remain, it tells you to wrap up: stop exploring and leave your files in their final state.\n"
-        "If you cannot run commands, you still have only that long, so answer before it ends.\n\n"
+        f"When {wrap_up_s(timeout_s)} seconds or fewer remain, it tells you to wrap up: stop exploring and leave your files in their final state.\n\n"
     )
 
 
@@ -68,23 +70,33 @@ def solver_prompt(tech: str = "python") -> str:
     )
 
 
-def next_approach_prompt(number: int, passed: bool, tests_passed: int, tests_total: int, performance_ms: float | None, readability: float, failure_excerpt: str, tech: str = "python") -> str:
-    outcome = "passed the tests" if passed else "failed the tests"
-    if performance_ms is None:
-        runtime = "no timing"
-    else:
-        runtime = f"{performance_ms:.3f} ms median"
-    lines = [
-        f"Attempt {number} {outcome}.",
-        f"Tests {tests_passed}/{tests_total}. Runtime {runtime}. Readability {readability:.0f}.",
-        f"Replace {lang(tech).SOLUTION} with a different approach.",
-        "Keep the function named solution.",
-        "A better attempt passes the tests, then runs at least 10 percent faster, then is clearer.",
-        "Do not search outside this directory.",
-    ]
+def next_approach_prompt(number: int, passed: bool, tests_passed: int, tests_total: int, performance_ms: float | None, readability: float, failure_excerpt: str, source: str, tech: str = "python") -> str:
+    toolchain = lang(tech)
     excerpt = failure_excerpt.strip()
-    if excerpt:
-        lines.extend(["Failure output:", excerpt[:4000]])
+    timed_out = "Timed out after" in excerpt
+    if source.strip() in {"", toolchain.STUB.strip()}:
+        reason = "it ran out of time" if timed_out else "it did not edit the file"
+        lines = [
+            f"Attempt {number} left {toolchain.SOLUTION} unchanged because {reason}.",
+            "Write a working solution first, then improve it if time remains.",
+        ]
+    else:
+        outcome = "passed the tests" if passed else "failed the tests"
+        runtime = "no timing" if performance_ms is None else f"{performance_ms:.3f} ms median"
+        lines = [
+            f"Attempt {number} {outcome}" + (" and ran out of time" if timed_out else "") + ".",
+            f"Tests {tests_passed}/{tests_total}. Runtime {runtime}. Readability {readability:.0f}.",
+            f"Its {toolchain.SOLUTION} was:",
+            f"```{toolchain.FENCE}",
+            source.rstrip(),
+            "```",
+            f"Replace {toolchain.SOLUTION} with a different approach.",
+            "Keep the function named solution.",
+            "A better attempt passes the tests, then runs at least 10 percent faster, then is clearer.",
+        ]
+        if excerpt and not timed_out:
+            lines.extend(["Failure output:", excerpt[:4000]])
+    lines.append("Everything you need is in this message and task.md. Do not look for earlier attempts or search outside this directory.")
     return "\n".join(lines)
 
 
