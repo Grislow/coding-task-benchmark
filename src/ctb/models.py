@@ -157,3 +157,4 @@ class BenchmarkReport:
     out_dir: str
     notes: list[str]
     solutions: list[SolutionRun]
+    tech: str = "python"

@@ -206,6 +206,8 @@
       transition: background-color 200ms ease, border-color 200ms ease;
     }
     .tech[data-tech="fastapi"] { --tech: var(--a3); }
+    .tech[data-tech="javascript"] { --tech: var(--a2); }
+    .tech[data-tech="express"] { --tech: var(--a5); }
     .tech::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--tech); transform: rotate(45deg); }
     .tech small { color: var(--muted); font: 400 11px var(--mono); }
     .tech:disabled { cursor: default; }
@@ -661,7 +663,7 @@
           <div id="model-list"></div>
         </div>
         <div role="tabpanel" id="cpanel-prompts" aria-labelledby="ctab-prompts" hidden>
-          <p class="hint">What each role is told. Read-only here. Edit them in src/ctb/prompts.py and src/ctb/rubrics.</p>
+          <p class="hint">What each role is told. Read-only here. Edit them in src/ctb/run/prompts.py and src/ctb/langs.</p>
           <div id="prompt-list"></div>
         </div>
       </div>
@@ -702,7 +704,8 @@
     const SOLVED = ["reviewing", "done", "error"];
     const HUES = ["--a1", "--a2", "--a3", "--a4", "--a5"];
     const WEIGHTS = { correctness: 40, performance: 20, static: 15, review: 15, contract: 10, cost: 10 };
-    const TECHS = { python: "Python", fastapi: "FastAPI" };
+    const TECHS = { python: "Python", fastapi: "FastAPI", javascript: "JavaScript", express: "Express" };
+    const TECH_ORDER = Object.keys(TECHS);
     const EASE = "cubic-bezier(.2, .8, .2, 1)";
 
     const ICONS = {
@@ -1366,10 +1369,10 @@
         box.appendChild(why);
         if (attempt.failure_excerpt) box.appendChild(el("pre", "excerpt", attempt.failure_excerpt));
       }
-      const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from pytest. " : "No tests ran. ";
+      const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from the test runner. " : "No tests ran. ";
       addMeasure(box, "Correctness" + part(entry, "correctness"), tests
         + (attempt.public_failed ? "A public example failed, so correctness is 0. " : "")
-        + (attempt.tests_total && attempt.tests_passed < attempt.tests_total ? "" : attempt.state === "failed" ? "These grade the solution.py it left. The attempt still fails: " + failureReason(attempt) + "." : "Every test passed."));
+        + (attempt.tests_total && attempt.tests_passed < attempt.tests_total ? "" : attempt.state === "failed" ? "These grade the solution it left. The attempt still fails: " + failureReason(attempt) + "." : "Every test passed."));
       const timing = attempt.performance_ms === null || attempt.performance_ms === undefined
         ? "Not timed. The profiler runs only after every test passes."
         : milliseconds(attempt.performance_ms) + ". " + (attempt.performance_note || "");
@@ -1464,7 +1467,7 @@
       const source = attempt.state === "setup" ? "" : attempt.source || "";
       if (pre.textContent !== source) pre.textContent = source;
       let note = "";
-      if (!source) note = attempt.state === "setup" ? "The agent could not run, so there is no code." : finished(attempt) ? "This attempt wrote no solution.py." : "No code until this attempt finishes.";
+      if (!source) note = attempt.state === "setup" ? "The agent could not run, so there is no code." : finished(attempt) ? "This attempt wrote no solution." : "No code until this attempt finishes.";
       document.getElementById("solution-note").textContent = note;
       applyBlur();
     }
@@ -1523,7 +1526,15 @@
     }
 
     function techFor(text) {
-      return techChoice || (/fastapi/i.test(text) ? "fastapi" : "python");
+      if (techChoice) return techChoice;
+      if (/fastapi/i.test(text)) return "fastapi";
+      if (/\bexpress\b/i.test(text)) return "express";
+      if (/javascript|node\.?js|```js\b/i.test(text)) return "javascript";
+      return "python";
+    }
+
+    function nextTech(tech) {
+      return TECH_ORDER[(TECH_ORDER.indexOf(tech) + 1) % TECH_ORDER.length];
     }
 
     function renderTech() {
@@ -1531,7 +1542,7 @@
       const locked = !!(latest && latest.phase && latest.phase !== "idle" && !editingTask);
       const tech = locked ? latest.tech || "python" : techFor(document.getElementById("task").value);
       const changed = badge.dataset.tech !== tech;
-      const other = tech === "python" ? "FastAPI" : "Python";
+      const other = TECHS[nextTech(tech)];
       badge.dataset.tech = tech;
       badge.disabled = locked;
       badge.replaceChildren(document.createTextNode(TECHS[tech] || tech));
@@ -1694,7 +1705,7 @@
     });
 
     document.getElementById("tech").addEventListener("click", () => {
-      techChoice = techFor(document.getElementById("task").value) === "python" ? "fastapi" : "python";
+      techChoice = nextTech(techFor(document.getElementById("task").value));
       renderTech();
     });
 

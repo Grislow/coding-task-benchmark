@@ -1,8 +1,9 @@
-import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from ctb.langs.shared import score_checks
 
 _PROBE = """
 import json
@@ -83,16 +84,4 @@ def contract_report(source: str, perf_cases: str | None, timeout_s: int) -> tupl
             )
         except subprocess.TimeoutExpired:
             return 0.0, "The contract probe timed out."
-    try:
-        checks = json.loads(completed.stdout.strip().splitlines()[-1])
-    except (json.JSONDecodeError, IndexError):
-        reason = (completed.stderr.strip().splitlines() or ["no output"])[-1]
-        return 0.0, f"The app could not be probed: {reason[:300]}"
-    if not checks:
-        return None, "The app has no routes to probe."
-    failures = [label for ok, label in checks if not ok]
-    score = 100.0 * (len(checks) - len(failures)) / len(checks)
-    if not failures:
-        return score, f"{len(checks)} contract checks passed."
-    passed = len(checks) - len(failures)
-    return score, f"{passed}/{len(checks)} contract checks passed. " + "; ".join(failures[:5]) + "."
+    return score_checks(completed.stdout, completed.stderr)

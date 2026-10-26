@@ -5,10 +5,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from test_benchmark import ScriptedAgent, SleepySolver, _CORRECT, _TASK, _WRONG
+from test_benchmark import _CORRECT, _TASK, _WRONG, ScriptedAgent, SleepySolver
 
-from ctb.server import bind
-from ctb.session import RunSession
+from ctb.run.session import RunSession
+from ctb.web.server import bind
 
 
 def _open(session: RunSession, page: str = "<p>ctb</p>"):
@@ -46,7 +46,7 @@ def _wait_done(server: object) -> dict[str, object]:
 
 
 def test_the_page_polls_status_and_shows_the_run(tmp_path: Path) -> None:
-    page = (Path(__file__).parents[1] / "src" / "ctb" / "ui.html").read_text()
+    page = (Path(__file__).parents[1] / "src" / "ctb" / "web" / "ui.html").read_text()
     for marker in (
         'id="task"',
         'id="board"',

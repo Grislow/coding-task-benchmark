@@ -2,8 +2,8 @@ import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from ctb.prompts import TECHS
-from ctb.session import RunSession
+from ctb.langs import TECHS
+from ctb.run.session import RunSession
 
 
 class LoopbackServer(ThreadingHTTPServer):

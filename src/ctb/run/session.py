@@ -4,22 +4,20 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ctb.agents import EFFORTS, agent_name
-from ctb.checks import readability_report
-from ctb.contract import contract_report
-from ctb.evaluate import evaluate_solution
+from ctb.agents.clis import EFFORTS, agent_name
+from ctb.agents.preflight import check_agent
+from ctb.langs import WEB, lang
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
-from ctb.orchestrate import _grade, family, rerun_agent, run_benchmark
-from ctb.preflight import check_agent
-from ctb.progress import ProgressBoard, review_row
-from ctb.prompts import (
+from ctb.run.orchestrate import _grade, family, read_suite, rerun_agent, run_benchmark
+from ctb.run.progress import ProgressBoard, review_row
+from ctb.run.prompts import (
     author_prompt,
     deadline_note,
     next_approach_prompt,
     review_prompt,
     solver_prompt,
 )
-from ctb.score import apply_profile, correctness_score, weighted_score
+from ctb.run.score import apply_profile, correctness_score, weighted_score
 
 LEVELS = ("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
 
@@ -443,12 +441,10 @@ class RunSession:
         out_dir = self._out_dir
         if out_dir is None:
             raise RuntimeError("The suite is not ready.")
-        hidden = out_dir / "hidden"
-        public = _read(hidden / "test_public.py")
-        tests = _read(hidden / "test_hidden.py")
-        perf = _read(hidden / "perf_cases.py")
-        evaluation = evaluate_solution(source, public, tests, perf, self._timeout_s)
-        readability, notes = readability_report(source, self._tech)
+        toolchain = lang(self._tech)
+        public, tests, perf = read_suite(out_dir, self._tech)
+        evaluation = toolchain.evaluate_solution(source, public, tests, perf, self._timeout_s)
+        readability, notes = toolchain.readability_report(source, self._tech)
         attempt = AttemptRecord(
             number=number,
             session_id=None,
@@ -475,8 +471,8 @@ class RunSession:
             readability=readability,
             readability_notes=notes,
         )
-        if self._tech == "fastapi":
-            you.contract, you.contract_notes = contract_report(source, perf, self._timeout_s)
+        if self._tech in WEB:
+            you.contract, you.contract_notes = toolchain.contract_report(source, perf, self._timeout_s)
         return you
 
     def _directory(self) -> Path:
@@ -596,18 +592,12 @@ def _row_name(row: dict[str, object]) -> str:
 
 def _prompts(tech: str, solve_s: int, author_s: int, review_s: int) -> list[dict[str, str]]:
     return [
-        {"id": "solver", "title": "Solver, attempt 1", "text": deadline_note(solve_s) + solver_prompt()},
+        {"id": "solver", "title": "Solver, attempt 1", "text": deadline_note(solve_s) + solver_prompt(tech)},
         {
             "id": "retry",
             "title": "Solver, attempts 2 and 3",
-            "text": deadline_note(solve_s) + next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first pytest failure, up to 4000 characters>"),
+            "text": deadline_note(solve_s) + next_approach_prompt(1, False, 7, 10, 0.42, 88, "<first test failure, up to 4000 characters>", tech),
         },
-        {"id": "author", "title": "Test author", "text": deadline_note(author_s) + author_prompt()},
-        {"id": "review", "title": "Reviewer", "text": deadline_note(review_s) + review_prompt("<task.md>", "<solution.py>", tech)},
+        {"id": "author", "title": "Test author", "text": deadline_note(author_s) + author_prompt(tech)},
+        {"id": "review", "title": "Reviewer", "text": deadline_note(review_s) + review_prompt("<task.md>", f"<{lang(tech).SOLUTION}>", tech)},
     ]
-
-
-def _read(path: Path) -> str | None:
-    if not path.exists():
-        return None
-    return path.read_text()

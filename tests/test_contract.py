@@ -1,7 +1,7 @@
 import pytest
 
-from ctb.checks import readability_report
-from ctb.contract import contract_report
+from ctb.langs.python.contract import contract_report
+from ctb.langs.python.lint import readability_report
 
 _TIDY = '''from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel

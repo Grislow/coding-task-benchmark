@@ -5,7 +5,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 from ctb.models import CodingAgent
-from ctb.workspace import make_workspace, scratch_dir, setup_error
+from ctb.run.workspace import make_workspace, scratch_dir, setup_error
 
 TASK = "# Preflight\n\nWrite `solution()` that takes no arguments and returns 1.\n"
 PROMPT = "Read task.md, then edit solution.py so it does what the task says. Reply with one word: done."

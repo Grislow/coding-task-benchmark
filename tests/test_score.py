@@ -1,5 +1,5 @@
 from ctb.models import AttemptRecord, SolutionRun, TokenUsage
-from ctb.score import apply_profile, chosen_index, correctness_score, weighted_score
+from ctb.run.score import apply_profile, chosen_index, correctness_score, weighted_score
 
 
 def test_public_failure_zeros_correctness() -> None:

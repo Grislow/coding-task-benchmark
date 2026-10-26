@@ -5,12 +5,19 @@ from pathlib import Path
 
 import pytest
 
-from ctb.agents import agent_name, claude_command, codex_command, grok_command
-from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _resolve_author, _split_agent, main
+from ctb.agents.clis import agent_name, claude_command, codex_command, grok_command
+from ctb.agents.usage import result_from_codex_jsonl, result_from_stdout
+from ctb.cli import (
+    INTERVIEW_AGENTS,
+    INTERVIEW_AUTHOR,
+    _build_agent,
+    _resolve_author,
+    _split_agent,
+    main,
+)
 from ctb.models import AgentResult, TokenUsage
-from ctb.prompts import review_prompt, rubric_rules
-from ctb.reviews import parse_review
-from ctb.usage import result_from_codex_jsonl, result_from_stdout
+from ctb.run.prompts import review_prompt, rubric_rules
+from ctb.run.reviews import parse_review
 
 
 def test_claude_and_grok_usage_json() -> None:
@@ -235,10 +242,10 @@ def test_the_test_author_falls_back_through_available_models(monkeypatch: pytest
 
 
 def test_catalog_skips_a_cli_that_is_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:
-    from ctb.preflight import model_catalog
+    from ctb.agents.preflight import model_catalog
 
-    monkeypatch.setattr("ctb.preflight.shutil.which", lambda name: "/bin/grok" if name == "grok" else None)
-    monkeypatch.setattr("ctb.preflight._grok_models", lambda: ["grok-4.7"])
+    monkeypatch.setattr("ctb.agents.preflight.shutil.which", lambda name: "/bin/grok" if name == "grok" else None)
+    monkeypatch.setattr("ctb.agents.preflight._grok_models", lambda: ["grok-4.7"])
     assert model_catalog() == {"grok": ["grok-4.7"]}
 
 
@@ -327,7 +334,7 @@ def test_grok_cwd_is_absolute() -> None:
 
 
 def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from ctb.agents import ClaudeAgent
+    from ctb.agents.clis import ClaudeAgent
 
     seen: dict[str, int] = {}
     seen_prompt: dict[str, str] = {}
@@ -338,8 +345,8 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
         seen_prompt["text"] = command[2]
         return AgentResult(True, "", None, TokenUsage(), 1, None, None, {})
 
-    monkeypatch.setattr("ctb.agents._invoke", fake_invoke)
-    monkeypatch.setattr("ctb.agents.shutil.which", lambda _name: "claude")
+    monkeypatch.setattr("ctb.agents.clis._invoke", fake_invoke)
+    monkeypatch.setattr("ctb.agents.clis.shutil.which", lambda _name: "claude")
     agent = ClaudeAgent(300, 1.0, "opus", "medium")
     agent.review_timeout_s = 180
     agent.complete(cwd=str(tmp_path), prompt="Solve", session_id=None, role="solve")
@@ -360,7 +367,7 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
 def test_time_left_reports_the_seconds_remaining(tmp_path: Path) -> None:
     import subprocess
 
-    from ctb.agents import _plant_clock
+    from ctb.agents.clis import _plant_clock
 
     _plant_clock(tmp_path, 600)
     completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
@@ -373,7 +380,7 @@ def test_time_left_reports_the_seconds_remaining(tmp_path: Path) -> None:
 
 
 def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:
-    from ctb.agents import _invoke
+    from ctb.agents.clis import _invoke
 
     marker = tmp_path / "child.pid"
     started = time.perf_counter()

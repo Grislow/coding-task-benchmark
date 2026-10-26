@@ -3,15 +3,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ctb.agents import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
-from ctb.fake_agent import FakeAgent
+from ctb.agents.clis import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
+from ctb.agents.fake import FakeAgent
+from ctb.agents.preflight import check_all, cli_versions, installed_clis, model_catalog
+from ctb.langs import TECHS
 from ctb.models import CodingAgent
-from ctb.orchestrate import run_benchmark
-from ctb.preflight import check_all, cli_versions, installed_clis, model_catalog
-from ctb.prompts import TECHS
-from ctb.report import write_report
-from ctb.server import bind
-from ctb.session import RunSession
+from ctb.run.orchestrate import run_benchmark
+from ctb.run.report import write_report
+from ctb.run.session import RunSession
+from ctb.web.server import bind
 
 # Opus medium and gpt-6.1-sol xhigh are fixed choices. The other three are high:
 # Sonnet's FrontierCode score peaks at xhigh and drops at max, and high is the
@@ -220,7 +220,7 @@ def _check(args: argparse.Namespace) -> int:
 
 
 def _serve(session: RunSession, port: int) -> int:
-    page = (Path(__file__).resolve().parent / "ui.html").read_text()
+    page = (Path(__file__).resolve().parent / "web" / "ui.html").read_text()
     server = bind(session, page, port)
     host, bound = server.server_address
     print(f"http://{host}:{bound}", file=sys.stderr)

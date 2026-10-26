@@ -6,14 +6,14 @@ The solvers are the Claude Code and Grok CLIs in headless mode. The harness neve
 
 ## Setup
 
-You need Python 3.11 or newer, `make`, and `git`. A solver is included only when its CLI is on `PATH`, so a machine with one of Claude, Codex, or Grok still starts. The page writes the hidden tests with Claude Opus at high when that model is available, otherwise Codex gpt-6.1-sol at xhigh, otherwise Grok 4.7 at high. The project is MIT licensed.
+You need Python 3.11 or newer, `make`, and `git`. JavaScript and Express tasks also need Node 22 and npm. A solver is included only when its CLI is on `PATH`, so a machine with one of Claude, Codex, or Grok still starts. The page writes the hidden tests with Claude Opus at high when that model is available, otherwise Codex gpt-6.1-sol at xhigh, otherwise Grok 4.7 at high. The project is MIT licensed.
 
 ```bash
 make setup
 make start
 ```
 
-`make setup` creates `.venv` and installs the package, including pytest and the FastAPI extra. Ruff is a dependency, so the static check always runs. `make start` serves the page at <http://127.0.0.1:8765>. Paste the task in the browser. `make test` runs the tests.
+`make setup` creates `.venv` and installs the package, including pytest and the FastAPI extra. Ruff is a dependency, so the Python static check always runs. When npm is on `PATH`, it also installs the pinned Node toolchain (Express and ESLint) into `src/ctb/langs/node/node_modules`. `make start` serves the page at <http://127.0.0.1:8765>. Paste the task in the browser. `make test` runs the tests.
 
 The page runs three attempts on each of these models, at the same time. Each row has its own reasoning level, because that changes the code the model writes:
 
@@ -63,35 +63,39 @@ During a run, a model that cannot run is retried once after 5 seconds. If it sti
 
 ## What a run does
 
-1. Reads the task. Python blocks that contain `assert` become public tests.
-2. The test-author CLI writes `test_hidden.py` and `perf_cases.py` in its own directory. Those files are copied out and frozen. Each solver works in its own temporary directory outside `runs/`, so it cannot reach the author's directory or `hidden/`. Its directory is copied to `runs/<timestamp>/work/` when it finishes.
-3. Each solver gets a fresh git repo containing `task.md` and a `solution.py` stub. A git root in the workspace keeps Grok from treating this benchmark repo as the project. The solvers start together.
+1. Reads the task. Code blocks that contain `assert` become public tests: `python` blocks for Python and FastAPI, `js` or `javascript` blocks for JavaScript and Express.
+2. The test-author CLI writes the hidden tests and performance cases in its own directory: `test_hidden.py` and `perf_cases.py` for Python, `hidden.test.js` and `perf_cases.js` for JavaScript. Those files are copied out and frozen. Each solver works in its own temporary directory outside `runs/`, so it cannot reach the author's directory or `hidden/`. Its directory is copied to `runs/<timestamp>/work/` when it finishes.
+3. Each solver gets a fresh git repo containing `task.md` and a `solution.py` or `solution.js` stub. A JavaScript workspace also links the toolchain's `node_modules`, so Express loads without `npm install`. A git root in the workspace keeps Grok from treating this benchmark repo as the project. The solvers start together.
 4. Each solver takes its attempts in order. Attempt 1 solves the task. Each later attempt sees the previous score and writes a different approach. The harness keeps the better one: passing tests, then a runtime at least 10 percent lower, then clearer code.
-5. For a FastAPI task, the contract check probes each kept solution's app.
+5. For a FastAPI or Express task, the contract check probes each kept solution's app.
 6. After every attempt has finished, each kept solution is reviewed by the agents from other model families. A model never reviews its own family's code. The reviews start together. A reviewer does not see the test score.
 7. The profile is written from the weights below. A dimension that was not measured is dropped and the remaining weights are rescaled.
 
 | Dimension | Weight | Source |
 | --- | ---: | --- |
-| Correctness | 40 | Frozen pytest suite. A failing public example scores 0. |
-| Performance | 20 | Median runtime of `perf_cases.py`, with a cProfile trace of where the time went. Fastest passing solution scores 100. |
-| Static | 15 | Function length and complexity (70 percent) and Ruff (30 percent, minus 10 per issue). The rule set depends on `--tech`. |
+| Correctness | 40 | Frozen suite, run by pytest or `node --test`. A failing public example scores 0. |
+| Performance | 20 | Median runtime of the performance cases over 5 passes, with a cProfile trace of where the time went for Python. Fastest passing solution scores 100. |
+| Static | 15 | Function length and complexity (70 percent) and the linter (30 percent, minus 10 per issue): Ruff for Python, ESLint for JavaScript. The rule set depends on `--tech`. |
 | Review | 15 | Mean of the reviewers' scores. Each review is a list of findings, and the score is 100 minus 25 per blocker, 10 per major and 3 per minor. |
-| Contract | 10 | FastAPI only: share of contract checks passed. Dropped for Python tasks. |
+| Contract | 10 | FastAPI and Express only: share of contract checks passed. Dropped otherwise. |
 | Cost | 10 | Token total and wall clock, averaged. Lower is better. Dollars are shown when the CLI reports them. |
 
 ## Tech, static checks and review
 
-`--tech python` (the default) or `--tech fastapi` on `ctb run`, `ctb interview` and `ctb ui` picks the rule set. On the page, `POST /task?tech=fastapi` picks it per run.
+`--tech python` (the default), `fastapi`, `javascript` or `express` on `ctb run`, `ctb interview` and `ctb ui` picks the toolchain and rule set. On the page the task badge detects it from the text (FastAPI, Express, JavaScript or Node, otherwise Python), and clicking it cycles through the four. `POST /task?tech=express` picks it per run.
 
-| Tech | Ruff rules | Rubric |
+| Tech | Lint rules | Rubric |
 | --- | --- | --- |
-| python | `E,F,I,UP,B,A,SIM,C4,PERF,RET,PL`, ignoring `PLR2004` | `rubrics/common.md` + `rubrics/python.md` |
-| fastapi | the Python rules plus `FAST,ASYNC`, also ignoring `PLR0913` and `PLR0917` because query parameters are arguments | the Python rubric + `rubrics/fastapi.md` |
+| python | Ruff `E,F,I,UP,B,A,SIM,C4,PERF,RET,PL`, ignoring `PLR2004` | `common.md` + `python/python.md` |
+| fastapi | the Python rules plus `FAST,ASYNC`, also ignoring `PLR0913` and `PLR0917` because query parameters are arguments | the Python rubric + `python/fastapi.md` |
+| javascript | ESLint recommended plus `eqeqeq`, `no-var`, `prefer-const`, `object-shorthand`, `prefer-template`, `prefer-arrow-callback`, `no-else-return`, `no-lonely-if`, `no-unneeded-ternary`, `no-useless-return`, `no-param-reassign`, `no-nested-ternary` and `max-params` 5, in [eslint.config.mjs](src/ctb/langs/node/eslint.config.mjs) | `common.md` + `node/javascript.md` |
+| express | the JavaScript rules | the JavaScript rubric + `node/express.md` |
 
-The rubrics live in [src/ctb/rubrics](src/ctb/rubrics). Each rule has an id such as `PY-STDLIB` or `API-VALID` and a default severity. The reviewer sees the source with line numbers and replies with findings only: line, rule id, severity, issue and fix. The harness drops a finding whose rule is not in that tech's rubric or whose line does not exist, keeps one finding per line and rule, and computes the score itself. The reviewer is told not to report what a linter catches, not to judge correctness or speed, and never to reward comments. A comment that restates the code is a finding. A missing comment never is.
+For JavaScript, ESLint's `complexity` and `max-lines-per-function` rules also supply the function length and complexity, so both halves of the static score use the same thresholds as Python. The solution is CommonJS: the stub ends with `module.exports = { solution };`, and a pasted Codility answer without an export still loads, because the grader adds one when `solution` is defined.
 
-The contract check builds the app with `solution()`, passing the first `perf_cases.py` arguments when there are any. It checks that every route declares a response model (a 204 route is exempt) and that none answers bad input with a 500: a non-numeric path id, a non-numeric number in the query, and a missing, list or string body on POST, PUT and PATCH.
+The rubrics live in [src/ctb/langs](src/ctb/langs). Each rule has an id such as `PY-STDLIB` or `API-VALID` and a default severity. The reviewer sees the source with line numbers and replies with findings only: line, rule id, severity, issue and fix. The harness drops a finding whose rule is not in that tech's rubric or whose line does not exist, keeps one finding per line and rule, and computes the score itself. The reviewer is told not to report what a linter catches, not to judge correctness or speed, and never to reward comments. A comment that restates the code is a finding. A missing comment never is.
+
+The contract check builds the app with `solution()`, passing the first performance case's arguments when there are any. For FastAPI it checks that every route declares a response model (a 204 route is exempt) and that none answers bad input with a 500: a non-numeric path id, a non-numeric number in the query, and a missing, list or string body on POST, PUT and PATCH. For Express it starts the app on a free port and sends the same bad inputs, plus broken JSON, to every route registered directly on the app. Routes on a mounted `Router` are not probed.
 
 ## Agents and models
 
@@ -131,6 +135,18 @@ Codex:
 Token counts are whatever that invocation's JSON `usage` object reports. Wall clock is the process time around the CLI. Grok often omits dollar cost on subscription logins. The cost score still uses tokens and time.
 
 `--safe-mode` is deliberate. `--bare` would ignore the Claude subscription login.
+
+## Source layout
+
+| Path | What it holds |
+| --- | --- |
+| `src/ctb/cli.py`, `models.py` | The `ctb` command and the shared data types |
+| `src/ctb/agents/` | The Claude, Codex and Grok wrappers, usage parsing, the startup check and the offline fake agent |
+| `src/ctb/run/` | One run: orchestration, the page session, progress, prompts, workspaces, scoring, reviews and the report |
+| `src/ctb/web/` | The local server and the page |
+| `src/ctb/langs/` | One package per toolchain. `python/` grades Python and FastAPI, `node/` grades JavaScript and Express. Each exposes the same names (file names, stub, test grading, lint, contract probe, test-author instructions) and keeps its rubrics beside it. |
+
+A new language is a new folder under `langs/` with those names, plus its techs in `langs/__init__.py`.
 
 ## Limits
 

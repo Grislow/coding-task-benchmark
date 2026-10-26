@@ -21,7 +21,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ctb = ["ui.html", "rubrics/*.md"]
+ctb = ["web/ui.html", "langs/*.md", "langs/*/*.md", "langs/node/eslint.config.mjs", "langs/node/package*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,11 +2,10 @@ import time
 from pathlib import Path
 
 import pytest
-
-from test_benchmark import ScriptedAgent, SleepySolver, _CORRECT, _TASK, _WRONG
+from test_benchmark import _CORRECT, _TASK, _WRONG, ScriptedAgent, SleepySolver
 
 from ctb.models import AgentResult
-from ctb.session import RunSession
+from ctb.run.session import RunSession
 
 
 def _wait(session: RunSession, timeout_s: float = 30) -> dict[str, object]:

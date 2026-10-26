@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
 
+from ctb.langs import lang
 from ctb.models import BenchmarkReport, SolutionRun
-from ctb.progress import review_row
-from ctb.score import WEIGHTS
+from ctb.run.progress import review_row
+from ctb.run.score import WEIGHTS
 
 
 def write_report(report: BenchmarkReport, destination: Path) -> None:
@@ -63,11 +64,11 @@ def _markdown(report: BenchmarkReport) -> str:
         )
     lines.append("")
     for solution in ranked:
-        lines.extend(_card(solution))
+        lines.extend(_card(solution, report.tech))
     return "\n".join(lines)
 
 
-def _card(solution: SolutionRun) -> list[str]:
+def _card(solution: SolutionRun, tech: str) -> list[str]:
     lines = [
         f"## {solution.agent}",
         "",
@@ -119,7 +120,8 @@ def _card(solution: SolutionRun) -> list[str]:
                     f"{finding.issue} Fix: {finding.fix}"
                 )
         lines.append("")
-    lines.extend(["### solution.py", "", "```python", solution.source.rstrip(), "```", ""])
+    toolchain = lang(tech)
+    lines.extend([f"### {toolchain.SOLUTION}", "", f"```{toolchain.FENCE}", solution.source.rstrip(), "```", ""])
     return lines
 
 

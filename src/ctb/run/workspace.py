@@ -2,16 +2,18 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ctb.langs import lang
 from ctb.models import AgentResult
-from ctb.prompts import SOLUTION_STUB
 
 TIMED_OUT = "Timed out after"
 
 
-def make_workspace(path: Path, task_text: str) -> None:
+def make_workspace(path: Path, task_text: str, tech: str = "python") -> None:
+    toolchain = lang(tech)
     path.mkdir(parents=True, exist_ok=True)
     (path / "task.md").write_text(task_text)
-    (path / "solution.py").write_text(SOLUTION_STUB)
+    (path / toolchain.SOLUTION).write_text(toolchain.STUB)
+    toolchain.prepare(path)
     subprocess.run(
         ["git", "init", "-q"],
         cwd=path,
@@ -27,9 +29,9 @@ def scratch_dir(prefix: str) -> Path:
     return Path(tempfile.mkdtemp(prefix=prefix, dir=root))
 
 
-def setup_error(result: AgentResult, source: str) -> str | None:
-    if source.strip() != SOLUTION_STUB.strip():
+def setup_error(result: AgentResult, source: str, tech: str = "python") -> str | None:
+    if source.strip() != lang(tech).STUB.strip():
         return None
     if result.error and TIMED_OUT in result.error:
         return None
-    return (result.error or result.text.strip() or "The agent left solution.py untouched.")[:4000]
+    return (result.error or result.text.strip() or "The agent left the solution untouched.")[:4000]

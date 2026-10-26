@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from test_benchmark import ScriptedAgent, _CORRECT, _TASK, _WRONG
+from test_benchmark import _CORRECT, _TASK, _WRONG, ScriptedAgent
 
-from ctb.orchestrate import run_benchmark
-from ctb.progress import ProgressBoard
+from ctb.run.orchestrate import run_benchmark
+from ctb.run.progress import ProgressBoard
 
 
 def _attempt(snapshot: dict[str, object], agent: str, number: int) -> dict[str, object]:

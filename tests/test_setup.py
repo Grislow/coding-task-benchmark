@@ -3,11 +3,11 @@ from pathlib import Path
 import pytest
 from test_benchmark import _CORRECT, _TASK, ScriptedAgent
 
-from ctb import orchestrate
+from ctb.agents.preflight import check_agent
 from ctb.models import AgentResult, TokenUsage
-from ctb.orchestrate import rerun_agent, run_benchmark
-from ctb.preflight import check_agent
-from ctb.progress import ProgressBoard
+from ctb.run import orchestrate
+from ctb.run.orchestrate import rerun_agent, run_benchmark
+from ctb.run.progress import ProgressBoard
 
 
 class BrokenAgent(ScriptedAgent):
