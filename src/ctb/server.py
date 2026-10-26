@@ -139,13 +139,15 @@ def _solution(snapshot: dict[str, object], query: dict[str, list[str]]) -> str |
     if not names or not names[0]:
         return None
     agent = names[0]
-    if agent == "you":
-        candidate = snapshot.get("candidate")
-        if not isinstance(candidate, dict):
-            return None
-        source = candidate.get("source")
-        return source if isinstance(source, str) and source else None
     attempt_raw = query.get("attempt")
+    if agent == "you":
+        candidates = snapshot.get("candidates")
+        if not isinstance(candidates, list) or not candidates:
+            return None
+        wanted = attempt_raw[0] if attempt_raw else str(len(candidates))
+        row = next((item for item in candidates if isinstance(item, dict) and str(item.get("number")) == wanted), None)
+        source = None if row is None else row.get("source")
+        return source if isinstance(source, str) and source else None
     if attempt_raw:
         try:
             number = int(attempt_raw[0])

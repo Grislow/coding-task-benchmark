@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from ctb.models import AgentResult, TokenUsage
-from ctb.prompts import RUBRIC_SCHEMA, deadline_note
+from ctb.prompts import RUBRIC_SCHEMA, deadline_note, wrap_up_s
 from ctb.usage import result_from_codex_jsonl, result_from_stdout
 
 # --bare skips keychain and OAuth. --safe-mode keeps the signed-in subscription
@@ -322,7 +322,10 @@ def _invoke(
 def _plant_clock(cwd: Path, timeout_s: int) -> None:
     deadline = int(time.time()) + timeout_s
     script = cwd / "time-left"
-    script.write_text(f"#!/bin/sh\necho $(( {deadline} - $(date +%s) ))\n")
+    script.write_text(
+        f"#!/bin/sh\nleft=$(( {deadline} - $(date +%s) ))\necho \"$left seconds left\"\n"
+        f"if [ \"$left\" -le {wrap_up_s(timeout_s)} ]; then echo \"Wrap up now: stop exploring and leave your files in their final state.\"; fi\n"
+    )
     script.chmod(0o755)
 
 

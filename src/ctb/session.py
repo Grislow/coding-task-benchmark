@@ -32,7 +32,7 @@ _IDLE = {
     "attempts": [],
     "reviews": [],
     "solutions": [],
-    "candidate": None,
+    "candidates": [],
 }
 
 
@@ -73,9 +73,9 @@ class RunSession:
         self._board: ProgressBoard | None = None
         self._out_dir: Path | None = None
         self._report_solutions: list[SolutionRun] | None = None
-        self._you: SolutionRun | None = None
-        self._mine_claimed = False
-        self._candidate_view: dict[str, object] | None = None
+        self._yours: list[SolutionRun] = []
+        self._claimed: set[int] = set()
+        self._views: list[dict[str, object]] = []
         self._default_tech = tech
         self._tech = tech
         self._task_text = ""
@@ -114,7 +114,7 @@ class RunSession:
             "author_timeout_s": author_timeout_s,
             "review_timeout_s": review_timeout_s,
             "attempts": self._attempts,
-            "author": None if self._test_author is None else self._test_author.name,
+            "author": _author_view(self._test_author),
             "models": models,
             "prompts": _prompts(tech, timeout_s, author_timeout_s, review_timeout_s),
         }
@@ -128,9 +128,17 @@ class RunSession:
             for item in payload.get("models", [])
             if isinstance(item, dict)
         }
+        job: tuple[CodingAgent, dict[str, object]] | None = None
         with self._lock:
             if self._active():
                 raise RuntimeError("Wait for the run to finish.")
+            new_author = self._test_author
+            replace_author = False
+            if "author" in payload:
+                spec = _parse_author(payload["author"], self._models, self._test_author)
+                if not _authors_match(self._test_author, spec):
+                    new_author = None if spec is None else self._build_author(spec)
+                    replace_author = True
             rows = [dict(row) for row in self._models]
             for row in rows:
                 item = wanted.get((row["cli"], row["model"]))
@@ -157,10 +165,16 @@ class RunSession:
                 raise ValueError("Switch on at least one model.")
             self._models = rows
             self._agents = agents
+            if replace_author:
+                self._test_author = new_author
             self._timeout_s = timeout_s
             self._author_timeout_s = author_timeout_s
             self._review_timeout_s = review_timeout_s
             self._apply_timeouts()
+            if replace_author and self._checks:
+                job = self._swap_author_check()
+        if job is not None:
+            threading.Thread(target=self._check_one, args=job, daemon=True).start()
         return self.config()
 
     def _apply_timeouts(self) -> None:
@@ -178,8 +192,26 @@ class RunSession:
         except Exception as exc:
             problem = str(exc)
         with self._lock:
+            if not any(existing is row for existing in self._checks):
+                return
             row["state"] = "ready" if problem is None else "failed"
             row["note"] = problem or ""
+
+    def _build_author(self, spec: tuple[str, str, str | None]) -> CodingAgent:
+        cli, model, effort = spec
+        text = f"{cli}:{model}" if effort is None else f"{cli}:{model}:{effort}"
+        if self._build is None:
+            raise ValueError(f"This page cannot start {text}.")
+        return self._build(text)
+
+    def _swap_author_check(self) -> tuple[CodingAgent, dict[str, object]] | None:
+        self._checks = [row for row in self._checks if row.get("role") != "test author"]
+        author = self._test_author
+        if author is None:
+            return None
+        row = {"agent": author.name, "role": "test author", "state": "checking", "note": ""}
+        self._checks.append(row)
+        return author, row
 
     def rerun(self, name: str) -> dict[str, object]:
         with self._lock:
@@ -234,9 +266,9 @@ class RunSession:
             self._board = board
             self._out_dir = out_dir
             self._report_solutions = None
-            self._you = None
-            self._mine_claimed = False
-            self._candidate_view = None
+            self._yours = []
+            self._claimed = set()
+            self._views = []
             self._tech = tech or self._default_tech
             self._task_text = task_text
             thread = threading.Thread(
@@ -256,46 +288,54 @@ class RunSession:
             self._tech = self._default_tech
             self._out_dir = None
             self._report_solutions = None
-            self._you = None
-            self._mine_claimed = False
-            self._candidate_view = None
+            self._yours = []
+            self._claimed = set()
+            self._views = []
         return self.snapshot()
 
     def submit_mine(self, source: str) -> dict[str, object]:
+        if not source.strip():
+            raise RuntimeError("Paste a solution first.")
         if self._out_dir is None or self.snapshot()["suite_ready"] is not True:
             raise RuntimeError("The suite is not ready.")
         with self._lock:
-            if self._candidate_view is not None:
-                raise RuntimeError("A solution was already submitted.")
-            self._candidate_view = {"agent": "you", "state": "running", "source": source}
+            number = len(self._views) + 1
+            self._views.append({"agent": "you", "number": number, "state": "running", "source": source, "started_at": time.time()})
+            views = self._views
+        threading.Thread(target=self._score_mine, args=(views, number, source), daemon=True).start()
+        return self.snapshot()
+
+    def _score_mine(self, views: list[dict[str, object]], number: int, source: str) -> None:
         try:
-            you = self._build_you(source)
-        except Exception:
+            you = self._build_you(source, number)
+        except Exception as exc:
             with self._lock:
-                self._candidate_view = None
-            raise
+                views[number - 1] = {
+                    "agent": "you",
+                    "number": number,
+                    "state": "failed",
+                    "source": source,
+                    "passed": False,
+                    "failure_excerpt": str(exc),
+                    "reviews": [],
+                }
+            return
         with self._lock:
-            if self._you is not None:
-                raise RuntimeError("A solution was already submitted.")
-            self._you = you
+            if self._views is not views:
+                return
+            self._yours.append(you)
             phase = "idle" if self._board is None else self._board.snapshot()["phase"]
-            start_reviews = (
-                self._review
-                and you.passed
-                and phase in {"reviewing", "done", "error"}
-                and not self._mine_claimed
-            )
+            start_reviews = self._review and you.passed and phase in {"reviewing", "done", "error"} and number not in self._claimed
             if start_reviews:
-                self._mine_claimed = True
+                self._claimed.add(number)
         self._publish()
         if start_reviews:
-            threading.Thread(target=self._grade_you, args=(you,), daemon=True).start()
-        return self.snapshot()
+            self._grade_you(you)
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
             board = self._board
-            view = self._candidate_view
+            views = [dict(view) for view in self._views]
             metadata = {
                 "tech": self._tech,
                 "task_text": self._task_text,
@@ -310,17 +350,12 @@ class RunSession:
                 "now": time.time(),
             }
         if board is None:
-            return {**_IDLE, **metadata}
-        snap = {**board.snapshot(), **metadata}
-        if view is None:
-            snap["candidate"] = None
-            return snap
-        row = dict(view)
-        reviews = row.get("reviews")
-        if isinstance(reviews, list):
-            row["reviews"] = [dict(item) for item in reviews]
-        snap["candidate"] = row
-        return snap
+            return {**_IDLE, **metadata, "candidates": views}
+        for row in views:
+            reviews = row.get("reviews")
+            if isinstance(reviews, list):
+                row["reviews"] = [dict(item) for item in reviews]
+        return {**board.snapshot(), **metadata, "candidates": views}
 
     def out_dir(self) -> Path | None:
         return self._out_dir
@@ -336,26 +371,23 @@ class RunSession:
                 out_dir=out_dir,
                 review=self._review,
                 progress=board,
-                candidate=self._claim_you,
+                candidate=self._claim_yours,
                 tech=self._tech,
             )
             with self._lock:
                 self._report_solutions = report.solutions
-            you = self._claim_you() if self._review else None
-            if you is not None:
-                self._grade_you(you)
-            else:
-                self._publish()
+            self._publish()
+            for you in self._claim_yours() if self._review else []:
+                threading.Thread(target=self._grade_you, args=(you,), daemon=True).start()
         except Exception as exc:
             board.add_note(str(exc))
             board.set_phase("error")
 
-    def _claim_you(self) -> SolutionRun | None:
+    def _claim_yours(self) -> list[SolutionRun]:
         with self._lock:
-            if self._you is not None and self._you.passed and not self._mine_claimed:
-                self._mine_claimed = True
-                return self._you
-            return None
+            fresh = [you for you in self._yours if you.passed and _number(you) not in self._claimed]
+            self._claimed.update(_number(you) for you in fresh)
+            return fresh
 
     def _grade_you(self, you: SolutionRun) -> None:
         out_dir = self._out_dir
@@ -365,7 +397,7 @@ class RunSession:
         board = self._board
         if board is not None:
             for agent in self._agents:
-                board.review_started(agent.name, "you")
+                board.review_started(agent.name, "you", _number(you))
         for agent in self._agents:
             graded = _grade((you, agent), task_text, out_dir, board, self._tech)
             if graded[1] is not None:
@@ -374,38 +406,40 @@ class RunSession:
 
     def _publish(self) -> None:
         with self._lock:
-            you = self._you
-            if you is None:
+            if not self._yours:
                 return
             others = self._report_solutions
             if others is not None:
-                apply_profile([*others, you])
-                if you.tokens == 0 and you.wall_ms == 0:
-                    you.cost = None
-                    you.profile = weighted_score(
-                        {
-                            "correctness": you.correctness,
-                            "performance": you.performance,
-                            "static": you.readability,
-                            "review": you.review,
-                            "contract": you.contract,
-                            "cost": None,
-                        }
-                    )
+                apply_profile([*others, *self._yours])
+                for you in self._yours:
+                    if you.tokens == 0 and you.wall_ms == 0:
+                        you.cost = None
+                        you.profile = weighted_score(
+                            {
+                                "correctness": you.correctness,
+                                "performance": you.performance,
+                                "static": you.readability,
+                                "review": you.review,
+                                "contract": you.contract,
+                                "cost": None,
+                            }
+                        )
                 board = self._board
                 if board is not None:
                     board.set_solutions(others)
             else:
-                attempt = you.chosen_attempt()
-                if attempt is not None:
-                    you.correctness = correctness_score(
-                        attempt.tests_passed,
-                        attempt.tests_total,
-                        attempt.public_failed,
-                    )
-            self._candidate_view = _candidate_row(you)
+                for you in self._yours:
+                    attempt = you.chosen_attempt()
+                    if attempt is not None:
+                        you.correctness = correctness_score(
+                            attempt.tests_passed,
+                            attempt.tests_total,
+                            attempt.public_failed,
+                        )
+            for you in self._yours:
+                self._views[_number(you) - 1] = _candidate_row(you)
 
-    def _build_you(self, source: str) -> SolutionRun:
+    def _build_you(self, source: str, number: int) -> SolutionRun:
         out_dir = self._out_dir
         if out_dir is None:
             raise RuntimeError("The suite is not ready.")
@@ -416,7 +450,7 @@ class RunSession:
         evaluation = evaluate_solution(source, public, tests, perf, self._timeout_s)
         readability, notes = readability_report(source, self._tech)
         attempt = AttemptRecord(
-            number=1,
+            number=number,
             session_id=None,
             usage=TokenUsage(),
             wall_ms=0,
@@ -454,10 +488,16 @@ class RunSession:
         return out_dir
 
 
+def _number(you: SolutionRun) -> int:
+    return you.attempts[0].number
+
+
 def _candidate_row(you: SolutionRun) -> dict[str, object]:
     attempt = you.chosen_attempt()
     return {
         "agent": you.agent,
+        "number": _number(you),
+        "state": "passed" if you.passed else "failed",
         "source": you.source,
         "passed": you.passed,
         "public_failed": False if attempt is None else attempt.public_failed,
@@ -475,7 +515,7 @@ def _candidate_row(you: SolutionRun) -> dict[str, object]:
         "contract_notes": you.contract_notes,
         "cost": you.cost,
         "profile": you.profile,
-        "reviews": [{**review_row(review), "author": "you", "attempt": 1, "state": "done"} for review in you.reviews],
+        "reviews": [{**review_row(review), "author": "you", "attempt": _number(you), "state": "done"} for review in you.reviews],
     }
 
 
@@ -483,6 +523,58 @@ def _bounded_timeout(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or not 30 <= value <= 3600:
         raise ValueError("The time limit must be between 30 and 3600 seconds.")
     return value
+
+
+def _author_view(agent: CodingAgent | None) -> dict[str, object] | None:
+    if agent is None:
+        return None
+    cli = family(agent.name)
+    effort = getattr(agent, "effort", None)
+    return {
+        "cli": cli,
+        "model": getattr(agent, "model", None) or agent.name,
+        "effort": effort,
+        "name": agent.name,
+        "efforts": [level for level in LEVELS if level in EFFORTS.get(cli, ())],
+    }
+
+
+def _parse_author(
+    requested: object,
+    models: list[dict[str, object]],
+    current: CodingAgent | None = None,
+) -> tuple[str, str, str | None] | None:
+    if requested is None:
+        return None
+    if not isinstance(requested, dict):
+        raise ValueError("The test author must name a model.")
+    cli = requested.get("cli")
+    model = requested.get("model")
+    effort = requested.get("effort")
+    if not isinstance(cli, str) or not isinstance(model, str) or not cli or not model:
+        raise ValueError("The test author must name a model.")
+    known = any(row["cli"] == cli and row["model"] == model for row in models)
+    current_view = _author_view(current)
+    if not known and current_view is not None:
+        known = current_view["cli"] == cli and current_view["model"] == model
+    if not known:
+        raise ValueError(f"{cli}:{model} is not an available model.")
+    allowed = EFFORTS.get(cli, frozenset())
+    if allowed:
+        if not isinstance(effort, str) or effort not in allowed:
+            raise ValueError(f"{cli} has no reasoning level '{effort}'.")
+        return cli, model, effort
+    if effort not in (None, ""):
+        raise ValueError(f"{cli} does not take a reasoning level.")
+    return cli, model, None
+
+
+def _authors_match(agent: CodingAgent | None, spec: tuple[str, str, str | None] | None) -> bool:
+    if agent is None or spec is None:
+        return agent is None and spec is None
+    view = _author_view(agent)
+    cli, model, effort = spec
+    return view is not None and view["cli"] == cli and view["model"] == model and view["effort"] == effort
 
 
 def _model_row(agent: CodingAgent) -> dict[str, object]:

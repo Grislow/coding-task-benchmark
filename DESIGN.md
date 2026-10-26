@@ -340,11 +340,15 @@ Lanes sit directly on the race card, transparent, 12px corners, separated by a 1
 
 ### Leaderboard
 
-Every finished attempt is its own full-width button row, sorted by score. Muted column heads at 12px. Rows are transparent with 10px corners and a 1px divider between them; hover is raised. The first row has a 3px inset hue bar on its left and hue-coloured rank and score. The selected row is tinted 14% hue over raised with a 2px hue ring. The agent cell leads with the 10px hue swatch, the name, and the muted CLI. The result cell is the icon and word in pass or fail colour; "kept" sits muted after the attempt number. Empty: "Finished attempts land here."
+Every finished attempt is its own full-width button row, sorted by score. Muted column heads at 12px. Rows are transparent with 10px corners and a 1px divider between them; hover is raised. The first row has a 3px inset hue bar on its left and hue-coloured rank and score. The selected row is tinted 14% hue over raised with a 2px hue ring. The agent cell leads with the 10px hue swatch, the name, and the muted CLI. The result cell is the icon and word in pass or fail colour. Each human paste is its own "you" row (you 1, you 2, …) in ink; the solution box clears after each one, so any number can follow.
+
+### Empty and loading states
+
+Before a run nothing is loading, so nothing shimmers. The Leaderboard shows an empty podium: three dashed blocks in the brand-mark hues (2 sun, 1 coral, 3 mint, the logo's own heights), which rise in once over 560ms, then "The podium is empty", the attempt count, and the next run's models as hue-diamond chips under "On the grid". Before any row is selected, the Attempt card centres three dashed ghost tabs over "Nothing to inspect yet" (before a run) or "Pick an attempt" (during one). The pulsing skeleton is kept only for the short wait between Start and the first rows. Ready preflight lanes show only the check mark and "Ready".
 
 ### Attempt detail
 
-A card titled "agent · attempt n". Left: raised measurement tiles (Correctness, Performance, Readability, Score) with an ink label and muted text, the first failure as a 12px fail-coloured mono excerpt on ground, then reviews as hair-ringed blocks. Right: the solution in a mono pane on ground (1px line, 12px corners, 160 to 380px tall, scrolls), blurred 8px until "Show solution" (ghost, eye icon) reveals it.
+A card titled "agent · attempt n", sticky beside the leaderboard at 20px from the top. Its height is the smaller of the leaderboard card and the viewport less 120px, so it never changes with review count and never stretches down a long leaderboard; its body scrolls under fixed header and tabs. Left: raised measurement tiles (Correctness, Performance, Readability, Score) with an ink label and muted text, the first failure as a 12px fail-coloured mono excerpt on ground, then reviews as hair-ringed blocks. Right: the solution in a mono pane on ground (1px line, 12px corners, 160 to 380px tall, scrolls), blurred 8px until "Show solution" (ghost, eye icon) reveals it.
 
 ### Inputs / Fields
 

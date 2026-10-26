@@ -336,9 +336,26 @@
     @keyframes blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
     .landed { animation: land 520ms cubic-bezier(.2, .8, .2, 1); display: inline-block; }
     @keyframes land { from { transform: scale(0.6); opacity: 0; } 55% { transform: scale(1.18); opacity: 1; } to { transform: none; } }
-    .lower { align-items: stretch; }
     .board-frame { overflow: clip; overflow-clip-margin: 24px; transition: height 420ms cubic-bezier(.2, .8, .2, 1); }
-    .detail { contain: size; display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
+    .detail { position: sticky; top: 20px; height: min(var(--board-h, 520px), calc(100vh - 120px)); display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; transition: height 420ms cubic-bezier(.2, .8, .2, 1); }
+    .init { display: grid; justify-items: center; gap: 10px; padding: 26px 12px 18px; text-align: center; }
+    .init p { margin: 0; max-width: 46ch; text-wrap: pretty; }
+    .init .init-title { font: 800 16px var(--display); color: var(--ink); }
+    .podium { display: flex; align-items: flex-end; gap: 8px; height: 132px; margin-bottom: 8px; }
+    .podium i { --hue: var(--line); display: grid; place-items: start center; width: 64px; padding-top: 10px; border-radius: 12px 12px 4px 4px; border: 2px dashed color-mix(in oklab, var(--hue) 70%, transparent); background: color-mix(in oklab, var(--hue) 10%, transparent); color: var(--hue); font: 800 22px var(--display); animation: climb 560ms cubic-bezier(.2, .8, .2, 1) backwards; }
+    .podium i::before { content: attr(data-place); }
+    .podium i:nth-child(1) { --hue: var(--a2); height: 70%; animation-delay: 80ms; }
+    .podium i:nth-child(2) { --hue: var(--a1); height: 100%; }
+    .podium i:nth-child(3) { --hue: var(--a3); height: 50%; animation-delay: 160ms; }
+    @keyframes climb { from { transform: scaleY(0.2); transform-origin: bottom; opacity: 0; } to { transform: none; opacity: 1; } }
+    .grid-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+    .grid-line li { --hue: var(--muted); display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--raised); font-weight: 600; font-size: 13px; }
+    .grid-line li::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--hue); transform: rotate(45deg); }
+    .grid-label { color: var(--muted); font: 600 12px var(--mono); }
+    .tab-ghosts { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--ground); margin-bottom: 8px; }
+    .tab-ghosts span { height: 32px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); font: 600 13px var(--font); }
+    #detail-empty:not([hidden]) { flex: 1; display: grid; align-content: center; padding-bottom: 40px; }
+    button.action.busy::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
     .detail-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -22px; padding: 2px 22px 22px; scrollbar-gutter: stable; }
     .skeleton { display: grid; gap: 10px; padding-top: 30px; }
     .skeleton i { height: 26px; border-radius: 8px; background: var(--raised); animation: blink 1.4s ease-in-out infinite; }
@@ -350,7 +367,7 @@
     .detail-head::before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 3px; background: var(--hue, var(--line)); transform: rotate(45deg); }
     #detail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tabs { display: flex; gap: 4px; margin: 16px 0 14px; padding: 4px; border-radius: 999px; background: var(--ground); width: max-content; }
-    .tabs[hidden], [role="tabpanel"][hidden], #detail-empty[hidden], pre[hidden] { display: none; }
+    .tabs[hidden], [role="tabpanel"][hidden], #detail-empty[hidden], .detail-body[hidden], pre[hidden] { display: none; }
     [role="tab"] {
       height: 32px;
       padding: 0 14px;
@@ -422,10 +439,25 @@
     .config-head { display: flex; align-items: center; gap: 14px; padding: 24px 26px 0; flex-wrap: wrap; }
     .config-head h2 { margin: 0; margin-right: auto; }
     .config-head .tabs { margin: 0; }
-    .config-body { overflow: auto; padding: 18px 26px; height: min(640px, calc(100vh - 220px)); }
-    .config-foot { display: flex; align-items: center; gap: 10px; padding: 16px 26px 22px; border-top: 1px solid var(--line); }
+    .config-body { overflow: auto; margin: 0 2px; padding: 18px 24px; height: min(640px, calc(100vh - 220px)); }
+    .config-foot { display: flex; align-items: center; gap: 10px; margin: 0 2px; padding: 16px 24px 22px; border-top: 1px solid var(--line); }
     .config-foot .muted { margin-right: auto; }
     .config-foot .error { color: var(--fail); margin-right: auto; }
+    .author-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 12px; background: var(--raised); margin-bottom: 10px; }
+    .author-pick > label { margin: 0; min-width: 7.5rem; color: var(--ink); font-weight: 600; }
+    .author-pick p { flex-basis: 100%; margin: 0; }
+    .combo { position: relative; flex: 1 1 220px; min-width: 180px; }
+    .combo input, .author-pick select { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); }
+    .combo input { width: 100%; padding: 0 10px; font: 600 15px var(--mono); }
+    .author-pick select { min-width: 120px; padding: 0 8px; font: 500 13px var(--font); }
+    .combo input:focus-visible, .author-pick select:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
+    .combo input:disabled, .author-pick select:disabled { opacity: 0.45; }
+    .combo ul { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow: auto; margin: 0; padding: 4px; list-style: none; background: var(--panel); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+    .combo li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    .combo li b { font-weight: 600; }
+    .combo li small { color: var(--muted); font: 500 12px var(--mono); }
+    .combo li[aria-selected="true"] { background: var(--ground); box-shadow: inset 2px 0 0 var(--a2); }
+    .combo li.empty { color: var(--muted); cursor: default; }
     .limits { display: grid; gap: 10px; margin-bottom: 18px; }
     .limit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 12px; background: var(--raised); }
     .limit label { margin: 0; min-width: 7.5rem; color: var(--ink); font-weight: 600; }
@@ -454,15 +486,15 @@
     .prompt pre { margin: 0 14px 14px; min-height: 0; max-height: 360px; width: auto; font-size: 12px; }
     @media (prefers-reduced-motion: reduce) {
       .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
-      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]), .skeleton i { animation: none; }
-      button.action, .tech, [role="tab"], .board-frame { transition: none; }
+      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]), .skeleton i, .podium i, button.action.busy::before { animation: none; }
+      button.action, .tech, [role="tab"], .board-frame, .detail { transition: none; }
     }
     @media (max-width: 1240px) {
       h1 { font-size: 19px; }
     }
     @media (max-width: 960px) {
       .lower { grid-template-columns: 1fr; }
-      .detail { contain: none; padding-bottom: 22px; }
+      .detail { position: static; height: auto; padding-bottom: 22px; }
       .detail-body { overflow: visible; margin: 0; padding: 2px 0 0; }
     }
     @media (max-width: 800px) {
@@ -539,11 +571,11 @@
       <section class="card" id="ranking" tabindex="-1" aria-labelledby="ranking-title">
         <div class="section-head"><h2 id="ranking-title">Leaderboard</h2><kbd>L</kbd></div>
         <p class="hint">Rows appear once the model check has finished and the tests start, one per model in that run. A score appears once solving ends and the attempt's reviews are in, then the row moves to its place.</p>
-        <div class="board-frame" id="leaderboard-frame"><div id="leaderboard"><div class="skeleton" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="board-frame" id="leaderboard-frame"><div id="leaderboard"></div></div>
       </section>
       <section id="detail" class="card detail" aria-labelledby="detail-title">
         <div class="detail-head"><h2 id="detail-title">Attempt</h2></div>
-        <p id="detail-empty" class="empty">Pick a row to see its score, reviews and code. Press <kbd>L</kbd>, then <kbd>↑</kbd> <kbd>↓</kbd>.</p>
+        <div id="detail-empty" class="empty"></div>
         <div class="tabs" id="tabs" role="tablist" aria-label="Attempt details" hidden>
           <button role="tab" id="tab-score" type="button" aria-selected="true" aria-controls="panel-score">Score <kbd>1</kbd></button>
           <button role="tab" id="tab-review" type="button" aria-selected="false" aria-controls="panel-review" tabindex="-1">Review <kbd>2</kbd></button>
@@ -597,6 +629,15 @@
       </div>
       <div class="config-body">
         <div role="tabpanel" id="cpanel-run" aria-labelledby="ctab-run">
+          <div class="author-pick" id="author-pick">
+            <label for="author-model">Test author</label>
+            <div class="combo">
+              <input id="author-model" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="author-options" aria-describedby="author-pick-help" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type to filter models">
+              <ul id="author-options" role="listbox" hidden></ul>
+            </div>
+            <select id="author-effort" disabled aria-label="Test author reasoning level"></select>
+            <p id="author-pick-help" class="muted">Writes the hidden tests. Reasoning stays off until a model is chosen.</p>
+          </div>
           <div class="limits">
             <div class="limit">
               <label for="author-limit">Test author</label>
@@ -775,9 +816,10 @@
 
     function reviewsOf(snapshot) {
       const list = (snapshot.reviews || []).slice();
-      const mine = snapshot.candidate;
-      for (const review of (mine && mine.reviews) || []) {
-        if (!list.some((item) => item.reviewer === review.reviewer && item.author === "you")) list.push(review);
+      for (const mine of snapshot.candidates || []) {
+        for (const review of mine.reviews || []) {
+          if (!list.some((item) => item.reviewer === review.reviewer && item.author === "you" && item.attempt === review.attempt)) list.push(review);
+        }
       }
       return list;
     }
@@ -799,16 +841,10 @@
 
     function attemptsOf(snapshot) {
       const attempts = (snapshot.attempts || []).slice();
-      const mine = snapshot.candidate;
-      if (!mine) return attempts;
-      if (mine.state === "running") {
-        attempts.push({ agent: "you", number: 1, state: "running" });
-        return attempts;
-      }
-      attempts.push({
+      for (const mine of snapshot.candidates || []) attempts.push(mine.state === "running" ? { agent: "you", number: mine.number, state: "running", started_at: mine.started_at } : {
         agent: "you",
-        number: 1,
-        state: mine.passed ? "passed" : "failed",
+        number: mine.number,
+        state: mine.state,
         tests_passed: mine.tests_passed,
         tests_total: mine.tests_total,
         public_failed: mine.public_failed,
@@ -824,6 +860,50 @@
         tokens: 0
       });
       return attempts;
+    }
+
+    function initBoard(snapshot) {
+      const box = el("div", "init");
+      const podium = el("div", "podium");
+      podium.setAttribute("aria-hidden", "true");
+      for (const place of ["2", "1", "3"]) podium.appendChild(el("i")).dataset.place = place;
+      const models = snapshot.lineup || [];
+      const each = snapshot.attempts_per_agent || 0;
+      box.append(
+        podium,
+        el("p", "init-title", "The podium is empty"),
+        el("p", "muted", "Paste a task and start the run. " + (models.length ? models.length * each + " attempts" : "Every attempt") + " line up here, and each climbs to its place once it is scored.")
+      );
+      if (models.length) {
+        box.appendChild(el("span", "grid-label", "On the grid · " + each + (each === 1 ? " attempt" : " attempts") + " each"));
+        const line = el("ul", "grid-line");
+        line.setAttribute("aria-label", "Models in the next run");
+        for (const agent of models) {
+          const chip = el("li", "", nameParts(agent).name);
+          chip.style.setProperty("--hue", hueOf(agent));
+          chip.title = agent;
+          line.appendChild(chip);
+        }
+        box.appendChild(line);
+      }
+      return box;
+    }
+
+    function renderDetailEmpty(snapshot) {
+      const box = document.getElementById("detail-empty");
+      const idle = !snapshot || snapshot.phase === "idle";
+      if (box.dataset.idle === String(idle)) return;
+      box.dataset.idle = String(idle);
+      box.replaceChildren();
+      const keys = [el("kbd", "", "L"), document.createTextNode(", then "), el("kbd", "", "↑"), document.createTextNode(" "), el("kbd", "", "↓"), document.createTextNode(".")];
+      const init = el("div", "init");
+      const tabs = el("div", "tab-ghosts");
+      tabs.setAttribute("aria-hidden", "true");
+      for (const name of ["Score", "Review", "Solution"]) tabs.appendChild(el("span", "", name));
+      const line = el("p", "muted", idle ? "Once the run starts, pick a row or press " : "Click a row or press ");
+      line.append(...keys);
+      init.append(tabs, el("p", "init-title", idle ? "Nothing to inspect yet" : "Pick an attempt"), el("p", "muted", "Every attempt opens here with its score, each reviewer's findings and its code."), line);
+      box.appendChild(init);
     }
 
     function rowsFrom(snapshot) {
@@ -1004,7 +1084,7 @@
           slot.append(mark, el("small", "", "added from the catalog in Config, so it runs unchecked"));
         } else if (row.state === "ready") {
           mark.append(icon("check"), document.createTextNode("Ready"));
-          slot.append(mark, el("small", "", "read the task and wrote solution.py"));
+          slot.append(mark);
         } else {
           mark.append(icon("alert"), document.createTextNode("Cannot run"));
           slot.append(mark, el("small", "", row.note));
@@ -1096,7 +1176,7 @@
       if (entries.some((entry) => entry.attempt.agent === "you")) racers.push("you");
       const lanes = racers.map((agent, index) => {
         const attempts = agent === "you"
-          ? entries.filter((entry) => entry.attempt.agent === "you").map((entry) => entry.attempt)
+          ? entries.filter((entry) => entry.attempt.agent === "you").map((entry) => entry.attempt).sort((left, right) => left.number - right.number)
           : (snapshot.attempts || []).filter((item) => item.agent === agent);
         const scored = attempts.map((item) => byKey.get(agent + ":" + item.number)).filter((entry) => entry && entry.final && entry.score !== null);
         const top = scored.length ? scored.reduce((best, entry) => (entry.score > best.score ? entry : best)) : null;
@@ -1220,7 +1300,11 @@
       const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
       const before = positions(leaderboard, "button.row");
       leaderboard.replaceChildren();
-      if (!leaderboardReady(latest || {})) {
+      if (!latest || (latest.phase === "idle" && !entries.length)) {
+        leaderboard.appendChild(initBoard(latest || {}));
+        return;
+      }
+      if (!leaderboardReady(latest)) {
         leaderboard.appendChild(leaderboardSkeleton());
         return;
       }
@@ -1359,7 +1443,9 @@
       const entry = selected ? entries.find((item) => item.key === selected.key) : null;
       const title = document.getElementById("detail-title");
       document.getElementById("detail-empty").hidden = !!entry;
+      renderDetailEmpty(latest);
       document.getElementById("tabs").hidden = !entry;
+      document.getElementById("detail-body").hidden = !entry;
       if (!entry) {
         detail.style.removeProperty("--hue");
         title.textContent = "Attempt";
@@ -1477,12 +1563,14 @@
 
     function renderMine(snapshot) {
       const hint = document.getElementById("mine-hint");
-      const mine = snapshot.candidate;
-      document.getElementById("score").disabled = snapshot.suite_ready !== true || !!mine;
+      const button = document.getElementById("score");
       const area = document.getElementById("mine");
-      if (mine && mine.source && !area.value) area.value = mine.source;
-      if (mine) hint.textContent = mine.state === "running" ? "Running the suite…" : "Scored. It races as you.";
-      else hint.textContent = snapshot.suite_ready ? "Runs on the same frozen suite." : "Opens once the tests are written.";
+      const mine = snapshot.candidates || [];
+      const running = mine.filter((item) => item.state === "running").length;
+      button.disabled = snapshot.suite_ready !== true || button.classList.contains("busy") || !area.value.trim();
+      if (!snapshot.suite_ready) hint.textContent = "Opens once the tests are written.";
+      else if (!mine.length) hint.textContent = "Runs on the same frozen suite. Submit as many as you like.";
+      else hint.textContent = mine.length + " submitted" + (running ? " · " + running + " scoring" : "") + ". Paste another any time.";
     }
 
     function render(snapshot) {
@@ -1635,18 +1723,31 @@
     });
 
     document.getElementById("score").addEventListener("click", async () => {
-      const response = await fetch("/mine", {
-        method: "POST",
-        body: document.getElementById("mine").value
-      });
+      const button = document.getElementById("score");
+      const area = document.getElementById("mine");
+      button.classList.add("busy");
+      button.disabled = true;
+      button.textContent = "Submitting";
+      area.readOnly = true;
       const notice = document.getElementById("notice");
-      if (!response.ok) {
-        notice.textContent = await response.text();
-        return;
+      try {
+        const response = await fetch("/mine", { method: "POST", body: area.value });
+        if (!response.ok) {
+          notice.textContent = await response.text();
+          return;
+        }
+        notice.textContent = "";
+        area.value = "";
+      } finally {
+        button.classList.remove("busy");
+        button.textContent = "Score my solution";
+        area.readOnly = false;
+        lastPayload = null;
+        await refresh();
       }
-      notice.textContent = "";
-      refresh();
     });
+
+    document.getElementById("mine").addEventListener("input", () => latest && renderMine(latest));
 
     async function post(path) {
       const response = await fetch(path, { method: "POST" });
@@ -1762,8 +1863,167 @@
     new ResizeObserver(() => {
       frame.style.height = document.getElementById("leaderboard").offsetHeight + "px";
     }).observe(document.getElementById("leaderboard"));
+    new ResizeObserver(() => {
+      document.getElementById("detail").style.setProperty("--board-h", document.getElementById("ranking").offsetHeight + "px");
+    }).observe(document.getElementById("ranking"));
 
     let configTab = "run";
+    let authorActive = -1;
+    const AUTHOR_LEVEL = { "claude:opus": "high", "codex:gpt-6.1-sol": "xhigh", "grok:grok-4.7": "high" };
+
+    function authorChoices(query) {
+      const models = [...(config.models || [])];
+      const author = config.author;
+      if (author && !models.some((model) => model.cli === author.cli && model.model === author.model)) {
+        models.unshift({ cli: author.cli, model: author.model, effort: author.effort, efforts: author.efforts || [] });
+      }
+      const needle = query.trim().toLowerCase();
+      return models.filter((model) => !needle || model.model.toLowerCase().includes(needle) || model.cli.toLowerCase().includes(needle));
+    }
+
+    function clearAuthorEffort() {
+      const effort = document.getElementById("author-effort");
+      effort.replaceChildren();
+      const option = el("option", "", "Reasoning");
+      option.value = "";
+      effort.appendChild(option);
+      effort.dataset.ready = "";
+      effort.disabled = true;
+    }
+
+    function fillAuthorEffort(model, selected) {
+      const effort = document.getElementById("author-effort");
+      const levels = (model && model.efforts) || [];
+      effort.replaceChildren();
+      if (!levels.length) {
+        clearAuthorEffort();
+        return;
+      }
+      for (const level of levels) {
+        const option = el("option", "", level);
+        option.value = level;
+        option.selected = level === selected;
+        effort.appendChild(option);
+      }
+      if (![...effort.options].some((option) => option.selected)) {
+        const high = levels.indexOf("high");
+        effort.selectedIndex = high >= 0 ? high : 0;
+      }
+      effort.dataset.ready = "1";
+      effort.disabled = config.locked;
+    }
+
+    function preferredEffort(model) {
+      const known = AUTHOR_LEVEL[model.cli + ":" + model.model];
+      const levels = model.efforts || [];
+      if (known && levels.includes(known)) return known;
+      if (model.effort && levels.includes(model.effort)) return model.effort;
+      if (levels.includes("high")) return "high";
+      return levels[0] || "";
+    }
+
+    function applyAuthor(author) {
+      const input = document.getElementById("author-model");
+      if (!author) {
+        input.value = "";
+        delete input.dataset.cli;
+        delete input.dataset.model;
+        clearAuthorEffort();
+        return;
+      }
+      input.value = author.model;
+      input.dataset.cli = author.cli;
+      input.dataset.model = author.model;
+      const model = (config.models || []).find((item) => item.cli === author.cli && item.model === author.model);
+      fillAuthorEffort(model || { efforts: author.efforts || [], effort: author.effort }, author.effort);
+    }
+
+    function renderAuthor() {
+      const input = document.getElementById("author-model");
+      const effort = document.getElementById("author-effort");
+      const open = document.getElementById("config-dialog").open;
+      if (!(open && input.dataset.touched === "1")) applyAuthor(config.author);
+      input.disabled = config.locked;
+      effort.disabled = config.locked || !input.dataset.model || effort.dataset.ready !== "1";
+    }
+
+    function closeAuthorList() {
+      const input = document.getElementById("author-model");
+      const list = document.getElementById("author-options");
+      list.hidden = true;
+      list.replaceChildren();
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+      authorActive = -1;
+    }
+
+    function moveAuthorActive(delta) {
+      const options = [...document.querySelectorAll("#author-options [role=option]")];
+      if (!options.length) return;
+      if (authorActive < 0) authorActive = 0;
+      else authorActive = Math.min(Math.max(authorActive + delta, 0), options.length - 1);
+      options.forEach((option, index) => option.setAttribute("aria-selected", index === authorActive ? "true" : "false"));
+      inputActivedescendant(options[authorActive]);
+    }
+
+    function inputActivedescendant(option) {
+      document.getElementById("author-model").setAttribute("aria-activedescendant", option.id);
+      option.scrollIntoView({ block: "nearest" });
+    }
+
+    function openAuthorList() {
+      const input = document.getElementById("author-model");
+      if (input.disabled || !config) return;
+      authorActive = -1;
+      const query = input.dataset.model && input.value === input.dataset.model ? "" : input.value;
+      const choices = authorChoices(query);
+      const list = document.getElementById("author-options");
+      list.replaceChildren();
+      if (!choices.length) {
+        const empty = el("li", "empty", "No matching model");
+        empty.setAttribute("role", "presentation");
+        list.appendChild(empty);
+      }
+      choices.forEach((model, index) => {
+        const option = el("li");
+        option.setAttribute("role", "option");
+        option.id = "author-option-" + index;
+        option.dataset.cli = model.cli;
+        option.dataset.model = model.model;
+        const selected = model.cli === input.dataset.cli && model.model === input.dataset.model;
+        option.setAttribute("aria-selected", selected ? "true" : "false");
+        option.append(el("b", "", model.model), el("small", "", model.cli));
+        option.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          chooseAuthor(model);
+        });
+        list.appendChild(option);
+        if (selected) authorActive = index;
+      });
+      list.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      const options = [...list.querySelectorAll("[role=option]")];
+      if (authorActive < 0 && options.length) authorActive = 0;
+      if (options[authorActive]) {
+        options.forEach((option, index) => option.setAttribute("aria-selected", index === authorActive ? "true" : "false"));
+        inputActivedescendant(options[authorActive]);
+      }
+    }
+
+    function chooseAuthor(model) {
+      const input = document.getElementById("author-model");
+      const same = input.dataset.cli === model.cli && input.dataset.model === model.model;
+      const kept = same ? document.getElementById("author-effort").value : preferredEffort(model);
+      input.value = model.model;
+      input.dataset.cli = model.cli;
+      input.dataset.model = model.model;
+      input.dataset.touched = "1";
+      fillAuthorEffort(model, kept);
+      closeAuthorList();
+      configSummary();
+      const effort = document.getElementById("author-effort");
+      if (!effort.disabled) effort.focus();
+    }
 
     function showConfigTab(name, focus) {
       configTab = name;
@@ -1795,6 +2055,7 @@
         input.disabled = locked;
       }
       document.getElementById("config-save").disabled = locked;
+      renderAuthor();
       const note = document.getElementById("config-note");
       note.className = "muted";
       note.textContent = locked ? "Locked while a run is going." : checking ? "Models can be switched once the lineup check finishes." : "";
@@ -1865,7 +2126,8 @@
       const tests = Number(document.getElementById("author-limit").value) || 0;
       const solving = Number(document.getElementById("solve-limit").value) || 0;
       const reviews = Number(document.getElementById("review-limit").value) || 0;
-      note.textContent = on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
+      const writer = document.getElementById("author-model").dataset.model;
+      note.textContent = (writer ? writer + " writes tests · " : "No test author · ") + on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
         + (unchecked.length ? " · not checked: " + unchecked.join(", ") : "");
     }
 
@@ -1885,6 +2147,57 @@
     document.getElementById("config-form").addEventListener("input", () => {
       document.getElementById("config-note").className = "muted";
       configSummary();
+    });
+    document.getElementById("author-model").addEventListener("click", openAuthorList);
+    document.getElementById("author-model").addEventListener("input", () => {
+      const input = document.getElementById("author-model");
+      input.dataset.touched = "1";
+      if (!(input.dataset.model && input.value === input.dataset.model)) {
+        delete input.dataset.cli;
+        delete input.dataset.model;
+        clearAuthorEffort();
+      }
+      openAuthorList();
+    });
+    document.getElementById("author-model").addEventListener("keydown", (event) => {
+      const input = document.getElementById("author-model");
+      const open = input.getAttribute("aria-expanded") === "true";
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (!open) openAuthorList();
+        else moveAuthorActive(1);
+      } else if (event.key === "ArrowUp" && open) {
+        event.preventDefault();
+        moveAuthorActive(-1);
+      } else if (event.key === "Enter" && open) {
+        event.preventDefault();
+        const options = [...document.querySelectorAll("#author-options [role=option]")];
+        const chosen = options[authorActive] || options[0];
+        if (!chosen) return;
+        const model = (config.models || []).find((item) => item.cli === chosen.dataset.cli && item.model === chosen.dataset.model);
+        if (model) chooseAuthor(model);
+      } else if (event.key === "Escape" && open) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeAuthorList();
+      }
+    });
+    document.getElementById("author-effort").addEventListener("change", () => {
+      document.getElementById("author-model").dataset.touched = "1";
+    });
+    document.getElementById("config-form").addEventListener("pointerdown", (event) => {
+      if (!event.target.closest(".combo")) closeAuthorList();
+    });
+    document.getElementById("config-dialog").addEventListener("cancel", (event) => {
+      const input = document.getElementById("author-model");
+      if (input.getAttribute("aria-expanded") === "true") {
+        event.preventDefault();
+        closeAuthorList();
+      }
+    });
+    document.getElementById("config-dialog").addEventListener("close", () => {
+      document.getElementById("author-model").dataset.touched = "";
+      closeAuthorList();
     });
     document.getElementById("config-cancel").addEventListener("click", () => document.getElementById("config-dialog").close());
     document.getElementById("config-tabs").addEventListener("keydown", (event) => tabKeys(event, ["run", "prompts"], configTab, showConfigTab));
@@ -1907,13 +2220,21 @@
         const effort = document.querySelector('[data-effort-for="' + CSS.escape(box.id) + '"]');
         return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined };
       });
+      const authorInput = document.getElementById("author-model");
+      const authorEffort = document.getElementById("author-effort");
+      const author = authorInput.dataset.model ? {
+        cli: authorInput.dataset.cli,
+        model: authorInput.dataset.model,
+        effort: authorEffort.dataset.ready === "1" ? authorEffort.value : null
+      } : null;
       const response = await fetch("/config", {
         method: "POST",
         body: JSON.stringify({
           author_timeout_s: Math.round(Number(document.getElementById("author-limit").value) * 60),
           timeout_s: Math.round(Number(document.getElementById("solve-limit").value) * 60),
           review_timeout_s: Math.round(Number(document.getElementById("review-limit").value) * 60),
-          models
+          models,
+          author
         })
       });
       if (!response.ok) {

@@ -45,12 +45,16 @@ def rubric_rules(tech: str) -> frozenset[str]:
     return frozenset(re.findall(r"\*\*([A-Z]+-[A-Z]+)\*\*", rubric_text(tech)))
 
 
+def wrap_up_s(timeout_s: int) -> int:
+    return max(60, timeout_s // 5)
+
+
 def deadline_note(timeout_s: int) -> str:
     amount = f"{timeout_s // 60} minutes" if timeout_s % 60 == 0 else f"{timeout_s} seconds"
     return (
         f"You have {amount}. This process is killed when that time is up.\n"
-        "Run `sh time-left` in this directory to see the seconds you have left. Do not edit or delete that file.\n"
-        "When fewer than 60 seconds remain, stop exploring and leave your files in their final state.\n"
+        "Run `sh time-left` in this directory between steps to see the seconds you have left. Do not edit or delete that file.\n"
+        f"When {wrap_up_s(timeout_s)} seconds or fewer remain, it tells you to wrap up: stop exploring and leave your files in their final state.\n"
         "If you cannot run commands, you still have only that long, so answer before it ends.\n\n"
     )
 

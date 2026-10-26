@@ -6,7 +6,7 @@ The solvers are the Claude Code and Grok CLIs in headless mode. The harness neve
 
 ## Setup
 
-You need Python 3.11 or newer, `make`, and `git`. A solver is included only when its CLI is on `PATH`, so a machine with one of Claude, Codex, or Grok still starts. If Claude is missing, no model writes the hidden tests. The project is MIT licensed.
+You need Python 3.11 or newer, `make`, and `git`. A solver is included only when its CLI is on `PATH`, so a machine with one of Claude, Codex, or Grok still starts. The page writes the hidden tests with Claude Opus at high when that model is available, otherwise Codex gpt-6.1-sol at xhigh, otherwise Grok 4.7 at high. The project is MIT licensed.
 
 ```bash
 make setup
@@ -27,7 +27,7 @@ The page runs three attempts on each of these models, at the same time. Each row
 
 Opus at medium and gpt-6.1-sol at xhigh are fixed. The other three are high. Sonnet 5.5's FrontierCode score peaks at xhigh and falls at max, because max makes edits the grader treats as out of scope, and high is the step up from Claude Code's medium default. Astra's DeepSWE score barely moves above high. Grok 4.7's published DeepSWE number is the high-effort run, and high is that model's default. Codex is started with `--ignore-user-config`, so an `xhigh` in `~/.codex/config.toml` would not apply. The catalog default for these Codex models is low.
 
-Claude Opus at high writes the hidden tests before those five start. It is not one of the solvers, so no solver is graded on tests it wrote itself. Change the lineup in the config dialog before the run. The default list is in [src/ctb/cli.py](src/ctb/cli.py).
+Claude Opus at high writes the hidden tests before those five start, when Claude is available. It is not one of the solvers, so no solver is graded on tests it wrote itself. If that model is missing, the page uses Codex gpt-6.1-sol at xhigh, then Grok 4.7 at high. Change the test author or the lineup in the config dialog before the run. The default list is in [src/ctb/cli.py](src/ctb/cli.py).
 
 To pick models yourself:
 
@@ -47,7 +47,7 @@ The report is `runs/<timestamp>/report.md`.
 
 Paste the task, watch each attempt, open a solution, and paste your own to score it on that run's suite. A line entered on the page is shown across the top for 5 seconds. It is not stored and not sent anywhere. The page listens on `127.0.0.1` port 8765 only.
 
-The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It switches models on and off, adds others from each CLI's catalog with a reasoning level, sets those three limits, and shows the prompts each role gets. Only the lineup is checked at startup. Models added from the catalog are labelled "Not checked".
+The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It chooses which available model writes the hidden tests: type to filter the model list, then pick a reasoning level. Reasoning stays off until a model is chosen. The dialog also switches solvers on and off, adds others from each CLI's catalog with a reasoning level, sets those three limits, and shows the prompts each role gets. Only the lineup is checked at startup. Models added from the catalog are labelled "Not checked". Changing the test author checks that model before the run.
 
 When the page starts it gives each lineup model a one-line task in a real solve folder. That catches a missing login, an unknown model id, or a permission rule that blocks file access. The result is in the Agents section, with a Check again button. The same check from a terminal is `.venv/bin/ctb check`.
 

@@ -36,7 +36,7 @@ def run_benchmark(
     out_dir: Path,
     review: bool,
     progress: ProgressBoard | None = None,
-    candidate: Callable[[], SolutionRun | None] | None = None,
+    candidate: Callable[[], list[SolutionRun]] | None = None,
     tech: str = "python",
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -306,10 +306,10 @@ def _review(
     task_text: str,
     out_dir: Path,
     progress: ProgressBoard | None = None,
-    candidate: Callable[[], SolutionRun | None] | None = None,
+    candidate: Callable[[], list[SolutionRun]] | None = None,
     tech: str = "python",
 ) -> None:
-    extra = None if candidate is None else candidate()
+    extras = [] if candidate is None else candidate()
     jobs = [
         (attempt, agent)
         for solution in solutions
@@ -317,8 +317,7 @@ def _review(
         for agent in agents
         if attempt.passed and family(agent.name) != family(solution.agent)
     ]
-    if extra is not None and extra.passed:
-        jobs.extend((extra, agent) for agent in agents)
+    jobs.extend((extra, agent) for extra in extras if extra.passed for agent in agents)
     _run_reviews(jobs, task_text, out_dir, progress, tech)
     _sync_chosen(solutions)
 

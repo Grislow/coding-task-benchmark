@@ -47,7 +47,15 @@ def _wait_done(server: object) -> dict[str, object]:
 
 def test_the_page_polls_status_and_shows_the_run(tmp_path: Path) -> None:
     page = (Path(__file__).parents[1] / "src" / "ctb" / "ui.html").read_text()
-    for marker in ('id="task"', 'id="board"', 'id="leaderboard"', 'id="mine"', 'id="solution"'):
+    for marker in (
+        'id="task"',
+        'id="board"',
+        'id="leaderboard"',
+        'id="mine"',
+        'id="solution"',
+        'id="author-model"',
+        'id="author-effort"',
+    ):
         assert marker in page
     assert "/status" in page
     assert "1000" in page
@@ -112,7 +120,7 @@ def test_the_server_listens_on_localhost_and_serves_one_run(tmp_path: Path) -> N
         while time.monotonic() < deadline:
             status, raw = _request(_url(server, "/status"))
             body = json.loads(raw)
-            you = body["candidate"]
+            you = (body["candidates"] or [None])[-1]
             if isinstance(you, dict) and you.get("profile") is not None and len(you["reviews"]) == 2:
                 break
             time.sleep(0.02)

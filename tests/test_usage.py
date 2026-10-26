@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from ctb.agents import agent_name, claude_command, codex_command, grok_command
-from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _split_agent, main
+from ctb.cli import INTERVIEW_AGENTS, INTERVIEW_AUTHOR, _build_agent, _resolve_author, _split_agent, main
 from ctb.models import AgentResult, TokenUsage
 from ctb.prompts import review_prompt, rubric_rules
 from ctb.reviews import parse_review
@@ -212,8 +212,26 @@ def test_a_missing_cli_is_left_out_of_the_page(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr("ctb.cli._serve", fake_serve)
     assert main(["ui"]) == 0
     assert seen["agents"] == ["grok-grok-4.7-high"]
-    assert seen["author"] is None
+    assert seen["author"] == "grok-grok-4.7-high"
     assert seen["clis"] == {"grok"}
+
+
+def test_the_test_author_falls_back_through_available_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    catalog = {
+        "claude": ["opus", "sonnet"],
+        "codex": ["gpt-6-astra", "gpt-6.1-sol"],
+        "grok": ["grok-4.7", "grok-4"],
+    }
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok"}))
+    assert _resolve_author(INTERVIEW_AUTHOR, catalog) == INTERVIEW_AUTHOR
+    assert _resolve_author("none", catalog) == "none"
+    assert _resolve_author("fake", {}) == "fake"
+    assert _resolve_author("grok:grok-4:low", {"grok": ["grok-4", "grok-4.7"]}) == "grok:grok-4:low"
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"codex", "grok"}))
+    assert _resolve_author(INTERVIEW_AUTHOR, catalog) == "codex:gpt-6.1-sol:xhigh"
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"grok"}))
+    assert _resolve_author(INTERVIEW_AUTHOR, {"grok": ["grok-4.7"]}) == "grok:grok-4.7:high"
+    assert _resolve_author(INTERVIEW_AUTHOR, {"grok": ["grok-4"], "codex": ["gpt-6-astra"]}) == "none"
 
 
 def test_catalog_skips_a_cli_that_is_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -346,8 +364,12 @@ def test_time_left_reports_the_seconds_remaining(tmp_path: Path) -> None:
 
     _plant_clock(tmp_path, 600)
     completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
-    left = int(completed.stdout.strip())
+    left = int(completed.stdout.split()[0])
     assert 590 <= left <= 600
+    assert "Wrap up" not in completed.stdout
+    _plant_clock(tmp_path, 30)
+    completed = subprocess.run(["sh", str(tmp_path / "time-left")], capture_output=True, text=True, check=True)
+    assert "Wrap up now" in completed.stdout
 
 
 def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:
