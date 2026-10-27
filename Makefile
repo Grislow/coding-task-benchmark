@@ -1,4 +1,4 @@
-.PHONY: setup start demo check run test lint
+.PHONY: setup start demo check run practice test lint
 
 setup:
 	python3 -m venv .venv
@@ -22,6 +22,10 @@ run:
 	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
 	@test -n "$(TASK)" || { echo "Usage: make run TASK=examples/binary_gap.md"; exit 1; }
 	.venv/bin/ctb race "$(TASK)"
+
+practice:
+	@test -x .venv/bin/python || { echo "Run make setup first"; exit 1; }
+	.venv/bin/python scripts/practice.py $(or $(TECH),python)
 
 test:
 	@test -x .venv/bin/pytest || { echo "Run make setup first"; exit 1; }

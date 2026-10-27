@@ -12,6 +12,12 @@ test_authors = [
   "grok:grok-4.7:high",
 ]
 
+practice = [
+  "claude:haiku",
+  "codex:gpt-6-luna:low",
+  "grok:grok-4.7:low",
+]
+
 [limits]
 author = 900
 solve = 300

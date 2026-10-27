@@ -19,6 +19,7 @@ make start                              # the page at http://127.0.0.1:8765
 make demo                               # the page with an offline fake agent, no model calls
 make check                              # prove each model in ctb.toml can run
 make run TASK=examples/binary_gap.md    # race the ctb.toml lineup in the terminal, report in runs/
+make practice TECH=python               # solve a task yourself in practice/, checked on every save
 make test                               # run the tests
 make lint                               # Ruff, plus a check for private paths and keys
 ```
@@ -45,6 +46,13 @@ test_authors = [
   "claude:opus:high",
   "codex:gpt-6.1-sol:xhigh",
   "grok:grok-4.7:high",
+]
+
+# make practice: reads a pasted task's examples once. The first installed CLI is used.
+practice = [
+  "claude:haiku",
+  "codex:gpt-6-luna:low",
+  "grok:grok-4.7:low",
 ]
 
 # Time limits in seconds.
