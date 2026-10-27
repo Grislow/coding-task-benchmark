@@ -1942,6 +1942,14 @@
       event.preventDefault();
     });
 
+    document.addEventListener("paste", (event) => {
+      if (!(event.target instanceof Element) || !event.target.closest("input, textarea")) return;
+      const text = event.clipboardData && event.clipboardData.getData("text/plain");
+      if (!text) return;
+      event.preventDefault();
+      document.execCommand("insertText", false, text);
+    });
+
     const frame = document.getElementById("leaderboard-frame");
     new ResizeObserver(() => {
       frame.style.height = document.getElementById("leaderboard").offsetHeight + "px";
