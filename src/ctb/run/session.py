@@ -1,7 +1,7 @@
 import threading
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ctb.agents.clis import EFFORTS, agent_name
@@ -591,7 +591,7 @@ class RunSession:
 
     def _directory(self) -> Path:
         self._out_root.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         out_dir = self._out_root / stamp
         if out_dir.exists():
             out_dir = self._out_root / f"{stamp}-{time.time_ns()}"

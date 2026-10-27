@@ -1,4 +1,4 @@
-.PHONY: setup start test
+.PHONY: setup start test lint
 
 setup:
 	python3 -m venv .venv
@@ -12,3 +12,7 @@ start:
 test:
 	@test -x .venv/bin/pytest || { echo "Run make setup first"; exit 1; }
 	.venv/bin/pytest
+
+lint:
+	@test -x .venv/bin/ruff || { echo "Run make setup first"; exit 1; }
+	.venv/bin/ruff check src tests

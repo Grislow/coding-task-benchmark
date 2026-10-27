@@ -103,7 +103,7 @@ def test_the_server_listens_on_localhost_and_serves_one_run(tmp_path: Path) -> N
         status, missing = _request(_url(server, "/missing"))
         assert status == 404
         assert missing == b"Not found"
-        status, started = _request(_url(server, "/task"), _TASK)
+        status, _ = _request(_url(server, "/task"), _TASK)
         assert status == 200
         snapshot = _wait_done(server)
         assert snapshot["phase"] == "done"
@@ -113,7 +113,7 @@ def test_the_server_listens_on_localhost_and_serves_one_run(tmp_path: Path) -> N
         status, kept = _request(_url(server, "/solution?agent=slow"))
         assert status == 200
         assert b"while N" in kept
-        status, mine = _request(_url(server, "/mine"), _CORRECT)
+        status, _ = _request(_url(server, "/mine"), _CORRECT)
         assert status == 200
         deadline = time.monotonic() + 30
         you = None

@@ -23,5 +23,8 @@ where = ["src"]
 [tool.setuptools.package-data]
 ctb = ["web/ui.html", "langs/*.md", "langs/*/*.md", "langs/node/eslint.config.mjs", "langs/node/package*.json"]
 
+[tool.ruff.lint]
+ignore = ["BLE001", "TRY004", "FLY002"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

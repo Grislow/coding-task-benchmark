@@ -6,7 +6,11 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ctb.agents.usage import result_from_codex_jsonl, result_from_gemini_json, result_from_stdout
+from ctb.agents.usage import (
+    result_from_codex_jsonl,
+    result_from_gemini_json,
+    result_from_stdout,
+)
 from ctb.models import AgentResult, TokenUsage
 from ctb.run.prompts import RUBRIC_SCHEMA, deadline_note, wrap_up_s
 
@@ -137,7 +141,7 @@ class GeminiAgent:
 
 def _role_effort(agent: object, role: str) -> str | None:
     if role == "review" and getattr(agent, "review_effort", None):
-        return getattr(agent, "review_effort")
+        return agent.review_effort
     return getattr(agent, "effort", None)
 
 
@@ -146,7 +150,7 @@ def _role_timeout(agent: object, role: str) -> int:
         review = getattr(agent, "review_timeout_s", None)
         if isinstance(review, int) and not isinstance(review, bool):
             return review
-    return int(getattr(agent, "timeout_s"))
+    return int(agent.timeout_s)
 
 
 def agent_name(cli: str, model: str | None, effort: str | None = None) -> str:

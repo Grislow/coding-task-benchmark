@@ -1,6 +1,6 @@
 import argparse
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ctb.agents.clis import EFFORTS, ClaudeAgent, CodexAgent, GeminiAgent, GrokAgent
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     if len({agent.name for agent in agents}) != len(agents):
         print("Agent names must be unique.", file=sys.stderr)
         return 2
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = Path(args.out) / stamp
     print(f"Running {', '.join(agent.name for agent in agents)} -> {out_dir}", file=sys.stderr)
     report = run_benchmark(

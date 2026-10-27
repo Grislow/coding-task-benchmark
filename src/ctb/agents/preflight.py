@@ -1,9 +1,9 @@
 import json
 import re
-from pathlib import Path
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from ctb.models import CodingAgent
 from ctb.run.workspace import make_workspace, scratch_dir, setup_error

@@ -5,8 +5,18 @@ from pathlib import Path
 
 import pytest
 
-from ctb.agents.clis import agent_name, claude_command, codex_command, gemini_command, grok_command
-from ctb.agents.usage import result_from_codex_jsonl, result_from_gemini_json, result_from_stdout
+from ctb.agents.clis import (
+    agent_name,
+    claude_command,
+    codex_command,
+    gemini_command,
+    grok_command,
+)
+from ctb.agents.usage import (
+    result_from_codex_jsonl,
+    result_from_gemini_json,
+    result_from_stdout,
+)
 from ctb.cli import (
     INTERVIEW_AGENTS,
     INTERVIEW_AUTHOR,
@@ -170,7 +180,7 @@ def test_interview_lineup_is_five_distinct_models() -> None:
 def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok", "gemini"}))
-    monkeypatch.setattr("ctb.cli.model_catalog", lambda: {})
+    monkeypatch.setattr("ctb.cli.model_catalog", dict)
 
     def fake_serve(session: object, port: int) -> int:
         seen["agents"] = [agent.name for agent in session._agents]

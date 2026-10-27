@@ -26,10 +26,12 @@ def _markdown(report: BenchmarkReport) -> str:
         + ", ".join(f"{name} {int(weight)}" for name, weight in WEIGHTS.items())
         + ". A missing dimension is left out and the rest are rescaled.",
         "",
-        "Performance is the median time of the frozen cases. "
-        "The fastest solution that passes scores 100. "
-        "Cost splits token total and wall clock the same way, then averages them. "
-        "A solution that fails scores 0 on performance and cost when another solution passes.",
+        (
+            "Performance is the median time of the frozen cases. "
+            "The fastest solution that passes scores 100. "
+            "Cost splits token total and wall clock the same way, then averages them. "
+            "A solution that fails scores 0 on performance and cost when another solution passes."
+        ),
         "",
     ]
     if report.notes:
@@ -48,19 +50,8 @@ def _markdown(report: BenchmarkReport) -> str:
     )
     for solution in ranked:
         lines.append(
-            "| {agent} | {profile} | {correctness} | {performance} | {static} | "
-            "{review} | {contract} | {cost} | {wall} | {tokens} |".format(
-                agent=solution.agent,
-                profile=_num(solution.profile),
-                correctness=_num(solution.correctness),
-                performance=_num(solution.performance),
-                static=_num(solution.readability),
-                review=_num(solution.review),
-                contract=_num(solution.contract),
-                cost=_num(solution.cost),
-                wall=_seconds(solution.wall_ms),
-                tokens=solution.tokens,
-            )
+            f"| {solution.agent} | {_num(solution.profile)} | {_num(solution.correctness)} | {_num(solution.performance)} | {_num(solution.readability)} | "
+            f"{_num(solution.review)} | {_num(solution.contract)} | {_num(solution.cost)} | {_seconds(solution.wall_ms)} | {solution.tokens} |"
         )
     lines.append("")
     for solution in ranked:
