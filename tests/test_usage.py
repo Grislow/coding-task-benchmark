@@ -144,7 +144,7 @@ def test_headless_commands_keep_solvers_in_bounds() -> None:
     assert grok_model[grok_model.index("-m") + 1] == "grok-4"
 
 
-def test_interview_lineup_is_six_distinct_models() -> None:
+def test_interview_lineup_is_five_distinct_models() -> None:
     agents = [_build_agent(name, 30, 1) for name in INTERVIEW_AGENTS]
     assert [(agent.name, agent.model, agent.effort) for agent in agents] == [
         ("claude-opus-medium", "opus", "medium"),
@@ -152,9 +152,8 @@ def test_interview_lineup_is_six_distinct_models() -> None:
         ("codex-gpt-6-astra-high", "gpt-6-astra", "high"),
         ("codex-gpt-6.1-sol-xhigh", "gpt-6.1-sol", "xhigh"),
         ("grok-grok-4.7-high", "grok-4.7", "high"),
-        ("gemini-gemini-3.1-pro-preview", "gemini-3.1-pro-preview", None),
     ]
-    opus, sonnet, astra, sol, grok, _ = agents
+    opus, sonnet, astra, sol, grok = agents
     opus_cmd = claude_command("Solve", "solve", 1, opus.model, opus.effort)
     assert opus_cmd[opus_cmd.index("--effort") + 1] == "medium"
     sonnet_cmd = claude_command("Solve", "solve", 1, sonnet.model, sonnet.effort)
@@ -199,8 +198,8 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
     assert seen["author_timeout"] == 900
     assert seen["review_timeout"] == 300
     assert seen["author_limit"] == 900
-    assert seen["solve_limits"] == [300] * 6
-    assert seen["review_limits"] == [300] * 6
+    assert seen["solve_limits"] == [300] * 5
+    assert seen["review_limits"] == [300] * 5
 
 
 def test_a_missing_cli_is_left_out_of_the_page(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -23,7 +23,6 @@ INTERVIEW_AGENTS = (
     "codex:gpt-6-astra:high",
     "codex:gpt-6.1-sol:xhigh",
     "grok:grok-4.7:high",
-    "gemini:gemini-3.1-pro-preview",
 )
 INTERVIEW_AUTHOR = "claude:opus:high"
 AUTHOR_FALLBACKS = (
