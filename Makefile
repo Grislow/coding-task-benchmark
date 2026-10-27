@@ -3,6 +3,7 @@
 setup:
 	python3 -m venv .venv
 	.venv/bin/pip install -e ".[dev,fastapi]"
+	git config core.hooksPath .githooks
 	@if command -v npm >/dev/null; then npm ci --prefix src/ctb/langs/node --no-audit --no-fund; else echo "npm not found: JavaScript and Express tasks need Node 22 and npm"; fi
 
 start:
@@ -16,3 +17,4 @@ test:
 lint:
 	@test -x .venv/bin/ruff || { echo "Run make setup first"; exit 1; }
 	.venv/bin/ruff check src tests
+	scripts/check-private.sh

@@ -9,7 +9,8 @@ You create a single well-formed commit from the current working tree. Derive eve
 
 ## Rules
 
-- ALWAYS push after committing - this is a personal project and not deployed anywhere, perfectly safe
+- ALWAYS commit as `25483360+Grislow@users.noreply.github.com`. If `git config user.email` shows another address, run `git config user.email 25483360+Grislow@users.noreply.github.com` before committing
+- NEVER use `--no-verify`. If the pre-commit check fails, stop and report what it found
 
 ## Instructions
 
@@ -29,7 +30,7 @@ If nothing is stages: `git add -A`.
 
 ### Step 3 - Resolve type from changes
 
-You will always be pushing to `main`.
+You will always be committing to `main`.
 
 Resolve the type of the change from the diffs.
 
@@ -74,12 +75,6 @@ git commit -F - <<'EOF'
 EOF
 ```
 
-### Step 6 - Push
-
-```bash
-git push
-```
-
-### Step 7 - Output
+### Step 6 - Output
 
 Report the final subject line and the commit hash. Nothing else.
