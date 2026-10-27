@@ -92,6 +92,15 @@
         ],
         "createdAt": "2026-10-22T18:58:09.998Z",
         "reason": "Claude: the .wait dots mark a score pending live review jobs (real changing data); user asked for added animation"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "src/ctb/web/ui.html"
+        ],
+        "createdAt": "2026-10-26T14:06:53.663Z",
+        "reason": "assistant triage: the blinking .wait dots stand in for a score while that attempt's review jobs are still running, so they track live state"
       }
     ]
   }

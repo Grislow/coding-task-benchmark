@@ -462,8 +462,15 @@ def _grade(
         _raw_text(result.raw), agent.name, rules, lines
     )
     if progress is not None:
-        progress.review_finished(agent.name, solution.agent, note, number)
+        progress.review_finished(agent.name, solution.agent, note, number, "" if note is not None else _review_failure(result))
     return solution, note
+
+
+def _review_failure(result: AgentResult) -> str:
+    if result.ok:
+        return "The reply did not match the review format."
+    lines = [line.strip() for line in (result.error or "").splitlines() if line.strip()]
+    return (lines[-1] if lines else "The reviewer exited without a reply.")[:300]
 
 
 def _store_suite(

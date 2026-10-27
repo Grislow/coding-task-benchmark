@@ -93,6 +93,20 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json(200, snapshot)
             return
+        if parsed.path == "/review":
+            query = parse_qs(parsed.query)
+            try:
+                attempt = int(query.get("attempt", [""])[0])
+            except ValueError:
+                self._text(400, "Name the attempt number.")
+                return
+            try:
+                snapshot = self.server.session.retry_review(query.get("reviewer", [""])[0], query.get("author", [""])[0], attempt)
+            except RuntimeError as exc:
+                self._text(409, str(exc))
+                return
+            self._json(200, snapshot)
+            return
         if parsed.path == "/reset":
             try:
                 snapshot = self.server.session.reset()

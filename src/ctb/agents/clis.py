@@ -13,7 +13,7 @@ from ctb.run.prompts import RUBRIC_SCHEMA, deadline_note, wrap_up_s
 # --bare skips keychain and OAuth. --safe-mode keeps the signed-in subscription
 # and drops skills, hooks, plugins, and CLAUDE.md so the user's setup does not solve the task.
 _CLAUDE_SOLVE_TOOLS = "Bash,Read,Edit,Write"
-_GROK_SOLVE_TOOLS = "read_file,grep,list_dir,search_replace,write,run_terminal_command"
+_GROK_SOLVE_TOOLS = "read_file,grep,list_dir,search_replace,write,run_terminal_cmd"
 _GROK_ALL_TOOLS = (
     "run_terminal_command,read_file,search_replace,list_dir,grep,write,kill_command_or_subagent,todo_write,"
     "get_command_or_subagent_output,scheduler_create,scheduler_delete,scheduler_list,monitor,search_tool,use_tool,"
@@ -55,7 +55,7 @@ class ClaudeAgent:
             return _missing(self.name)
         limit = _role_timeout(self, role)
         del session_id
-        command = claude_command(deadline_note(limit, role) + prompt, role, self.budget_usd, self.model, self.effort)
+        command = claude_command(deadline_note(limit, role) + prompt, role, self.budget_usd, self.model, _role_effort(self, role))
         return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_stdout)
 
 
@@ -78,7 +78,7 @@ class GrokAgent:
             return _missing(self.name)
         limit = _role_timeout(self, role)
         del session_id
-        command = grok_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, self.effort)
+        command = grok_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, _role_effort(self, role))
         env = os.environ.copy()
         env["GROK_CLAUDE_SKILLS_ENABLED"] = "false"
         env["GROK_CURSOR_SKILLS_ENABLED"] = "false"
@@ -108,8 +108,14 @@ class CodexAgent:
             schema_path = Path(cwd) / "rubric.schema.json"
             schema_path.write_text(RUBRIC_SCHEMA)
         del session_id
-        command = codex_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, schema_path, self.effort)
+        command = codex_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, schema_path, _role_effort(self, role))
         return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_codex_jsonl)
+
+
+def _role_effort(agent: object, role: str) -> str | None:
+    if role == "review" and getattr(agent, "review_effort", None):
+        return getattr(agent, "review_effort")
+    return getattr(agent, "effort", None)
 
 
 def _role_timeout(agent: object, role: str) -> int:

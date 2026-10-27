@@ -337,6 +337,7 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
         del cwd, env, parse
         seen["timeout"] = timeout_s
         seen_prompt["text"] = command[2]
+        seen_prompt["effort"] = command[command.index("--effort") + 1]
         return AgentResult(True, "", None, TokenUsage(), 1, None, None, {})
 
     monkeypatch.setattr("ctb.agents.clis._invoke", fake_invoke)
@@ -352,6 +353,12 @@ def test_a_review_uses_its_own_limit(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert seen["timeout"] == 180
     assert seen_prompt["text"].startswith("You have 3 minutes.")
     assert "time-left" not in seen_prompt["text"]
+    assert seen_prompt["effort"] == "medium"
+    agent.review_effort = "low"
+    agent.complete(cwd=str(tmp_path), prompt="Grade", session_id=None, role="review")
+    assert seen_prompt["effort"] == "low"
+    agent.complete(cwd=str(tmp_path), prompt="Solve", session_id=None, role="solve")
+    assert seen_prompt["effort"] == "medium"
     author = ClaudeAgent(900, 1.0, "opus", "high")
     author.review_timeout_s = 300
     author.complete(cwd=str(tmp_path), prompt="Write tests", session_id=None, role="author")

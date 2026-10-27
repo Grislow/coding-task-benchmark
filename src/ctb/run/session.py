@@ -8,7 +8,14 @@ from ctb.agents.clis import EFFORTS, agent_name
 from ctb.agents.preflight import check_agent
 from ctb.langs import WEB, lang
 from ctb.models import AttemptRecord, CodingAgent, SolutionRun, TokenUsage
-from ctb.run.orchestrate import _grade, family, read_suite, rerun_agent, run_benchmark
+from ctb.run.orchestrate import (
+    _grade,
+    _sync_chosen,
+    family,
+    read_suite,
+    rerun_agent,
+    run_benchmark,
+)
 from ctb.run.progress import ProgressBoard, review_row
 from ctb.run.prompts import (
     author_prompt,
@@ -59,7 +66,7 @@ class RunSession:
             for model in models:
                 if (cli, model) not in taken:
                     taken.add((cli, model))
-                    self._models.append({"cli": cli, "model": model, "effort": "high", "lineup": False, "enabled": False})
+                    self._models.append({"cli": cli, "model": model, "effort": "high", "review_effort": "high", "lineup": False, "enabled": False})
         self._test_author = test_author
         self._attempts = attempts
         self._timeout_s = timeout_s
@@ -148,6 +155,11 @@ class RunSession:
                     if effort not in EFFORTS.get(row["cli"], ()):
                         raise ValueError(f"{row['cli']} has no reasoning level '{effort}'.")
                     row["effort"] = effort
+                review_effort = item.get("review_effort")
+                if review_effort is not None and EFFORTS.get(row["cli"]):
+                    if review_effort not in EFFORTS[row["cli"]]:
+                        raise ValueError(f"{row['cli']} has no reasoning level '{review_effort}'.")
+                    row["review_effort"] = review_effort
             built = {agent.name: agent for agent in [*self._lineup, *self._agents]}
             agents = []
             for row in rows:
@@ -161,6 +173,9 @@ class RunSession:
                 agents.append(built[name])
             if not agents:
                 raise ValueError("Switch on at least one model.")
+            for row in rows:
+                if _row_name(row) in built:
+                    built[_row_name(row)].review_effort = row["review_effort"]
             self._models = rows
             self._agents = agents
             if replace_author:
@@ -245,6 +260,49 @@ class RunSession:
         except Exception as exc:
             board.add_note(str(exc))
             board.set_phase("error")
+
+    def retry_review(self, reviewer: str, author: str, attempt: int) -> dict[str, object]:
+        with self._lock:
+            board = self._board
+            if board is None or self._active():
+                raise RuntimeError("Wait for the run to finish.")
+            job = next(
+                (item for item in board.snapshot()["reviews"] if item["reviewer"] == reviewer and item["author"] == author and item["attempt"] == attempt),
+                None,
+            )
+            if job is None or job["state"] != "failed":
+                raise RuntimeError("Only a failed review can be retried.")
+            agent = next((item for item in self._agents if item.name == reviewer), None)
+            target = self._review_target(author, attempt)
+            if agent is None or target is None:
+                raise RuntimeError("That review is not part of this run.")
+            board.review_started(reviewer, author, attempt)
+        threading.Thread(target=self._retry_review, args=(target, agent, board), daemon=True).start()
+        return self.snapshot()
+
+    def _review_target(self, author: str, attempt: int) -> SolutionRun | None:
+        if author == "you":
+            return next((you for you in self._yours if _number(you) == attempt), None)
+        solution = next((item for item in self._report_solutions or [] if item.agent == author), None)
+        if solution is None:
+            return None
+        return next((run for run in solution.attempt_runs if run.attempts[0].number == attempt), None)
+
+    def _retry_review(self, target: SolutionRun, agent: CodingAgent, board: ProgressBoard) -> None:
+        out_dir = self._out_dir
+        if out_dir is None:
+            return
+        _, note = _grade((target, agent), (out_dir / "task.md").read_text(), out_dir, board, self._tech)
+        if note is None:
+            return
+        with self._lock:
+            target.reviews = [*(item for item in target.reviews if item.reviewer != agent.name), note]
+            solutions = self._report_solutions
+            if solutions is not None and target.agent != "you":
+                _sync_chosen(solutions)
+                apply_profile(solutions)
+                board.set_solutions(solutions)
+        self._publish()
 
     def _active(self) -> bool:
         return self._board is not None and self._board.snapshot()["phase"] not in {"done", "error"}
@@ -578,6 +636,7 @@ def _model_row(agent: CodingAgent) -> dict[str, object]:
         "cli": family(agent.name),
         "model": getattr(agent, "model", None) or agent.name,
         "effort": getattr(agent, "effort", None),
+        "review_effort": getattr(agent, "review_effort", None) or getattr(agent, "effort", None),
         "lineup": True,
         "enabled": True,
         "name": agent.name,

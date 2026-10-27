@@ -14,7 +14,7 @@ Write a function `solution()` that returns a new `fastapi.FastAPI` application. 
 - The only valid coupon is `SAVE10`, which takes 10 percent off the subtotal, rounded down to whole cents. Any other coupon responds `422`.
 - It responds `201` with `{"id": <int>, "currency": <string>, "subtotal": <int>, "discount": <int>, "total": <int>}`. IDs start at 1 and increase by 1.
 
-The request must carry an `Idempotency-Key` header of 1 to 64 characters. Without one it responds `400` with `{"detail": "Idempotency-Key header required"}`. A repeat of a request with the same key and the same body responds `200` with the order from the first request and creates nothing. The same key with a different body responds `409` with `{"detail": "Idempotency-Key reused with a different body"}`.
+The request must carry an `Idempotency-Key` header of 1 to 64 characters. Without one it responds `400` with `{"detail": "Idempotency-Key header required"}`. A repeat of a request with the same key and the same body, compared after validation so that a missing `coupon` equals `"coupon": null`, responds `200` with the order from the first request and creates nothing. The same key with a different body responds `409` with `{"detail": "Idempotency-Key reused with a different body"}`.
 
 `GET /orders/{id}` responds `200` with the order, or `404` with `{"detail": "Order not found"}`.
 

@@ -306,7 +306,7 @@ def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
             "review_timeout_s": 180,
             "models": [
                 {"cli": "claude", "model": "opus", "enabled": False},
-                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low"},
+                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low", "review_effort": "medium"},
             ],
         }
     )
@@ -320,6 +320,8 @@ def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
     haiku = session._agents[0]
     assert haiku.timeout_s == 120
     assert haiku.review_timeout_s == 180
+    assert haiku.review_effort == "medium"
+    assert next(row for row in session.config()["models"] if row["model"] == "haiku")["review_effort"] == "medium"
     for bad in (
         {"timeout_s": 5},
         {"author_timeout_s": 5},
@@ -418,3 +420,47 @@ def test_config_can_switch_the_test_author(tmp_path: Path) -> None:
     session.configure({"author": None})
     assert session._test_author is None
     assert _author_check(session) is None
+
+
+class FlakyReviewer(ScriptedAgent):
+    def __init__(self, name: str, sources: list[str], tokens: int) -> None:
+        super().__init__(name, sources, tokens)
+        self.reviews = 0
+
+    def complete(self, *, cwd: str, prompt: str, session_id: str | None, role: str) -> AgentResult:
+        result = super().complete(cwd=cwd, prompt=prompt, session_id=session_id, role=role)
+        if role != "review":
+            return result
+        self.reviews += 1
+        return result if self.reviews > 1 else AgentResult(True, "not a review", None, result.usage, 1, None, None, {})
+
+
+def test_a_failed_review_can_be_retried_once_the_run_is_done(tmp_path: Path) -> None:
+    flaky = FlakyReviewer("flaky", [_CORRECT], tokens=10)
+    session = RunSession(
+        [ScriptedAgent("solid", [_CORRECT], tokens=10), flaky],
+        ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=True,
+        out_root=tmp_path,
+    )
+    session.start(_TASK)
+    assert _wait(session)["phase"] == "done"
+    failed = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "flaky")
+    assert failed["state"] == "failed"
+    assert failed["summary"] == "The reply did not match the review format."
+    done = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "solid")
+    with pytest.raises(RuntimeError, match="Only a failed review"):
+        session.retry_review("solid", done["author"], 1)
+    session.retry_review("flaky", "solid", 1)
+    deadline = time.monotonic() + 10
+    while True:
+        review = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "flaky")
+        if review["state"] == "done" or time.monotonic() > deadline:
+            break
+        time.sleep(0.02)
+    assert review["state"] == "done"
+    assert review["score"] is not None
+    solid = next(item for item in session.snapshot()["solutions"] if item["agent"] == "solid")
+    assert solid["review"] is not None

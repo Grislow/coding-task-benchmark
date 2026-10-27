@@ -11,7 +11,7 @@ Return the list of package names in build order:
 - A dependency that is not a key of `packages` is published elsewhere. Leave it out of the result and treat it as already built.
 - A package listed twice in the same dependency list counts once.
 
-If the dependencies form a cycle, raise `ValueError` with a message that names the packages in one cycle in order, for example `"cycle: api -> db -> api"`. Start the cycle at the name that sorts first.
+If the dependencies form a cycle, raise `ValueError` with a message that names the packages in one cycle, for example `"cycle: api -> db -> api"`. Each arrow points from a package to one it depends on, and the cycle starts and ends at the name in it that sorts first. When there are several cycles, name any one of them.
 
 There are at most 10,000 packages and 100,000 dependency edges.
 

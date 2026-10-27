@@ -402,6 +402,7 @@
     .review[data-state="running"] .review-head span { color: var(--muted); font-family: var(--font); font-weight: 500; }
     .review[data-state="failed"] .review-head span { color: var(--fail); font-family: var(--font); }
     .review > p { margin: 6px 0 0; color: var(--muted); }
+    .review .retry { margin-top: 10px; }
     .findings { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
     .findings li { padding: 10px 12px; border-radius: 10px; background: var(--raised); }
     .findings .where { display: flex; gap: 8px; align-items: center; font: 400 12px var(--mono); color: var(--muted); }
@@ -470,7 +471,9 @@
     .limit input:focus-visible, .model select:focus-visible, .model input:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
     .cli-group { margin: 0 0 16px; padding: 0; border: 0; }
     .cli-group legend { padding: 0; margin-bottom: 6px; color: var(--muted); font: 600 12px var(--mono); text-transform: lowercase; }
-    .model { display: grid; grid-template-columns: 22px minmax(0, 1fr) 110px 112px; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-radius: 10px; }
+    .model, .model-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 104px 104px 112px; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-radius: 10px; }
+    .model-head { min-height: 0; padding-block: 0 4px; color: var(--muted); font: 600 12px var(--font); }
+    .model-head span:last-child { justify-self: end; }
     .model + .model { border-top: 1px solid #262230; }
     .model:has(input:checked) { background: var(--raised); }
     .model input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--a2); }
@@ -509,7 +512,8 @@
       .best b { font-size: 22px; }
       .slot { padding: 0 10px; }
       .columns { grid-template-columns: 22px minmax(0, 1fr) 20px 68px 52px; gap: 8px; }
-      .model { grid-template-columns: 22px minmax(0, 1fr) auto; }
+      .model { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+      .model-head { display: none; }
       .model .chip { grid-column: 2 / -1; justify-self: start; }
       .columns.head span:nth-child(n + 6), button.row > :nth-child(n + 6) { display: none; }
       .who-cell .cli { display: none; }
@@ -944,9 +948,10 @@
         }
         return { key, attempt, jobs, graded, pending, final, parts, score: final ? weighted(parts) : null };
       });
+      const TIERS = { passed: 0, failed: 2, setup: 3 };
       const tier = (entry) => {
-        if (!entry.final) return 3;
-        return entry.attempt.state === "passed" ? 0 : 2;
+        const base = TIERS[entry.attempt.state] ?? 4;
+        return base === 0 && !entry.final ? 1 : base;
       };
       const seat = (agent) => (agent === "you" ? order.length : order.indexOf(agent));
       const graded = (left, right) => !left.final || !right.final ? 0
@@ -1432,6 +1437,15 @@
         head.append(name, el("span", "", status));
         block.appendChild(head);
         if (job.summary) block.appendChild(el("p", "", job.summary));
+        if (job.state === "failed" && (latest.phase === "done" || latest.phase === "error")) {
+          const again = el("button", "ghost small retry");
+          again.type = "button";
+          again.dataset.reviewer = job.reviewer;
+          again.dataset.author = job.author;
+          again.dataset.attempt = String(job.attempt ?? 1);
+          again.append(icon("redo"), document.createTextNode("Retry review"));
+          block.appendChild(again);
+        }
         const findings = job.findings || [];
         if (job.state === "done" && !findings.length) block.appendChild(el("p", "", "No rubric findings."));
         if (findings.length) {
@@ -1785,6 +1799,14 @@
 
     document.getElementById("recheck").addEventListener("click", () => post("/check"));
 
+    document.getElementById("reviews").addEventListener("click", (event) => {
+      const again = event.target.closest("button.retry");
+      if (!again) return;
+      again.disabled = true;
+      const query = new URLSearchParams({ reviewer: again.dataset.reviewer, author: again.dataset.author, attempt: again.dataset.attempt });
+      post("/review?" + query);
+    });
+
     document.getElementById("board").addEventListener("click", (event) => {
       const again = event.target.closest("button[data-rerun]");
       if (again) post("/rerun?agent=" + encodeURIComponent(again.dataset.rerun));
@@ -2083,6 +2105,23 @@
       note.className = "muted";
       note.textContent = locked ? "Locked while a run is going." : checking ? "Models can be switched once the lineup check finishes." : "";
       list.replaceChildren();
+      const head = el("div", "model-head");
+      head.setAttribute("aria-hidden", "true");
+      head.append(el("span"), el("span", "", "Model"), el("span", "", "Solving"), el("span", "", "Reviews"), el("span", "", "Check"));
+      list.appendChild(head);
+      const levelSelect = (id, name, model, value) => {
+        const select = el("select");
+        select.id = id;
+        select.setAttribute("aria-label", model.model + " " + name + " reasoning level");
+        select.disabled = locked;
+        for (const level of model.efforts) {
+          const option = el("option", "", level);
+          option.value = level;
+          option.selected = level === (kept.has(id) ? kept.get(id) : value);
+          select.appendChild(option);
+        }
+        return select;
+      };
       const groups = new Map();
       for (const model of config.models) {
         if (!groups.has(model.cli)) groups.set(model.cli, []);
@@ -2109,22 +2148,18 @@
           if (model.lineup) {
             effort = el("span", "fixed", model.effort || "default");
           } else {
-            effort = el("select");
+            effort = levelSelect(id + "-effort", "solving", model, model.effort);
             effort.dataset.effortFor = id;
-            effort.id = id + "-effort";
-            effort.setAttribute("aria-label", model.model + " reasoning level");
-            effort.disabled = locked;
-            for (const level of model.efforts) {
-              const option = el("option", "", level);
-              option.value = level;
-              option.selected = level === (kept.has(effort.id) ? kept.get(effort.id) : model.effort);
-              effort.appendChild(option);
-            }
+          }
+          let review = el("span", "fixed", model.review_effort || model.effort || "default");
+          if (model.efforts.length) {
+            review = levelSelect(id + "-review", "review", model, model.review_effort || model.effort);
+            review.dataset.reviewFor = id;
           }
           const chip = el("span", "chip", { ready: "Ready", failed: "Cannot run", checking: "Checking", unchecked: "Not checked" }[state] || state);
           chip.dataset.state = state;
           if (state === "failed") chip.title = ((latest.preflight || []).find((item) => item.agent === model.name) || {}).note || "";
-          row.append(box, label, effort, chip);
+          row.append(box, label, effort, review, chip);
           group.appendChild(row);
         }
         list.appendChild(group);
@@ -2241,7 +2276,8 @@
       event.preventDefault();
       const models = [...document.querySelectorAll("#model-list input[type=checkbox]")].map((box) => {
         const effort = document.querySelector('[data-effort-for="' + CSS.escape(box.id) + '"]');
-        return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined };
+        const review = document.querySelector('[data-review-for="' + CSS.escape(box.id) + '"]');
+        return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined, review_effort: review ? review.value : undefined };
       });
       const authorInput = document.getElementById("author-model");
       const authorEffort = document.getElementById("author-effort");

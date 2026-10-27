@@ -111,3 +111,17 @@ def test_attempt_and_review_progress_follow_the_run(tmp_path: Path) -> None:
     assert by_name["fast"]["profile"] is not None
     assert by_name["slow"]["profile"] is not None
     assert {solution.agent for solution in report.solutions} == {"fast", "slow"}
+
+
+def test_a_failed_review_keeps_its_reason() -> None:
+    from ctb.models import AgentResult, TokenUsage
+    from ctb.run.orchestrate import _review_failure
+
+    board = ProgressBoard(["a"], 1)
+    board.review_started("b", "a")
+    quota = AgentResult(False, "", None, TokenUsage(), 1, None, "stream\nYou've hit your usage limit.", {})
+    board.review_finished("b", "a", None, 1, _review_failure(quota))
+    review = board.snapshot()["reviews"][0]
+    assert review["state"] == "failed"
+    assert review["summary"] == "You've hit your usage limit."
+    assert _review_failure(AgentResult(True, "not json", None, TokenUsage(), 1, None, None, {})) == "The reply did not match the review format."

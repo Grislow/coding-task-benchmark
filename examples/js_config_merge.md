@@ -8,7 +8,7 @@ Write a JavaScript function `solution(layers, env)` and export it with `module.e
 - Two plain objects at the same key are merged key by key, at any depth. Any other value, including an array, replaces what was there.
 - A `null` value in a later layer removes that key from the result.
 - After merging, every string in the result, at any depth and inside arrays, has each `${NAME}` replaced by `env[NAME]`. `${NAME:-fallback}` uses `fallback` when `NAME` is missing or empty in `env`. Names are made of `A-Z`, `0-9` and `_`.
-- A reference with no value and no fallback throws an `Error` whose message is `Missing environment variable NAME at path`, where `path` joins the keys and array indexes with dots, such as `db.replicas.1`. When several are missing, report the first one met walking the result depth first, in key order.
+- A reference with no value and no fallback throws an `Error` whose message is `Missing environment variable NAME at path`, where `path` joins the keys and array indexes with dots, such as `db.replicas.1`. When several are missing, report the first one met walking the result depth first, visiting keys in insertion order (the order `Object.keys` returns) and array items by index.
 - Do not change `layers` or `env`.
 
 Return the merged object.
