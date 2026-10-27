@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from ctb.agents.clis import agent_name, claude_command, codex_command, grok_command
-from ctb.agents.usage import result_from_codex_jsonl, result_from_stdout
+from ctb.agents.clis import agent_name, claude_command, codex_command, gemini_command, grok_command
+from ctb.agents.usage import result_from_codex_jsonl, result_from_gemini_json, result_from_stdout
 from ctb.cli import (
     INTERVIEW_AGENTS,
     INTERVIEW_AUTHOR,
@@ -144,7 +144,7 @@ def test_headless_commands_keep_solvers_in_bounds() -> None:
     assert grok_model[grok_model.index("-m") + 1] == "grok-4"
 
 
-def test_interview_lineup_is_five_distinct_models() -> None:
+def test_interview_lineup_is_six_distinct_models() -> None:
     agents = [_build_agent(name, 30, 1) for name in INTERVIEW_AGENTS]
     assert [(agent.name, agent.model, agent.effort) for agent in agents] == [
         ("claude-opus-medium", "opus", "medium"),
@@ -152,8 +152,9 @@ def test_interview_lineup_is_five_distinct_models() -> None:
         ("codex-gpt-6-astra-high", "gpt-6-astra", "high"),
         ("codex-gpt-6.1-sol-xhigh", "gpt-6.1-sol", "xhigh"),
         ("grok-grok-4.7-high", "grok-4.7", "high"),
+        ("gemini-gemini-3.1-pro-preview", "gemini-3.1-pro-preview", None),
     ]
-    opus, sonnet, astra, sol, grok = agents
+    opus, sonnet, astra, sol, grok, _ = agents
     opus_cmd = claude_command("Solve", "solve", 1, opus.model, opus.effort)
     assert opus_cmd[opus_cmd.index("--effort") + 1] == "medium"
     sonnet_cmd = claude_command("Solve", "solve", 1, sonnet.model, sonnet.effort)
@@ -169,7 +170,7 @@ def test_interview_lineup_is_five_distinct_models() -> None:
 
 def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
-    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok"}))
+    monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok", "gemini"}))
     monkeypatch.setattr("ctb.cli.model_catalog", lambda: {})
 
     def fake_serve(session: object, port: int) -> int:
@@ -198,8 +199,8 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
     assert seen["author_timeout"] == 900
     assert seen["review_timeout"] == 300
     assert seen["author_limit"] == 900
-    assert seen["solve_limits"] == [300, 300, 300, 300, 300]
-    assert seen["review_limits"] == [300, 300, 300, 300, 300]
+    assert seen["solve_limits"] == [300] * 6
+    assert seen["review_limits"] == [300] * 6
 
 
 def test_a_missing_cli_is_left_out_of_the_page(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -407,3 +408,23 @@ def test_a_timeout_stops_the_agent_and_its_children(tmp_path: Path) -> None:
         pass
     else:
         raise AssertionError("the child kept running")
+
+
+def test_gemini_runs_headless_and_reads_its_json() -> None:
+    solve = gemini_command("Solve", "solve", "gemini-3.1-pro-preview")
+    assert solve[:3] == ["gemini", "-p", "Solve"]
+    assert solve[solve.index("--approval-mode") + 1] == "yolo"
+    assert solve[solve.index("-m") + 1] == "gemini-3.1-pro-preview"
+    assert gemini_command("Review", "review")[gemini_command("Review", "review").index("--approval-mode") + 1] == "plan"
+    done = result_from_gemini_json(
+        '{"response": "done", "stats": {"models": {"gemini-3.1-pro-preview": {"tokens": {"prompt": 100, "candidates": 20, "cached": 40, "thoughts": 5}}}}}',
+        "",
+        0,
+        9,
+    )
+    assert (done.ok, done.text, done.usage.input_tokens, done.usage.cache_read_tokens, done.usage.output_tokens) == (True, "done", 60, 40, 20)
+    login = result_from_gemini_json("", '{"session_id": "s", "error": {"type": "Error", "message": "Please set an Auth method", "code": 41}}', 41, 9)
+    assert not login.ok
+    assert login.error == "Please set an Auth method"
+    with pytest.raises(ValueError, match="unknown reasoning level"):
+        _build_agent("gemini:gemini-3.5-flash:high", 30, 1)

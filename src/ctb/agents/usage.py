@@ -55,6 +55,44 @@ def result_from_stdout(stdout: str, stderr: str, returncode: int, wall_ms: int) 
     )
 
 
+def result_from_gemini_json(stdout: str, stderr: str, returncode: int, wall_ms: int) -> AgentResult:
+    payload = {}
+    for text in (stdout, stderr):
+        try:
+            payload = parse_json_object(text)
+            break
+        except ValueError:
+            continue
+    failure = payload.get("error")
+    error = None
+    if isinstance(failure, dict) or returncode != 0 or not payload:
+        message = _first_string(failure, ("message",)) if isinstance(failure, dict) else None
+        error = (message or stderr.strip() or stdout.strip() or f"CLI exited {returncode}")[:4000]
+    stats = payload.get("stats")
+    models = stats.get("models") if isinstance(stats, dict) else None
+    usage = TokenUsage()
+    for entry in models.values() if isinstance(models, dict) else []:
+        tokens = entry.get("tokens") if isinstance(entry, dict) else None
+        if isinstance(tokens, dict):
+            cached = _int_field(tokens, "cached")
+            usage = TokenUsage(
+                input_tokens=usage.input_tokens + _int_field(tokens, "prompt") - cached,
+                output_tokens=usage.output_tokens + _int_field(tokens, "candidates"),
+                cache_read_tokens=usage.cache_read_tokens + cached,
+                reasoning_tokens=usage.reasoning_tokens + _int_field(tokens, "thoughts"),
+            )
+    return AgentResult(
+        ok=error is None,
+        text=_first_string(payload, ("response",)) or "",
+        session_id=_first_string(payload, ("session_id", "sessionId")),
+        usage=usage,
+        wall_ms=wall_ms,
+        cost_usd=None,
+        error=error,
+        raw=payload,
+    )
+
+
 def result_from_codex_jsonl(stdout: str, stderr: str, returncode: int, wall_ms: int) -> AgentResult:
     events = _jsonl_objects(stdout)
     if not events:

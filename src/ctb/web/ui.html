@@ -138,7 +138,7 @@
     #message { height: 44px; padding: 0 14px; font: 500 16px var(--font); }
     textarea:focus-visible, #message:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; border-color: transparent; }
     button:focus-visible { outline: 2px solid var(--a2); outline-offset: 2px; }
-    .actions { margin-top: 12px; display: flex; gap: 8px; }
+    .actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
     .actions [hidden] { display: none; }
     button { font: inherit; cursor: pointer; }
     button.action, button.ghost {
@@ -484,7 +484,6 @@
     .model label { margin: 0; color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .model label small { color: var(--muted); font-weight: 400; margin-left: 6px; }
     .model select { height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); font: 500 13px var(--font); padding: 0 6px; }
-    .model .fixed { color: var(--muted); font: 400 12px var(--mono); padding-left: 7px; }
     .chip { justify-self: end; padding: 2px 9px; border-radius: 999px; font: 600 12px var(--font); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
     .chip[data-state="ready"] { color: var(--pass); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pass) 55%, transparent); }
     .chip[data-state="failed"] { color: var(--fail); box-shadow: inset 0 0 0 1px var(--fail); }
@@ -553,7 +552,7 @@
         <div class="editor" id="task-editor">
           <label for="task">Paste the Codility statement</label>
           <textarea id="task"></textarea>
-          <div class="actions"><button class="action" id="start" type="button">Start the run</button> <button class="ghost" id="cancel-task" type="button" hidden>Cancel <kbd>Esc</kbd></button></div>
+          <div class="actions"><button class="action" id="start" type="button">Start the run</button> <button class="ghost" id="cancel-task" type="button" hidden>Cancel <kbd>Esc</kbd></button> <span class="muted" id="start-hint"></span></div>
         </div>
         <div class="task-summary" id="task-summary" hidden>
           <b id="task-name"></b>
@@ -1079,12 +1078,12 @@
     function lineupChecks(snapshot) {
       const checks = snapshot.preflight || [];
       const solvers = (snapshot.lineup || []).map((agent) => checks.find((row) => row.agent === agent && row.role === "solver") || { agent, role: "solver", state: "unchecked", note: "" });
-      return [...solvers, ...checks.filter((row) => row.role !== "solver")];
+      return [...solvers, ...checks.filter((row) => row.role === "test author")];
     }
 
     function checkLanes(board, checks) {
       checks.forEach((row) => {
-        const author = row.role !== "solver";
+        const author = row.role === "test author";
         const lane = el("div", "lane" + (author ? " author-lane" : ""));
         lane.dataset.key = "check:" + row.role + ":" + row.agent;
         if (!author) lane.style.setProperty("--hue", hueOf(row.agent));
@@ -1605,6 +1604,9 @@
       document.getElementById("task-editor").hidden = collapsed;
       document.getElementById("task-summary").hidden = !collapsed;
       document.getElementById("cancel-task").hidden = !running;
+      const checking = ((latest && latest.preflight) || []).some((row) => row.state === "checking");
+      document.getElementById("start").disabled = checking;
+      setText(document.getElementById("start-hint"), checking ? "Opens once every model is checked." : "");
       renderTech();
       if (!collapsed) return;
       const text = document.getElementById("task").value || (latest && latest.task_text) || "";
@@ -2119,7 +2121,7 @@
     }
 
     function checkState(name) {
-      const row = ((latest && latest.preflight) || []).find((item) => item.agent === name && item.role === "solver");
+      const row = ((latest && latest.preflight) || []).find((item) => item.agent === name && item.role !== "test author");
       return row ? row.state : null;
     }
 
@@ -2151,10 +2153,10 @@
         select.id = id;
         select.setAttribute("aria-label", model.model + " " + name + " reasoning level");
         select.disabled = locked;
-        for (const level of model.efforts) {
+        for (const level of ["none", ...(model.efforts.length ? model.efforts : ["default"])]) {
           const option = el("option", "", level);
           option.value = level;
-          option.selected = level === (kept.has(id) ? kept.get(id) : value);
+          option.selected = level === (kept.has(id) ? kept.get(id) : value || "default");
           select.appendChild(option);
         }
         return select;
@@ -2181,16 +2183,10 @@
           const label = el("label", "", model.model);
           label.htmlFor = id;
           if (model.lineup) label.append(" ", el("small", "", "lineup"));
-          let effort = el("span", "fixed", model.effort || "default");
-          if (model.efforts.length) {
-            effort = levelSelect(id + "-effort", "solving", model, model.effort);
-            effort.dataset.effortFor = id;
-          }
-          let review = el("span", "fixed", model.review_effort || model.effort || "default");
-          if (model.efforts.length) {
-            review = levelSelect(id + "-review", "review", model, model.review_effort || model.effort);
-            review.dataset.reviewFor = id;
-          }
+          const effort = levelSelect(id + "-effort", "solving", model, model.effort);
+          effort.dataset.effortFor = id;
+          const review = levelSelect(id + "-review", "review", model, model.review_effort ?? (model.efforts.length ? model.effort : null));
+          review.dataset.reviewFor = id;
           const chip = el("span", "chip", { ready: "Ready", failed: "Cannot run", checking: "Checking", unchecked: "Not checked" }[state] || state);
           chip.dataset.state = state;
           if (state === "failed") chip.title = ((latest.preflight || []).find((item) => item.agent === model.name) || {}).note || "";
@@ -2220,7 +2216,13 @@
       const solving = Number(document.getElementById("solve-limit").value) || 0;
       const reviews = Number(document.getElementById("review-limit").value) || 0;
       const writer = document.getElementById("author-model").dataset.model;
-      note.textContent = (writer ? writer + " writes tests · " : "No test author · ") + on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
+      const roleOn = (box, kind) => {
+        const select = document.querySelector("[data-" + kind + '-for="' + CSS.escape(box.id) + '"]');
+        return !select || select.value !== "none";
+      };
+      const solvers = on.filter((box) => roleOn(box, "effort")).length;
+      const judges = on.filter((box) => roleOn(box, "review")).length;
+      note.textContent = (writer ? writer + " writes tests · " : "No test author · ") + solvers + (solvers === 1 ? " model" : " models") + " × " + config.attempts + " attempts · " + judges + " reviewing · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
         + (unchecked.length ? " · not checked: " + unchecked.join(", ") : "");
     }
 

@@ -52,22 +52,32 @@ class RunSession:
         review: bool,
         out_root: Path,
         tech: str = "python",
-        catalog: dict[str, list[str]] | None = None,
+        catalog: dict[str, list[str]] | dict[str, dict[str, list[str]]] | None = None,
         build: Callable[[str], CodingAgent] | None = None,
         author_timeout_s: int | None = None,
         review_timeout_s: int | None = None,
     ) -> None:
         self._agents = agents
+        self._reviewers = list(agents)
         self._racers = list(agents)
+        self._judges = list(agents)
         self._lineup = list(agents)
         self._build = build
         self._models = [_model_row(agent) for agent in agents]
+        self._levels = {
+            (cli, model): list(models[model])
+            for cli, models in (catalog or {}).items()
+            if isinstance(models, dict)
+            for model in models
+            if models[model]
+        }
         taken = {(row["cli"], row["model"]) for row in self._models}
         for cli, models in (catalog or {}).items():
             for model in models:
                 if (cli, model) not in taken:
                     taken.add((cli, model))
-                    self._models.append({"cli": cli, "model": model, "effort": "high", "review_effort": "high", "lineup": False, "enabled": False})
+                    level = "high" if "high" in self._efforts(cli, model) else None
+                    self._models.append({"cli": cli, "model": model, "effort": level, "review_effort": level, "lineup": False, "enabled": False})
         self._test_author = test_author
         self._attempts = attempts
         self._timeout_s = timeout_s
@@ -94,13 +104,18 @@ class RunSession:
                 raise RuntimeError("Wait for the run to finish.")
             if any(row["state"] == "checking" for row in self._checks):
                 raise RuntimeError("A check is already running.")
-            roles = [(agent, "solver") for agent in self._agents]
-            if self._test_author is not None:
-                roles.append((self._test_author, "test author"))
+            roles = self._roles()
             self._checks = [_check_row(agent, role) for agent, role in roles]
             jobs = list(zip([agent for agent, _ in roles], self._checks, strict=True))
         self._start_checks(jobs)
         return self.snapshot()
+
+    def _roles(self) -> list[tuple[CodingAgent, str]]:
+        roles = [(agent, "solver") for agent in self._agents]
+        roles.extend((agent, "reviewer") for agent in self._reviewers if agent not in self._agents)
+        if self._test_author is not None:
+            roles.append((self._test_author, "test author"))
+        return roles
 
     def _start_checks(self, jobs: list[tuple[CodingAgent, dict[str, object]]]) -> None:
         for agent, row in jobs:
@@ -110,7 +125,7 @@ class RunSession:
         with self._lock:
             locked = self._active()
             models = [
-                {**row, "name": _row_name(row), "efforts": [level for level in LEVELS if level in EFFORTS.get(row["cli"], ())]}
+                {**row, "name": _row_name(row), "efforts": self._efforts(row["cli"], row["model"])}
                 for row in self._models
             ]
             timeout_s = self._timeout_s
@@ -123,7 +138,7 @@ class RunSession:
             "author_timeout_s": author_timeout_s,
             "review_timeout_s": review_timeout_s,
             "attempts": self._attempts,
-            "author": _author_view(self._test_author),
+            "author": _author_view(self._test_author, self._efforts),
             "models": models,
             "prompts": _prompts(tech, timeout_s, author_timeout_s, review_timeout_s),
         }
@@ -144,8 +159,8 @@ class RunSession:
             new_author = self._test_author
             replace_author = False
             if "author" in payload:
-                spec = _parse_author(payload["author"], self._models, self._test_author)
-                if not _authors_match(self._test_author, spec):
+                spec = _parse_author(payload["author"], self._models, self._efforts, self._test_author)
+                if not _authors_match(self._test_author, spec, self._efforts):
                     new_author = None if spec is None else self._build_author(spec)
                     replace_author = True
             rows = [dict(row) for row in self._models]
@@ -155,35 +170,42 @@ class RunSession:
                     continue
                 row["enabled"] = item.get("enabled") is True
                 effort = item.get("effort")
-                if effort is not None and effort != row["effort"]:
-                    if effort not in EFFORTS.get(row["cli"], ()):
-                        raise ValueError(f"{row['cli']} has no reasoning level '{effort}'.")
-                    row["effort"] = effort
-                    if row["lineup"]:
-                        row["name"] = agent_name(str(row["cli"]), str(row["model"]), effort)
+                levels = self._efforts(row["cli"], row["model"])
+                if effort is not None:
+                    effort = _chosen(effort, levels, row["cli"])
+                    if effort != row["effort"]:
+                        row["effort"] = effort
+                        if row["lineup"]:
+                            row["name"] = agent_name(str(row["cli"]), str(row["model"]), _level(effort))
                 review_effort = item.get("review_effort")
-                if review_effort is not None and EFFORTS.get(row["cli"]):
-                    if review_effort not in EFFORTS[row["cli"]]:
-                        raise ValueError(f"{row['cli']} has no reasoning level '{review_effort}'.")
-                    row["review_effort"] = review_effort
-            built = {agent.name: agent for agent in [*self._lineup, *self._agents]}
+                if review_effort is not None:
+                    row["review_effort"] = _chosen(review_effort, levels, row["cli"])
+            built = {agent.name: agent for agent in [*self._lineup, *self._agents, *self._reviewers]}
             agents = []
+            reviewers = []
             for row in rows:
                 if not row["enabled"]:
                     continue
                 name = _row_name(row)
+                solving = row["effort"] != "none"
+                reviewing = row["review_effort"] != "none"
+                if not solving and not reviewing:
+                    raise ValueError(f"{row['model']} is set to none for both solving and reviews. Switch it off instead.")
                 if name not in built:
                     if self._build is None:
                         raise ValueError(f"This page cannot start {name}.")
-                    built[name] = self._build(f"{row['cli']}:{row['model']}:{row['effort']}")
-                agents.append(built[name])
+                    effort = _level(row["effort"])
+                    built[name] = self._build(f"{row['cli']}:{row['model']}" + (f":{effort}" if effort else ""))
+                built[name].review_effort = _level(row["review_effort"])
+                if solving:
+                    agents.append(built[name])
+                if reviewing:
+                    reviewers.append(built[name])
             if not agents:
-                raise ValueError("Switch on at least one model.")
-            for row in rows:
-                if _row_name(row) in built:
-                    built[_row_name(row)].review_effort = row["review_effort"]
+                raise ValueError("Switch on at least one model for solving.")
             self._models = rows
             self._agents = agents
+            self._reviewers = reviewers
             if replace_author:
                 self._test_author = new_author
             self._timeout_s = timeout_s
@@ -196,13 +218,15 @@ class RunSession:
         return self.config()
 
     def _recheck(self, replace_author: bool) -> list[tuple[CodingAgent, dict[str, object]]]:
-        kept = {row["agent"]: row for row in self._checks if row["role"] == "solver"}
+        kept = {(row["agent"], row["role"]): row for row in self._checks if row["role"] != "test author"}
         jobs = []
         rows = []
-        for agent in self._agents:
-            row = kept.get(agent.name)
+        for agent, role in self._roles():
+            if role == "test author":
+                continue
+            row = kept.get((agent.name, role))
             if row is None:
-                row = _check_row(agent, "solver")
+                row = _check_row(agent, role)
                 jobs.append((agent, row))
             rows.append(row)
         authors = [row for row in self._checks if row["role"] == "test author"]
@@ -214,8 +238,12 @@ class RunSession:
         self._checks = rows + authors
         return jobs
 
+    def _efforts(self, cli: object, model: object) -> list[str]:
+        known = self._levels.get((cli, model)) or EFFORTS.get(str(cli), ())
+        return [level for level in LEVELS if level in known]
+
     def _apply_timeouts(self) -> None:
-        for agent in self._agents:
+        for agent in {id(agent): agent for agent in [*self._agents, *self._reviewers]}.values():
             if hasattr(agent, "timeout_s"):
                 agent.timeout_s = self._timeout_s
             agent.review_timeout_s = self._review_timeout_s
@@ -262,7 +290,7 @@ class RunSession:
             rerun_agent(
                 solutions,
                 agent,
-                self._racers,
+                self._judges,
                 self._task_text,
                 self._attempts,
                 self._timeout_s,
@@ -287,7 +315,7 @@ class RunSession:
             )
             if job is None or job["state"] != "failed":
                 raise RuntimeError("Only a failed review can be retried.")
-            agent = next((item for item in self._racers if item.name == reviewer), None)
+            agent = next((item for item in self._judges if item.name == reviewer), None)
             target = self._review_target(author, attempt)
             if agent is None or target is None:
                 raise RuntimeError("That review is not part of this run.")
@@ -326,14 +354,18 @@ class RunSession:
         with self._lock:
             if self._active():
                 raise RuntimeError("A run is already active.")
+            if any(row["state"] == "checking" for row in self._checks):
+                raise RuntimeError("Wait for the model check to finish.")
             failed = {(row["agent"], row["role"]) for row in self._checks if row["state"] == "failed"}
             author_name = None if self._test_author is None else self._test_author.name
             if (author_name, "test author") in failed:
                 raise RuntimeError(f"The test author {author_name} cannot run. Pick another one in Config.")
-            racers = [agent for agent in self._agents if (agent.name, "solver") not in failed]
+            broken = {name for name, role in failed if role != "test author"}
+            racers = [agent for agent in self._agents if agent.name not in broken]
             if not racers:
                 raise RuntimeError("None of the models can run. Switch on another one in Config.")
             self._racers = racers
+            self._judges = [agent for agent in self._reviewers if agent.name not in broken]
             board = ProgressBoard(
                 [agent.name for agent in racers],
                 self._attempts,
@@ -420,7 +452,8 @@ class RunSession:
                 "review_enabled": self._review,
                 "preflight": [dict(row) for row in self._checks],
                 "lineup": [agent.name for agent in self._agents],
-                "palette": [agent.name for agent in self._lineup] + [agent.name for agent in self._agents if agent not in self._lineup],
+                "reviewers": [agent.name for agent in self._reviewers],
+                "palette": list(dict.fromkeys(agent.name for agent in [*self._lineup, *self._agents, *self._reviewers])),
                 "attempts_per_agent": self._attempts,
                 "timeout_s": self._timeout_s,
                 "author_timeout_s": self._author_timeout_s,
@@ -443,6 +476,7 @@ class RunSession:
             report = run_benchmark(
                 task_text=task_text,
                 agents=self._racers,
+                reviewers=self._judges,
                 test_author=self._test_author,
                 attempts=self._attempts,
                 timeout_s=self._timeout_s,
@@ -474,9 +508,9 @@ class RunSession:
         task_text = (out_dir / "task.md").read_text()
         board = self._board
         if board is not None:
-            for agent in self._racers:
+            for agent in self._judges:
                 board.review_started(agent.name, "you", _number(you))
-        for agent in self._racers:
+        for agent in self._judges:
             graded = _grade((you, agent), task_text, out_dir, board, self._tech)
             if graded[1] is not None:
                 you.reviews.append(graded[1])
@@ -605,23 +639,24 @@ def _bounded_timeout(value: object) -> int:
     return value
 
 
-def _author_view(agent: CodingAgent | None) -> dict[str, object] | None:
+def _author_view(agent: CodingAgent | None, efforts: Callable[[object, object], list[str]]) -> dict[str, object] | None:
     if agent is None:
         return None
     cli = family(agent.name)
-    effort = getattr(agent, "effort", None)
+    model = getattr(agent, "model", None) or agent.name
     return {
         "cli": cli,
-        "model": getattr(agent, "model", None) or agent.name,
-        "effort": effort,
+        "model": model,
+        "effort": getattr(agent, "effort", None),
         "name": agent.name,
-        "efforts": [level for level in LEVELS if level in EFFORTS.get(cli, ())],
+        "efforts": efforts(cli, model),
     }
 
 
 def _parse_author(
     requested: object,
     models: list[dict[str, object]],
+    efforts: Callable[[object, object], list[str]],
     current: CodingAgent | None = None,
 ) -> tuple[str, str, str | None] | None:
     if requested is None:
@@ -634,12 +669,12 @@ def _parse_author(
     if not isinstance(cli, str) or not isinstance(model, str) or not cli or not model:
         raise ValueError("The test author must name a model.")
     known = any(row["cli"] == cli and row["model"] == model for row in models)
-    current_view = _author_view(current)
+    current_view = _author_view(current, efforts)
     if not known and current_view is not None:
         known = current_view["cli"] == cli and current_view["model"] == model
     if not known:
         raise ValueError(f"{cli}:{model} is not an available model.")
-    allowed = EFFORTS.get(cli, frozenset())
+    allowed = efforts(cli, model)
     if allowed:
         if not isinstance(effort, str) or effort not in allowed:
             raise ValueError(f"{cli} has no reasoning level '{effort}'.")
@@ -649,10 +684,14 @@ def _parse_author(
     return cli, model, None
 
 
-def _authors_match(agent: CodingAgent | None, spec: tuple[str, str, str | None] | None) -> bool:
+def _authors_match(
+    agent: CodingAgent | None,
+    spec: tuple[str, str, str | None] | None,
+    efforts: Callable[[object, object], list[str]],
+) -> bool:
     if agent is None or spec is None:
         return agent is None and spec is None
-    view = _author_view(agent)
+    view = _author_view(agent, efforts)
     cli, model, effort = spec
     return view is not None and view["cli"] == cli and view["model"] == model and view["effort"] == effort
 
@@ -672,7 +711,19 @@ def _model_row(agent: CodingAgent) -> dict[str, object]:
 def _row_name(row: dict[str, object]) -> str:
     if row["lineup"]:
         return str(row["name"])
-    return agent_name(str(row["cli"]), str(row["model"]), str(row["effort"]))
+    return agent_name(str(row["cli"]), str(row["model"]), _level(row["effort"]))
+
+
+def _chosen(effort: object, levels: list[str], cli: object) -> str | None:
+    if effort == "default" and not levels:
+        return None
+    if effort != "none" and effort not in levels:
+        raise ValueError(f"{cli} has no reasoning level '{effort}'.")
+    return str(effort)
+
+
+def _level(effort: object) -> str | None:
+    return None if effort in (None, "none") else str(effort)
 
 
 def _prompts(tech: str, solve_s: int, author_s: int, review_s: int) -> list[dict[str, str]]:

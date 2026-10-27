@@ -3,7 +3,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ctb.agents.clis import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
+from ctb.agents.clis import EFFORTS, ClaudeAgent, CodexAgent, GeminiAgent, GrokAgent
 from ctb.agents.fake import FakeAgent
 from ctb.agents.preflight import check_all, cli_versions, installed_clis, model_catalog
 from ctb.langs import TECHS
@@ -23,6 +23,7 @@ INTERVIEW_AGENTS = (
     "codex:gpt-6-astra:high",
     "codex:gpt-6.1-sol:xhigh",
     "grok:grok-4.7:high",
+    "gemini:gemini-3.1-pro-preview",
 )
 INTERVIEW_AUTHOR = "claude:opus:high"
 AUTHOR_FALLBACKS = (
@@ -38,7 +39,7 @@ REVIEW_TIMEOUT_S = 300
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="ctb",
-        description="Benchmark one coding task across headless Claude Code, Grok, and Codex.",
+        description="Benchmark one coding task across headless Claude Code, Grok, Codex, and Gemini.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="Paste a task and score each agent's solution.")
@@ -239,11 +240,13 @@ def _build_agent(name: str, timeout_s: int, budget_usd: float) -> CodingAgent:
         return GrokAgent(timeout_s, model, effort)
     if cli == "codex":
         return CodexAgent(timeout_s, model, effort)
+    if cli == "gemini":
+        return GeminiAgent(timeout_s, model)
     if cli == "fake":
         if model is not None or effort is not None:
             raise ValueError("fake does not take a model.")
         return FakeAgent()
-    raise ValueError(f"Unknown agent '{name}'. Use claude, grok, codex, or fake.")
+    raise ValueError(f"Unknown agent '{name}'. Use claude, grok, codex, gemini, or fake.")
 
 
 def _split_agent(raw: str) -> tuple[str, str | None, str | None]:
@@ -251,7 +254,7 @@ def _split_agent(raw: str) -> tuple[str, str | None, str | None]:
     cli, separator, rest = text.partition(":")
     cli = cli.strip().lower()
     if not cli:
-        raise ValueError(f"Unknown agent '{raw}'. Use claude, grok, codex, or fake.")
+        raise ValueError(f"Unknown agent '{raw}'. Use claude, grok, codex, gemini, or fake.")
     if not separator:
         return cli, None, None
     model, effort_separator, effort = rest.partition(":")

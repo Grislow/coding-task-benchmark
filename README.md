@@ -47,7 +47,7 @@ The report is `runs/<timestamp>/report.md`.
 
 Paste the task, watch each attempt, open a solution, and paste your own to score it on that run's suite. A line entered on the page is shown across the top for 5 seconds. It is not stored and not sent anywhere. The page listens on `127.0.0.1` port 8765 only.
 
-The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It chooses which available model writes the hidden tests: type to filter the model list, then pick a reasoning level. Reasoning stays off until a model is chosen. The dialog also switches solvers on and off, adds others from each CLI's catalog with a reasoning level, sets those three limits, and shows the prompts each role gets. Only the lineup is checked at startup. Models added from the catalog are labelled "Not checked". Changing the test author checks that model before the run.
+The test author gets 15 minutes (`--author-timeout`). Each solving attempt gets 5 minutes (`--timeout`). Each review gets 5 minutes (`--review-timeout`). An agent still running at its limit is stopped with its child processes, and a timed-out attempt fails. Pytest grading uses the solving limit. On the page, press `C` for the config dialog. It chooses which available model writes the hidden tests: type to filter the model list, then pick a reasoning level. Reasoning stays off until a model is chosen. The dialog also switches models on and off, sets each one's reasoning level for solving and for reviews, sets those three limits, and shows the prompts each role gets. Each model offers only the levels its CLI lists. Set solving or reviews to `none` to keep a model to the other role. Every switched-on model and the test author are checked at startup, and saving rechecks the models you changed. A model that fails its check sits out the run, and a test author that fails blocks the run until you pick another.
 
 When the page starts it gives each lineup model a one-line task in a real solve folder. That catches a missing login, an unknown model id, or a permission rule that blocks file access. The result is in the Agents section, with a Check again button. The same check from a terminal is `.venv/bin/ctb check`.
 
@@ -121,7 +121,7 @@ Grok:
 - Reviews run with `--sandbox read-only --max-turns 2` and every built-in tool removed, because the code and task are in the prompt
 - `GROK_CLAUDE_SKILLS_ENABLED=false` and `GROK_CURSOR_SKILLS_ENABLED=false` for that process
 - Add `-m <model>` when the agent entry is `grok:<model>`
-- Add `--effort <level>` when the entry is `grok:<model>:<effort>` (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`)
+- Add `--effort <level>` when the entry is `grok:<model>:<effort>` (`low`, `medium`, `high` and `xhigh`; grok-4.5 stops at `high`)
 
 Codex:
 
@@ -129,6 +129,14 @@ Codex:
 - Review uses `--sandbox read-only` and `--output-schema`
 - Add `-m <model>` when the agent entry is `codex:<model>`
 - Add `-c model_reasoning_effort="<level>"`. `--ignore-user-config` would otherwise drop it. Levels include `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
+
+Gemini:
+
+- `gemini -p --output-format json --skip-trust --extensions none --approval-mode yolo`
+- Reviews use `--approval-mode plan`, which is read-only
+- Add `-m <model>` when the agent entry is `gemini:<model>`. The CLI has no reasoning flag, so Gemini entries take no level
+- Token counts come from `stats.models` in the JSON reply. The CLI has no command that lists models, so the page offers the ids the CLI itself ships with
+- Without a login, every call fails in about a second with "Please set an Auth method", so Gemini shows as "Cannot run" and sits out
 
 Token counts are whatever that invocation's JSON `usage` object reports. Wall clock is the process time around the CLI. Grok often omits dollar cost on subscription logins. The cost score still uses tokens and time.
 
@@ -139,7 +147,7 @@ Token counts are whatever that invocation's JSON `usage` object reports. Wall cl
 | Path | What it holds |
 | --- | --- |
 | `src/ctb/cli.py`, `models.py` | The `ctb` command and the shared data types |
-| `src/ctb/agents/` | The Claude, Codex and Grok wrappers, usage parsing, the startup check and the offline fake agent |
+| `src/ctb/agents/` | The Claude, Codex, Grok and Gemini wrappers, usage parsing, the startup check and the offline fake agent |
 | `src/ctb/run/` | One run: orchestration, the page session, progress, prompts, workspaces, scoring, reviews and the report |
 | `src/ctb/web/` | The local server and the page |
 | `src/ctb/langs/` | One package per toolchain. `python/` grades Python and FastAPI, `node/` grades JavaScript and Express. Each exposes the same names (file names, stub, test grading, lint, contract probe, test-author instructions) and keeps its rubrics beside it. |

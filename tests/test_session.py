@@ -520,3 +520,96 @@ def test_models_that_fail_the_check_sit_out_and_a_failed_author_blocks_the_run(t
     _settled(session)
     with pytest.raises(RuntimeError, match="test author claude-haiku-low cannot run"):
         session.start(_TASK)
+
+
+def test_each_model_offers_only_the_levels_its_cli_lists(tmp_path: Path) -> None:
+    session = RunSession(
+        [ScriptedAgent("only", [_CORRECT], tokens=1)],
+        None,
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+        catalog={"grok": {"grok-4.7": ["xhigh", "high", "medium", "low"], "grok-4.5": ["high", "medium", "low"]}, "codex": {"gpt-6-luna": []}},
+        build=lambda spec: ScriptedAgent(spec, [_CORRECT], tokens=1),
+    )
+    levels = {row["model"]: row["efforts"] for row in session.config()["models"]}
+    assert levels["grok-4.7"] == ["low", "medium", "high", "xhigh"]
+    assert levels["grok-4.5"] == ["low", "medium", "high"]
+    assert levels["gpt-6-luna"] == ["low", "medium", "high", "xhigh", "max", "ultra"]
+    with pytest.raises(ValueError, match="no reasoning level 'xhigh'"):
+        session.configure({"models": [{"cli": "grok", "model": "grok-4.5", "enabled": True, "effort": "xhigh"}]})
+
+
+def test_none_keeps_a_model_to_one_role(tmp_path: Path) -> None:
+    def build(spec: str) -> ScriptedAgent:
+        parts = spec.split(":")
+        agent = ScriptedAgent("-".join(parts), [_CORRECT], tokens=1)
+        agent.model = parts[1]
+        return agent
+
+    opus = ScriptedAgent("claude-opus-high", [_CORRECT], tokens=1)
+    opus.model = "opus"
+    opus.effort = "high"
+    session = RunSession(
+        [opus],
+        ScriptedAgent("author", [_CORRECT], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=True,
+        out_root=tmp_path,
+        catalog={"claude": ["opus"], "codex": ["gpt-6-astra"], "grok": ["grok-4.7"]},
+        build=build,
+    )
+    session.configure(
+        {
+            "models": [
+                {"cli": "claude", "model": "opus", "enabled": True, "effort": "high", "review_effort": "none"},
+                {"cli": "codex", "model": "gpt-6-astra", "enabled": True, "effort": "none", "review_effort": "low"},
+                {"cli": "grok", "model": "grok-4.7", "enabled": True, "effort": "medium", "review_effort": "none"},
+            ],
+        }
+    )
+    snapshot = session.snapshot()
+    assert snapshot["lineup"] == ["claude-opus-high", "grok-grok-4.7-medium"]
+    assert snapshot["reviewers"] == ["codex-gpt-6-astra"]
+    assert session._reviewers[0].review_effort == "low"
+    session.start(_TASK)
+    done = _wait(session)
+    assert {item["agent"] for item in done["attempts"]} == {"claude-opus-high", "grok-grok-4.7-medium"}
+    assert {item["reviewer"] for item in done["reviews"]} == {"codex-gpt-6-astra"}
+    with pytest.raises(ValueError, match="none for both"):
+        session.configure({"models": [{"cli": "grok", "model": "grok-4.7", "enabled": True, "effort": "none", "review_effort": "none"}]})
+    with pytest.raises(ValueError, match="at least one model for solving"):
+        session.configure(
+            {
+                "models": [
+                    {"cli": "claude", "model": "opus", "enabled": False},
+                    {"cli": "grok", "model": "grok-4.7", "enabled": False},
+                ],
+            }
+        )
+
+
+class SlowCheck(ScriptedAgent):
+    def complete(self, *, cwd: str, prompt: str, session_id: str | None, role: str) -> AgentResult:
+        if "Preflight" in Path(cwd, "task.md").read_text():
+            time.sleep(0.5)
+        return super().complete(cwd=cwd, prompt=prompt, session_id=session_id, role=role)
+
+
+def test_the_run_waits_for_every_check(tmp_path: Path) -> None:
+    session = RunSession(
+        [ScriptedAgent("solver", [_CORRECT], tokens=1)],
+        SlowCheck("author", [_CORRECT], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+    )
+    session.check()
+    with pytest.raises(RuntimeError, match="Wait for the model check"):
+        session.start(_TASK)
+    _settled(session)
+    session.start(_TASK)
+    assert _wait(session)["phase"] == "done"

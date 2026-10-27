@@ -41,6 +41,7 @@ def run_benchmark(
     progress: ProgressBoard | None = None,
     candidate: Callable[[], list[SolutionRun]] | None = None,
     tech: str = "python",
+    reviewers: list[CodingAgent] | None = None,
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "task.md").write_text(task_text)
@@ -76,8 +77,9 @@ def run_benchmark(
             _contract(solution, perf_cases, timeout_s, tech)
     if progress is not None:
         progress.set_solutions(solutions)
-    if review and agents:
-        _review(solutions, agents, task_text, out_dir, progress, candidate, tech)
+    judges = agents if reviewers is None else reviewers
+    if review and judges:
+        _review(solutions, judges, task_text, out_dir, progress, candidate, tech)
     apply_profile(solutions)
     if progress is not None:
         progress.set_solutions(solutions)
@@ -397,7 +399,7 @@ def rerun_agent(
             (attempt, agent)
             for other in others
             for attempt in other.attempt_runs
-            if attempt.passed and family(other.agent) != family(agent.name)
+            if attempt.passed and family(other.agent) != family(agent.name) and agent in agents
         )
         _run_reviews(jobs, task_text, out_dir, progress, tech)
         _sync_chosen(solutions)

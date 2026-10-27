@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ctb.agents.usage import result_from_codex_jsonl, result_from_stdout
+from ctb.agents.usage import result_from_codex_jsonl, result_from_gemini_json, result_from_stdout
 from ctb.models import AgentResult, TokenUsage
 from ctb.run.prompts import RUBRIC_SCHEMA, deadline_note, wrap_up_s
 
@@ -24,8 +24,8 @@ _GROK_ALL_TOOLS = (
 # Levels each CLI documents. A model can still reject a level its own menu omits.
 EFFORTS = {
     "claude": frozenset({"low", "medium", "high", "xhigh", "max"}),
-    "grok": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"}),
-    "codex": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}),
+    "grok": frozenset({"low", "medium", "high", "xhigh"}),
+    "codex": frozenset({"low", "medium", "high", "xhigh", "max", "ultra"}),
 }
 
 
@@ -110,6 +110,29 @@ class CodexAgent:
         del session_id
         command = codex_command(deadline_note(limit, role) + prompt, Path(cwd), role, self.model, schema_path, _role_effort(self, role))
         return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_codex_jsonl)
+
+
+class GeminiAgent:
+    def __init__(self, timeout_s: int, model: str | None = None) -> None:
+        self.name = agent_name("gemini", model)
+        self.model = model
+        self.effort = None
+        self.timeout_s = timeout_s
+
+    def complete(
+        self,
+        *,
+        cwd: str,
+        prompt: str,
+        session_id: str | None,
+        role: str,
+    ) -> AgentResult:
+        if shutil.which("gemini") is None:
+            return _missing(self.name)
+        limit = _role_timeout(self, role)
+        del session_id
+        command = gemini_command(deadline_note(limit, role) + prompt, role, self.model)
+        return _invoke(command, Path(cwd), os.environ.copy(), limit, result_from_gemini_json)
 
 
 def _role_effort(agent: object, role: str) -> str | None:
@@ -212,6 +235,13 @@ def grok_command(
         )
     _append_model(command, "-m", model)
     _append_effort(command, effort)
+    return command
+
+
+def gemini_command(prompt: str, role: str, model: str | None = None) -> list[str]:
+    command = ["gemini", "-p", prompt, "--output-format", "json", "--skip-trust", "--extensions", "none"]
+    command.extend(["--approval-mode", "plan" if role == "review" else "yolo"])
+    _append_model(command, "-m", model)
     return command
 
 
