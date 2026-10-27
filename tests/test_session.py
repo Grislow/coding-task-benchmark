@@ -464,3 +464,59 @@ def test_a_failed_review_can_be_retried_once_the_run_is_done(tmp_path: Path) -> 
     assert review["score"] is not None
     solid = next(item for item in session.snapshot()["solutions"] if item["agent"] == "solid")
     assert solid["review"] is not None
+
+
+def _settled(session: RunSession) -> list[dict[str, object]]:
+    deadline = time.monotonic() + 10
+    rows = session.snapshot()["preflight"]
+    while any(row["state"] == "checking" for row in rows) and time.monotonic() < deadline:
+        time.sleep(0.02)
+        rows = session.snapshot()["preflight"]
+    return rows
+
+
+def test_models_that_fail_the_check_sit_out_and_a_failed_author_blocks_the_run(tmp_path: Path) -> None:
+    from test_setup import BrokenAgent
+
+    def build(spec: str) -> ScriptedAgent:
+        cli, model, effort = spec.split(":")
+        agent = BrokenAgent(f"{cli}-{model}-{effort}", failures=1, ok=False) if model == "haiku" else ScriptedAgent(f"{cli}-{model}-{effort}", [_CORRECT], tokens=1)
+        agent.model = model
+        agent.effort = effort
+        return agent
+
+    opus = ScriptedAgent("claude-opus-high", [_CORRECT], tokens=1)
+    opus.model = "opus"
+    opus.effort = "high"
+    session = RunSession(
+        [opus, BrokenAgent("broken", failures=1, ok=False)],
+        ScriptedAgent("author", [_CORRECT], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+        catalog={"claude": ["opus", "haiku"]},
+        build=build,
+    )
+    session.check()
+    assert {row["agent"]: row["state"] for row in _settled(session)} == {"claude-opus-high": "ready", "broken": "failed", "author": "ready"}
+    session.configure(
+        {
+            "models": [
+                {"cli": "claude", "model": "opus", "enabled": True, "effort": "low"},
+                {"cli": "broken", "model": "broken", "enabled": True},
+                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low"},
+            ],
+        }
+    )
+    assert session.snapshot()["lineup"] == ["claude-opus-low", "broken", "claude-haiku-low"]
+    states = {row["agent"]: row["state"] for row in _settled(session)}
+    assert states == {"claude-opus-low": "ready", "broken": "failed", "claude-haiku-low": "failed", "author": "ready"}
+    session.start(_TASK)
+    done = _wait(session)
+    assert done["agents"] == ["claude-opus-low"]
+    assert {item["agent"] for item in done["attempts"]} == {"claude-opus-low"}
+    session.configure({"author": {"cli": "claude", "model": "haiku", "effort": "low"}})
+    _settled(session)
+    with pytest.raises(RuntimeError, match="test author claude-haiku-low cannot run"):
+        session.start(_TASK)

@@ -61,7 +61,7 @@ def test_the_page_polls_status_and_shows_the_run(tmp_path: Path) -> None:
     assert "1000" in page
     assert "attempt.state" in page
     assert 'id="banner"' in page
-    assert "5000" in page
+    assert "ctb.message-s" in page
     assert "#banner" in page
     assert "position: fixed" in page
     assert "left: 0" in page

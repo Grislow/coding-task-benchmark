@@ -58,6 +58,7 @@ class RunSession:
         review_timeout_s: int | None = None,
     ) -> None:
         self._agents = agents
+        self._racers = list(agents)
         self._lineup = list(agents)
         self._build = build
         self._models = [_model_row(agent) for agent in agents]
@@ -93,14 +94,17 @@ class RunSession:
                 raise RuntimeError("Wait for the run to finish.")
             if any(row["state"] == "checking" for row in self._checks):
                 raise RuntimeError("A check is already running.")
-            roles = [(agent, "solver") for agent in self._agents if agent in self._lineup]
+            roles = [(agent, "solver") for agent in self._agents]
             if self._test_author is not None:
                 roles.append((self._test_author, "test author"))
-            self._checks = [{"agent": agent.name, "role": role, "state": "checking", "note": ""} for agent, role in roles]
+            self._checks = [_check_row(agent, role) for agent, role in roles]
             jobs = list(zip([agent for agent, _ in roles], self._checks, strict=True))
+        self._start_checks(jobs)
+        return self.snapshot()
+
+    def _start_checks(self, jobs: list[tuple[CodingAgent, dict[str, object]]]) -> None:
         for agent, row in jobs:
             threading.Thread(target=self._check_one, args=(agent, row), daemon=True).start()
-        return self.snapshot()
 
     def config(self) -> dict[str, object]:
         with self._lock:
@@ -133,7 +137,7 @@ class RunSession:
             for item in payload.get("models", [])
             if isinstance(item, dict)
         }
-        job: tuple[CodingAgent, dict[str, object]] | None = None
+        jobs: list[tuple[CodingAgent, dict[str, object]]] = []
         with self._lock:
             if self._active():
                 raise RuntimeError("Wait for the run to finish.")
@@ -151,10 +155,12 @@ class RunSession:
                     continue
                 row["enabled"] = item.get("enabled") is True
                 effort = item.get("effort")
-                if not row["lineup"] and effort is not None:
+                if effort is not None and effort != row["effort"]:
                     if effort not in EFFORTS.get(row["cli"], ()):
                         raise ValueError(f"{row['cli']} has no reasoning level '{effort}'.")
                     row["effort"] = effort
+                    if row["lineup"]:
+                        row["name"] = agent_name(str(row["cli"]), str(row["model"]), effort)
                 review_effort = item.get("review_effort")
                 if review_effort is not None and EFFORTS.get(row["cli"]):
                     if review_effort not in EFFORTS[row["cli"]]:
@@ -184,11 +190,29 @@ class RunSession:
             self._author_timeout_s = author_timeout_s
             self._review_timeout_s = review_timeout_s
             self._apply_timeouts()
-            if replace_author and self._checks:
-                job = self._swap_author_check()
-        if job is not None:
-            threading.Thread(target=self._check_one, args=job, daemon=True).start()
+            if self._checks:
+                jobs = self._recheck(replace_author)
+        self._start_checks(jobs)
         return self.config()
+
+    def _recheck(self, replace_author: bool) -> list[tuple[CodingAgent, dict[str, object]]]:
+        kept = {row["agent"]: row for row in self._checks if row["role"] == "solver"}
+        jobs = []
+        rows = []
+        for agent in self._agents:
+            row = kept.get(agent.name)
+            if row is None:
+                row = _check_row(agent, "solver")
+                jobs.append((agent, row))
+            rows.append(row)
+        authors = [row for row in self._checks if row["role"] == "test author"]
+        if replace_author:
+            authors = []
+            if self._test_author is not None:
+                authors = [_check_row(self._test_author, "test author")]
+                jobs.append((self._test_author, authors[0]))
+        self._checks = rows + authors
+        return jobs
 
     def _apply_timeouts(self) -> None:
         for agent in self._agents:
@@ -217,15 +241,6 @@ class RunSession:
             raise ValueError(f"This page cannot start {text}.")
         return self._build(text)
 
-    def _swap_author_check(self) -> tuple[CodingAgent, dict[str, object]] | None:
-        self._checks = [row for row in self._checks if row.get("role") != "test author"]
-        author = self._test_author
-        if author is None:
-            return None
-        row = {"agent": author.name, "role": "test author", "state": "checking", "note": ""}
-        self._checks.append(row)
-        return author, row
-
     def rerun(self, name: str) -> dict[str, object]:
         with self._lock:
             board = self._board
@@ -235,7 +250,7 @@ class RunSession:
                 raise RuntimeError("Wait for the run to finish.")
             if solutions is None or out_dir is None:
                 raise RuntimeError("This run has no results to re-run against.")
-            agent = next((item for item in self._agents if item.name == name), None)
+            agent = next((item for item in self._racers if item.name == name), None)
             if agent is None:
                 raise RuntimeError(f"Unknown agent {name}.")
             board.set_phase("solving")
@@ -247,7 +262,7 @@ class RunSession:
             rerun_agent(
                 solutions,
                 agent,
-                self._agents,
+                self._racers,
                 self._task_text,
                 self._attempts,
                 self._timeout_s,
@@ -272,7 +287,7 @@ class RunSession:
             )
             if job is None or job["state"] != "failed":
                 raise RuntimeError("Only a failed review can be retried.")
-            agent = next((item for item in self._agents if item.name == reviewer), None)
+            agent = next((item for item in self._racers if item.name == reviewer), None)
             target = self._review_target(author, attempt)
             if agent is None or target is None:
                 raise RuntimeError("That review is not part of this run.")
@@ -311,9 +326,16 @@ class RunSession:
         with self._lock:
             if self._active():
                 raise RuntimeError("A run is already active.")
+            failed = {(row["agent"], row["role"]) for row in self._checks if row["state"] == "failed"}
             author_name = None if self._test_author is None else self._test_author.name
+            if (author_name, "test author") in failed:
+                raise RuntimeError(f"The test author {author_name} cannot run. Pick another one in Config.")
+            racers = [agent for agent in self._agents if (agent.name, "solver") not in failed]
+            if not racers:
+                raise RuntimeError("None of the models can run. Switch on another one in Config.")
+            self._racers = racers
             board = ProgressBoard(
-                [agent.name for agent in self._agents],
+                [agent.name for agent in racers],
                 self._attempts,
                 author_name,
             )
@@ -420,7 +442,7 @@ class RunSession:
         try:
             report = run_benchmark(
                 task_text=task_text,
-                agents=self._agents,
+                agents=self._racers,
                 test_author=self._test_author,
                 attempts=self._attempts,
                 timeout_s=self._timeout_s,
@@ -452,9 +474,9 @@ class RunSession:
         task_text = (out_dir / "task.md").read_text()
         board = self._board
         if board is not None:
-            for agent in self._agents:
+            for agent in self._racers:
                 board.review_started(agent.name, "you", _number(you))
-        for agent in self._agents:
+        for agent in self._racers:
             graded = _grade((you, agent), task_text, out_dir, board, self._tech)
             if graded[1] is not None:
                 you.reviews.append(graded[1])
@@ -540,6 +562,10 @@ class RunSession:
         if out_dir.exists():
             out_dir = self._out_root / f"{stamp}-{time.time_ns()}"
         return out_dir
+
+
+def _check_row(agent: CodingAgent, role: str) -> dict[str, object]:
+    return {"agent": agent.name, "role": role, "state": "checking", "note": ""}
 
 
 def _number(you: SolutionRun) -> int:

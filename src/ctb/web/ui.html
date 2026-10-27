@@ -99,6 +99,7 @@
     .notice::before { content: "!"; display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--fail); color: var(--on-hue); font-weight: 800; font-size: 12px; }
     #banner {
       display: none;
+      flex-direction: column;
       position: fixed;
       top: 0;
       left: 0;
@@ -108,11 +109,13 @@
       color: var(--on-hue);
       font: 800 56px/1.1 var(--display);
       letter-spacing: -0.02em;
-      padding: 28px 32px;
     }
-    #banner.visible { display: block; animation: drop 320ms cubic-bezier(.2, .8, .2, 1); }
-    @keyframes drop { from { transform: translateY(-100%); } to { transform: none; } }
-    body.telling main { padding-top: 160px; }
+    #banner.visible { display: flex; }
+    #banner p { margin: 0; padding: 28px 32px; animation: drop 320ms cubic-bezier(.2, .8, .2, 1); transition: opacity 400ms ease; }
+    #banner p + p { padding-top: 0; }
+    #banner p.leaving { opacity: 0; }
+    @keyframes drop { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: none; } }
+    body.telling main { padding-top: calc(var(--banner-h, 132px) + 28px); }
     .card { background: var(--panel); border-radius: 20px; padding: 22px; }
     .race .lane { background: none; margin-top: 0; border-radius: 12px; }
     .race .lane + .lane { border-top: 1px solid #262230; }
@@ -343,6 +346,7 @@
     .init { display: grid; justify-items: center; gap: 10px; padding: 26px 12px 18px; text-align: center; }
     .init p { margin: 0; max-width: 46ch; text-wrap: pretty; }
     .init .init-title { font: 800 16px var(--display); color: var(--ink); }
+    .init .roster { display: contents; }
     .podium { display: flex; align-items: flex-end; gap: 8px; height: 132px; margin-bottom: 8px; }
     .podium i { --hue: var(--line); display: grid; place-items: start center; width: 64px; padding-top: 10px; border-radius: 12px 12px 4px 4px; border: 2px dashed color-mix(in oklab, var(--hue) 70%, transparent); background: color-mix(in oklab, var(--hue) 10%, transparent); color: var(--hue); font: 800 22px var(--display); animation: climb 560ms cubic-bezier(.2, .8, .2, 1) backwards; }
     .podium i::before { content: attr(data-place); }
@@ -490,9 +494,9 @@
     .prompt summary:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; border-radius: 12px; }
     .prompt pre { margin: 0 14px 14px; min-height: 0; max-height: 360px; width: auto; font-size: 12px; }
     @media (prefers-reduced-motion: reduce) {
-      .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
+      .slot.running::before, #banner p, .steps li.now.busy::before, .steps li.now.busy::after,
       .result.run::before, .wait i, .landed, .tech.swap, .slot.ready.fresh, .slot.broken.fresh, [role="tabpanel"]:not([hidden]), .skeleton i, .podium i, button.action.busy::before { animation: none; }
-      button.action, .tech, [role="tab"], .board-frame, .detail { transition: none; }
+      button.action, .tech, [role="tab"], .board-frame, .detail, #banner p { transition: none; }
     }
     @media (max-width: 1240px) {
       h1 { font-size: 19px; }
@@ -619,7 +623,7 @@
   <dialog id="message-dialog" aria-labelledby="message-title">
     <form id="message-form" method="dialog">
       <h2 id="message-title">Message the recording</h2>
-      <label for="message">Shown across the top for 5 seconds</label>
+      <label for="message" id="message-label">Shown across the top for 10 seconds</label>
       <input id="message" type="text" autocomplete="off">
       <p class="hint">Enter sends it. Escape closes this.</p>
     </form>
@@ -662,6 +666,12 @@
               <input id="review-limit" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" aria-describedby="review-limit-help">
               <span>min</span>
               <p id="review-limit-help" class="muted">Each review stops at this limit.</p>
+            </div>
+            <div class="limit">
+              <label for="message-limit">Messages</label>
+              <input id="message-limit" type="number" min="1" max="120" step="1" inputmode="numeric" aria-describedby="message-limit-help">
+              <span>s</span>
+              <p id="message-limit-help" class="muted">How long each message stays on screen. Saved in this browser as you type.</p>
             </div>
           </div>
           <div id="model-list"></div>
@@ -870,31 +880,33 @@
       return attempts;
     }
 
-    function initBoard(snapshot) {
+    function initBoard() {
       const box = el("div", "init");
       const podium = el("div", "podium");
       podium.setAttribute("aria-hidden", "true");
       for (const place of ["2", "1", "3"]) podium.appendChild(el("i")).dataset.place = place;
-      const models = snapshot.lineup || [];
-      const each = snapshot.attempts_per_agent || 0;
-      box.append(
-        podium,
-        el("p", "init-title", "The podium is empty"),
-        el("p", "muted", "Paste a task and start the run. " + (models.length ? models.length * each + " attempts" : "Every attempt") + " line up here, and each climbs to its place once it is scored.")
-      );
-      if (models.length) {
-        box.appendChild(el("span", "grid-label", "On the grid · " + each + (each === 1 ? " attempt" : " attempts") + " each"));
-        const line = el("ul", "grid-line");
-        line.setAttribute("aria-label", "Models in the next run");
-        for (const agent of models) {
-          const chip = el("li", "", nameParts(agent).name);
-          chip.style.setProperty("--hue", hueOf(agent));
-          chip.title = agent;
-          line.appendChild(chip);
-        }
-        box.appendChild(line);
-      }
+      box.append(podium, el("p", "init-title", "The podium is empty"), el("div", "roster"));
       return box;
+    }
+
+    function fillRoster(roster, snapshot) {
+      const models = (snapshot.lineup || []).filter((agent) => checkState(agent) !== "failed");
+      const each = snapshot.attempts_per_agent || 0;
+      const key = models.join() + ":" + each;
+      if (roster.dataset.key === key) return;
+      roster.dataset.key = key;
+      roster.replaceChildren(el("p", "muted", "Paste a task and start the run. " + (models.length ? models.length * each + " attempts" : "Every attempt") + " line up here, and each climbs to its place once it is scored."));
+      if (!models.length) return;
+      roster.appendChild(el("span", "grid-label", "On the grid · " + each + (each === 1 ? " attempt" : " attempts") + " each"));
+      const line = el("ul", "grid-line");
+      line.setAttribute("aria-label", "Models in the next run");
+      for (const agent of models) {
+        const chip = el("li", "", nameParts(agent).name);
+        chip.style.setProperty("--hue", hueOf(agent));
+        chip.title = agent;
+        line.appendChild(chip);
+      }
+      roster.appendChild(line);
     }
 
     function renderDetailEmpty(snapshot) {
@@ -1092,7 +1104,7 @@
           slot.append(mark, el("small", "", "login, model and file access"));
         } else if (row.state === "unchecked") {
           mark.textContent = "Not checked";
-          slot.append(mark, el("small", "", "added from the catalog in Config, so it runs unchecked"));
+          slot.append(mark, el("small", "", "not checked yet, so it runs unchecked"));
         } else if (row.state === "ready") {
           mark.append(icon("check"), document.createTextNode("Ready"));
           slot.append(mark);
@@ -1241,6 +1253,7 @@
         lane.append(el("span", "pos", ranked ? String(rank + 1) : "·"), who, slots, best);
         board.appendChild(lane);
       });
+      checkLanes(board, (snapshot.preflight || []).filter((row) => row.role === "solver" && row.state === "failed" && !agents.includes(row.agent)));
       flip(board, ".lane[data-key]", before);
       if (!focusedRerun) return;
       const again = board.querySelector('button[data-rerun="' + CSS.escape(focusedRerun) + '"]');
@@ -1315,12 +1328,17 @@
       const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
       const before = positions(leaderboard, "button.row");
       const idle = !latest || (latest.phase === "idle" && !entries.length);
-      const view = idle ? "init:" + ((latest && latest.lineup) || []).join() + ":" + ((latest && latest.attempts_per_agent) || 0) : leaderboardReady(latest) ? "table" : "skeleton";
+      const view = idle ? "init" : leaderboardReady(latest) ? "table" : "skeleton";
+      if (idle && leaderboard.dataset.view === "init") {
+        fillRoster(leaderboard.querySelector(".roster"), latest || {});
+        return;
+      }
       if (view !== "table" && leaderboard.dataset.view === view) return;
       leaderboard.dataset.view = view;
       leaderboard.replaceChildren();
       if (idle) {
-        leaderboard.appendChild(initBoard(latest || {}));
+        leaderboard.appendChild(initBoard());
+        fillRoster(leaderboard.querySelector(".roster"), latest || {});
         return;
       }
       if (view === "skeleton") {
@@ -1687,24 +1705,42 @@
       document.getElementById("ranking").scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
     }
 
+    function messageSeconds() {
+      try {
+        const value = Number(localStorage.getItem("ctb.message-s"));
+        if (value >= 1 && value <= 120) return value;
+      } catch {}
+      return 10;
+    }
+
     function openMessage() {
       const dialog = document.getElementById("message-dialog");
+      const seconds = messageSeconds();
+      document.getElementById("message-label").textContent = "Shown across the top for " + seconds + (seconds === 1 ? " second" : " seconds");
       document.getElementById("message").value = "";
       dialog.showModal();
       document.getElementById("message").focus();
     }
 
+    function fitBanner() {
+      const banner = document.getElementById("banner");
+      const any = banner.childElementCount > 0;
+      banner.classList.toggle("visible", any);
+      document.body.classList.toggle("telling", any);
+      document.body.style.setProperty("--banner-h", banner.offsetHeight + "px");
+    }
+
     function showToast(text) {
       const banner = document.getElementById("banner");
-      banner.textContent = text;
-      banner.classList.add("visible");
-      document.body.classList.add("telling");
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => {
-        banner.classList.remove("visible");
-        banner.textContent = "";
-        document.body.classList.remove("telling");
-      }, 5000);
+      const line = banner.appendChild(el("p", "", text));
+      fitBanner();
+      setTimeout(() => {
+        line.classList.add("leaving");
+        setTimeout(() => {
+          line.remove();
+          fitBanner();
+        }, still.matches ? 0 : 400);
+      }, messageSeconds() * 1000);
     }
 
     function closeTaskEditor() {
@@ -2099,6 +2135,7 @@
         if (!open) input.value = seconds / 60;
         input.disabled = locked;
       }
+      if (!open) document.getElementById("message-limit").value = messageSeconds();
       document.getElementById("config-save").disabled = locked;
       renderAuthor();
       const note = document.getElementById("config-note");
@@ -2139,15 +2176,13 @@
           box.checked = kept.has(id) ? kept.get(id) : model.enabled;
           box.dataset.cli = model.cli;
           box.dataset.model = model.model;
-          const state = model.lineup ? checkState(model.name) || "unchecked" : "unchecked";
+          const state = checkState(model.name) || "unchecked";
           box.disabled = locked || checking || (!model.enabled && state === "failed");
           const label = el("label", "", model.model);
           label.htmlFor = id;
           if (model.lineup) label.append(" ", el("small", "", "lineup"));
-          let effort;
-          if (model.lineup) {
-            effort = el("span", "fixed", model.effort || "default");
-          } else {
+          let effort = el("span", "fixed", model.effort || "default");
+          if (model.efforts.length) {
             effort = levelSelect(id + "-effort", "solving", model, model.effort);
             effort.dataset.effortFor = id;
           }
@@ -2180,7 +2215,7 @@
       const note = document.getElementById("config-note");
       if (config.locked || note.className === "error" || ((latest && latest.preflight) || []).some((row) => row.state === "checking")) return;
       const on = [...document.querySelectorAll("#model-list input[type=checkbox]:checked")];
-      const unchecked = on.map((box) => config.models.find((model) => model.cli === box.dataset.cli && model.model === box.dataset.model)).filter((model) => !model.lineup).map((model) => model.model);
+      const unchecked = on.map((box) => config.models.find((model) => model.cli === box.dataset.cli && model.model === box.dataset.model)).filter((model) => !checkState(model.name)).map((model) => model.model);
       const tests = Number(document.getElementById("author-limit").value) || 0;
       const solving = Number(document.getElementById("solve-limit").value) || 0;
       const reviews = Number(document.getElementById("review-limit").value) || 0;
@@ -2202,6 +2237,13 @@
     }
 
     document.getElementById("open-config").addEventListener("click", openConfig);
+    document.getElementById("message-limit").addEventListener("input", (event) => {
+      const value = Number(event.target.value);
+      if (!(value >= 1 && value <= 120)) return;
+      try {
+        localStorage.setItem("ctb.message-s", String(value));
+      } catch {}
+    });
     document.getElementById("config-form").addEventListener("input", () => {
       document.getElementById("config-note").className = "muted";
       configSummary();
