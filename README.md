@@ -13,7 +13,7 @@ make setup
 make start
 ```
 
-`make setup` creates `.venv` and installs the package, including pytest and the FastAPI extra. Ruff is a dependency, so the Python static check always runs. When npm is on `PATH`, it also installs the pinned Node toolchain (Express and ESLint) into `src/ctb/langs/node/node_modules`. `make start` serves the page at <http://127.0.0.1:8765>. Paste the task in the browser. `make test` runs the tests. `make lint` runs Ruff on the source and tests, then `scripts/check-private.sh`, which fails on local home paths, personal emails and API keys in tracked files. `make setup` also turns on `.githooks/pre-commit`, which runs the same check on staged changes and refuses a commit whose author email is not a GitHub noreply address.
+`make setup` creates `.venv` and installs the package, including pytest and the FastAPI extra. Ruff is a dependency, so the Python static check always runs. When npm is on `PATH`, it also installs the pinned Node toolchain (Express and ESLint) into `src/ctb/langs/node/node_modules`. `make start` serves the page at <http://127.0.0.1:8765>. Paste the task in the browser. `make test` runs the tests. `make lint` runs Ruff on the source and tests, then `scripts/check-private.sh`, which fails on local home paths and API keys in tracked files, plus any personal terms listed one regex per line in `.git/info/private-patterns`. That file lives inside `.git`, so it is never committed. `make setup` also turns on `.githooks/pre-commit`, which runs the same check on staged changes and refuses a commit whose author email is not a GitHub noreply address.
 
 The page runs three attempts on each of these models, at the same time. Each row has its own reasoning level, because that changes the code the model writes:
 
