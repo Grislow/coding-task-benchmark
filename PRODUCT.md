@@ -12,7 +12,7 @@ Plain HTML, CSS, and JavaScript, served by the existing Python package on `127.0
 
 ## Users
 
-The person in a live Codility interview. They sit at this machine with the Codility tab beside this page, paste the task, watch the agents, and later paste a solution they can explain into Codility themselves.
+The person in a live interview. They sit at this machine with the task beside this page, paste the task, watch the agents, and later submit a solution they can explain themselves.
 
 Other people watch a screen recording of this same page. They do not use the controls. They read the board and the message the interviewee flashes.
 
@@ -22,11 +22,11 @@ Run one pasted coding task through the local harness and show, while it is happe
 
 ## Positioning
 
-The page is the harness, not a Codility client. Five headless coding CLIs solve the same frozen pytest suite in parallel, three attempts each, then grade each other. The interviewee's paste is scored on that same suite. Nothing in the product logs into Codility or submits an answer.
+The page is the harness, not a client for any task platform. Five headless coding CLIs solve the same frozen pytest suite in parallel, three attempts each, then grade each other. The interviewee's paste is scored on that same suite. Nothing in the product logs into a task platform or submits an answer.
 
 ## Operating Context
 
-Used once, beside a Codility tab, for the length of one task. The task text is copied from Codility. The chosen solution is copied back by hand. A recording is already running. Start it with `make start`.
+Used once, beside the task, for the length of one task. The task text is pasted in. The chosen solution is copied back by hand. A recording is already running. Start it with `make start`.
 
 ## Capabilities and Constraints
 
@@ -37,7 +37,7 @@ Used once, beside a Codility tab, for the length of one task. The task text is c
 - Show the same profile as `report.md`: correctness 40, performance 20, static 15, review 15, contract 10 (FastAPI and Express only), cost 10. Missing dimensions are dropped and the rest rescaled.
 - Paste the interviewee's own solution once the frozen suite exists. Score it on that suite and show the other agents' reviews. Their row is named `you`.
 - A message field: Enter shows that line across the top for 5 seconds, large enough to read on the recording. The line is not stored and not sent anywhere.
-- Listens on `127.0.0.1` only. `runs/` stays gitignored. No accounts, no network API, no Codility traffic.
+- Listens on `127.0.0.1` only. `runs/` stays gitignored. No accounts, no network API, no traffic to a task platform.
 - `ctb ui` may take `--agents` and `--test-author` so the page can be checked with the offline `fake` agent.
 
 ## Brand Commitments
@@ -53,5 +53,5 @@ The harness in `src/ctb`, the report written to `runs/<timestamp>/report.md`, an
 - The recording is a reader. Anything meant for the watchers is large and brief.
 - The board shows the run that is actually happening, including failed attempts and empty scores.
 - The interviewee's paste and the agents' code are scored on one frozen suite, so the numbers compare.
-- The page never acts on Codility. Submitting stays a manual copy.
+- The page never acts on a task platform. Submitting stays a manual copy.
 - One command opens it, and it never leaves the machine.

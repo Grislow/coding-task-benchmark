@@ -1,7 +1,7 @@
 [project]
 name = "coding-task-benchmark"
 version = "0.1.0"
-description = "Run one coding task through headless Claude Code and Grok, then score the solutions."
+description = "Race coding-agent CLIs on one programming task and rank their solutions on a hidden test suite."
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = ["ruff>=0.6"]

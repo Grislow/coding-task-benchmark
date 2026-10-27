@@ -73,7 +73,7 @@ module.exports = { solution };
 """
 
 
-def test_a_codility_paste_without_exports_is_graded_and_timed() -> None:
+def test_a_paste_without_exports_is_graded_and_timed() -> None:
     public = node.extract_public_tests(_TASK)
     result = node.evaluate_solution(_GAP, public, _HIDDEN, "module.exports = [[9], [2 ** 20]];", 30)
     assert result.passed

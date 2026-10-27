@@ -1,5 +1,6 @@
 import argparse
 import sys
+import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,26 +14,13 @@ from ctb.run.report import write_report
 from ctb.run.session import RunSession
 from ctb.web.server import bind
 
-# Opus medium and gpt-6.1-sol xhigh are fixed choices. The other three are high:
-# Sonnet's FrontierCode score peaks at xhigh and drops at max, and high is the
-# step up from Claude Code's medium default for a harder coding task. Astra's
-# DeepSWE score barely moves above high. Grok 4.7 publishes DeepSWE at high.
-INTERVIEW_AGENTS = (
-    "claude:opus:medium",
-    "claude:sonnet:high",
-    "codex:gpt-6-astra:high",
-    "codex:gpt-6.1-sol:xhigh",
-    "grok:grok-4.7:high",
-)
-INTERVIEW_AUTHOR = "claude:opus:high"
-AUTHOR_FALLBACKS = (
-    INTERVIEW_AUTHOR,
-    "codex:gpt-6.1-sol:xhigh",
-    "grok:grok-4.7:high",
-)
-SOLVE_TIMEOUT_S = 300
-AUTHOR_TIMEOUT_S = 900
-REVIEW_TIMEOUT_S = 300
+CONFIG = tomllib.loads((Path(__file__).resolve().parents[2] / "ctb.toml").read_text())
+INTERVIEW_AGENTS = tuple(CONFIG["lineup"])
+AUTHOR_FALLBACKS = tuple(CONFIG["test_authors"])
+INTERVIEW_AUTHOR = AUTHOR_FALLBACKS[0]
+SOLVE_TIMEOUT_S = CONFIG["limits"]["solve"]
+AUTHOR_TIMEOUT_S = CONFIG["limits"]["author"]
+REVIEW_TIMEOUT_S = CONFIG["limits"]["review"]
 
 
 def main(argv: list[str] | None = None) -> int:

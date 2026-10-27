@@ -1,4 +1,4 @@
-.PHONY: setup start test lint
+.PHONY: setup start demo check run test lint
 
 setup:
 	python3 -m venv .venv
@@ -9,6 +9,19 @@ setup:
 start:
 	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
 	.venv/bin/ctb ui
+
+demo:
+	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
+	.venv/bin/ctb ui --agents fake --test-author fake --skip-review
+
+check:
+	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
+	.venv/bin/ctb check
+
+run:
+	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
+	@test -n "$(TASK)" || { echo "Usage: make run TASK=examples/binary_gap.md"; exit 1; }
+	.venv/bin/ctb interview "$(TASK)"
 
 test:
 	@test -x .venv/bin/pytest || { echo "Run make setup first"; exit 1; }

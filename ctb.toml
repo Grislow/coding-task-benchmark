@@ -1,0 +1,18 @@
+lineup = [
+  "claude:opus:medium",
+  "claude:sonnet:high",
+  "codex:gpt-6-astra:high",
+  "codex:gpt-6.1-sol:xhigh",
+  "grok:grok-4.7:high",
+]
+
+test_authors = [
+  "claude:opus:high",
+  "codex:gpt-6.1-sol:xhigh",
+  "grok:grok-4.7:high",
+]
+
+[limits]
+author = 900
+solve = 300
+review = 300
