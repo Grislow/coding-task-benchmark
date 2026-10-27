@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">What a run does</title>
+  <desc id="desc">The task becomes public tests, a test author writes hidden tests that are frozen, solvers race three attempts each in their own folders, FastAPI and Express apps are probed, other model families review, and everything is scored onto the leaderboard.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6f6b7d"/>
+    </marker>
+    <pattern id="stripes" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="14" height="14" fill="#16141d"/>
+      <rect width="5" height="14" fill="#ff5fae" fill-opacity="0.32"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="700" rx="24" fill="#0c0b10"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <g id="prepare">
+      <rect x="56" y="48" width="320" height="104" rx="16" fill="#16141d"/>
+      <text x="80" y="92" font-size="26" font-weight="800" fill="#f4f4f7">task.md</text>
+      <text x="80" y="126" font-size="19" fill="#a29fae">asserts become public tests</text>
+
+      <rect x="440" y="48" width="320" height="104" rx="16" fill="#16141d"/>
+      <text x="464" y="92" font-size="26" font-weight="800" fill="#f4f4f7">test author</text>
+      <text x="464" y="126" font-size="19" fill="#a29fae">writes hidden tests + perf cases</text>
+
+      <rect x="824" y="48" width="320" height="104" rx="16" fill="#16141d" stroke="#ffc531" stroke-width="2"/>
+      <text x="848" y="92" font-size="26" font-weight="800" fill="#ffc531">frozen suite</text>
+      <text x="848" y="126" font-size="19" fill="#a29fae">the same tests for everyone</text>
+
+      <path d="M380 100 H432" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+      <path d="M764 100 H816" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+      <path d="M984 156 V206" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+    </g>
+
+    <g id="solvers">
+      <rect x="56" y="214" width="1088" height="290" rx="16" fill="#16141d"/>
+      <text x="80" y="256" font-size="26" font-weight="800" fill="#f4f4f7">solvers</text>
+      <text x="196" y="256" font-size="19" fill="#a29fae">in parallel, each in its own folder</text>
+
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" fill="#6f6b7d">
+        <text x="128" y="294">attempt 1</text>
+        <text x="368" y="294">attempt 2</text>
+        <text x="608" y="294">attempt 3</text>
+      </g>
+
+      <g transform="translate(80 310)">
+        <rect x="6" y="14" width="13" height="13" rx="3" fill="#ff6b4a" transform="rotate(45 12.5 20.5)"/>
+        <rect x="48" y="0" width="200" height="42" rx="7" fill="none" stroke="#ff6b4a" stroke-width="2"/>
+        <text x="64" y="28" font-size="18" font-weight="700" fill="#ff6b4a">✕ 1/3</text>
+        <path d="M252 21 H280" stroke="#6f6b7d" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <rect x="288" y="0" width="200" height="42" rx="7" fill="#ff6b4a"/>
+        <text x="304" y="28" font-size="18" font-weight="700" fill="#120f0a">✓ 3/3</text>
+        <path d="M492 21 H520" stroke="#6f6b7d" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <rect x="528" y="0" width="200" height="42" rx="7" fill="#ff6b4a"/>
+        <text x="544" y="28" font-size="18" font-weight="700" fill="#120f0a">✓ 3/3</text>
+      </g>
+
+      <g transform="translate(80 366)">
+        <rect x="6" y="14" width="13" height="13" rx="3" fill="#4ea8ff" transform="rotate(45 12.5 20.5)"/>
+        <rect x="48" y="0" width="200" height="42" rx="7" fill="#4ea8ff"/>
+        <text x="64" y="28" font-size="18" font-weight="700" fill="#120f0a">✓ 3/3</text>
+        <path d="M252 21 H280" stroke="#6f6b7d" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <rect x="288" y="0" width="200" height="42" rx="7" fill="#4ea8ff"/>
+        <text x="304" y="28" font-size="18" font-weight="700" fill="#120f0a">✓ 3/3</text>
+        <path d="M492 21 H520" stroke="#6f6b7d" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <rect x="528" y="0" width="200" height="42" rx="7" fill="none" stroke="#4ea8ff" stroke-width="2"/>
+        <text x="544" y="28" font-size="18" font-weight="700" fill="#4ea8ff">✕ timed out</text>
+      </g>
+
+      <g transform="translate(80 422)">
+        <rect x="6" y="14" width="13" height="13" rx="3" fill="#ff5fae" transform="rotate(45 12.5 20.5)"/>
+        <rect x="48" y="0" width="200" height="42" rx="7" fill="#ff5fae"/>
+        <text x="64" y="28" font-size="18" font-weight="700" fill="#120f0a">✓ 3/3</text>
+        <path d="M252 21 H280" stroke="#6f6b7d" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <rect x="288" y="0" width="200" height="42" rx="7" fill="url(#stripes)" stroke="#ff5fae" stroke-width="2"/>
+        <text x="304" y="28" font-size="18" font-weight="700" fill="#ff5fae">running</text>
+        <rect x="528" y="0" width="200" height="42" rx="7" fill="none" stroke="#34303f" stroke-width="2"/>
+        <text x="544" y="28" font-size="18" fill="#6f6b7d">queued</text>
+      </g>
+
+      <g transform="translate(856 300)">
+        <text x="0" y="24" font-size="20" font-weight="700" fill="#f4f4f7">Later attempts see</text>
+        <text x="0" y="52" font-size="20" font-weight="700" fill="#f4f4f7">the previous code</text>
+        <text x="0" y="80" font-size="20" font-weight="700" fill="#f4f4f7">and failures.</text>
+        <text x="0" y="128" font-size="19" fill="#a29fae">Keep the best:</text>
+        <text x="0" y="156" font-size="19" fill="#a29fae">passes, then 10% faster,</text>
+        <text x="0" y="184" font-size="19" fill="#a29fae">then cleaner.</text>
+      </g>
+
+      <path d="M216 508 V558" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+    </g>
+
+    <g id="judge">
+      <rect x="56" y="566" width="320" height="104" rx="16" fill="#16141d"/>
+      <text x="80" y="610" font-size="26" font-weight="800" fill="#f4f4f7">contract probe</text>
+      <text x="80" y="644" font-size="19" fill="#a29fae">FastAPI and Express only</text>
+
+      <rect x="440" y="566" width="320" height="104" rx="16" fill="#16141d"/>
+      <text x="464" y="610" font-size="26" font-weight="800" fill="#f4f4f7">reviews</text>
+      <text x="464" y="644" font-size="19" fill="#a29fae">other model families only</text>
+
+      <rect x="824" y="566" width="320" height="104" rx="16" fill="#16141d" stroke="#3fe0a0" stroke-width="2"/>
+      <text x="848" y="610" font-size="26" font-weight="800" fill="#3fe0a0">leaderboard</text>
+      <text x="848" y="644" font-size="19" fill="#a29fae">+ runs/&lt;ts&gt;/report.md</text>
+
+      <path d="M380 618 H432" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+      <path d="M764 618 H816" stroke="#6f6b7d" stroke-width="3" marker-end="url(#arrow)"/>
+    </g>
+  </g>
+</svg>

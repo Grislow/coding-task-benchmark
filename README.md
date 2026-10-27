@@ -1,8 +1,10 @@
-# coding-task-benchmark
+<p align="center"><img src="./assets/readme/hero.svg" width="100%" alt="coding-task-benchmark: coding agents race on one task, graded on the same hidden tests"></p>
 
 A local web page where coding-agent CLIs race on one programming task. Watch every attempt live, score your own solution on the same hidden tests, and compare them all on one leaderboard.
 
-## Setup
+<p align="center"><img src="./assets/readme/showcase.png" width="100%" alt="Demo run of the page: agents racing, finished lanes with best scores, and the ranked leaderboard with reviews"></p>
+
+<p align="center"><img src="./assets/readme/section-setup.svg" width="100%" alt="Setup"></p>
 
 ```bash
 python3 --version   # needs 3.11 or newer
@@ -10,7 +12,7 @@ make setup
 make start          # http://127.0.0.1:8765
 ```
 
-## Scripts
+<p align="center"><img src="./assets/readme/section-scripts.svg" width="100%" alt="Scripts"></p>
 
 ```bash
 make start                              # the page at http://127.0.0.1:8765
@@ -21,7 +23,7 @@ make test                               # run the tests
 make lint                               # Ruff, plus a check for private paths and keys
 ```
 
-## Default lineup
+<p align="center"><img src="./assets/readme/section-default-lineup.svg" width="100%" alt="Default lineup"></p>
 
 Set in `ctb.toml` in the project root, read on startup:
 
@@ -54,7 +56,7 @@ review = 300
 
 The report of a `ctb run` is `runs/<timestamp>/report.md`.
 
-## The page
+<p align="center"><img src="./assets/readme/section-the-page.svg" width="100%" alt="The page"></p>
 
 | Name | Shortcut | Purpose |
 |---|---|---|
@@ -68,30 +70,11 @@ The report of a `ctb run` is `runs/<timestamp>/report.md`.
 | Message | `M` | Show a note to the people reviewing a screen recording |
 | Leave a field | `Esc` | Return focus to the page |
 
-## What a run does
+<p align="center"><img src="./assets/readme/section-what-a-run-does.svg" width="100%" alt="What a run does"></p>
 
-```text
-task.md
-  │  asserts in code blocks become public tests
-  ▼
-test author ──▶ hidden tests + perf cases, frozen
-  │
-  ▼
-solvers, in parallel, each in its own folder
-  attempt 1 ─▶ attempt 2 ─▶ attempt 3   later attempts see the previous code and failures
-  keep the best: passes, then 10% faster, then cleaner
-  │
-  ▼
-contract probe        FastAPI and Express only
-  │
-  ▼
-reviews               by other model families only, without seeing the test score
-  │
-  ▼
-score ──▶ leaderboard + runs/<timestamp>/report.md
-```
+<p align="center"><img src="./assets/readme/workflow.svg" width="100%" alt="Task, test author, frozen suite, solvers with three attempts, contract probe, reviews, leaderboard"></p>
 
-## Scoring Dimensions
+<p align="center"><img src="./assets/readme/section-scoring.svg" width="100%" alt="Scoring dimensions"></p>
 
 | Dimension | How it's measured |
 |---|---|
@@ -102,7 +85,7 @@ score ──▶ leaderboard + runs/<timestamp>/report.md
 | Contract | share of bad-input probes that don't return a 500 |
 | Cost | tokens and wall clock, lower is better |
 
-## Languages
+<p align="center"><img src="./assets/readme/section-languages.svg" width="100%" alt="Languages"></p>
 
 | Tech | Picked when the task mentions | Linter | Review rubric |
 |---|---|---|---|
@@ -116,7 +99,7 @@ Click it to cycle through the four. All rubrics also include [common.md](src/ctb
 
 Reviewers may only flag rules from the rubric. Lint issues, correctness and speed are out of scope.
 
-## Agents and models
+<p align="center"><img src="./assets/readme/section-agents.svg" width="100%" alt="Agents and models"></p>
 
 Each entry is `cli`, `cli:model` or `cli:model:level`. Leave out the model or level to use the CLI's default.
 
