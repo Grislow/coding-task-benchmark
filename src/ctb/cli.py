@@ -15,9 +15,9 @@ from ctb.run.session import RunSession
 from ctb.web.server import bind
 
 CONFIG = tomllib.loads((Path(__file__).resolve().parents[2] / "ctb.toml").read_text())
-INTERVIEW_AGENTS = tuple(CONFIG["lineup"])
+DEFAULT_AGENTS = tuple(CONFIG["lineup"])
 AUTHOR_FALLBACKS = tuple(CONFIG["test_authors"])
-INTERVIEW_AUTHOR = AUTHOR_FALLBACKS[0]
+DEFAULT_AUTHOR = AUTHOR_FALLBACKS[0]
 SOLVE_TIMEOUT_S = CONFIG["limits"]["solve"]
 AUTHOR_TIMEOUT_S = CONFIG["limits"]["author"]
 REVIEW_TIMEOUT_S = CONFIG["limits"]["review"]
@@ -56,28 +56,28 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--out", default="runs")
     run.add_argument("--skip-review", action="store_true")
     run.add_argument("--tech", choices=TECHS, default="python", help="Rubric and checks for the review.")
-    interview = sub.add_parser(
-        "interview",
-        help="Run the fixed five-model lineup. Pass a task file, or pipe the task on stdin.",
+    race = sub.add_parser(
+        "race",
+        help="Race the ctb.toml lineup on one task in the terminal. Pass a task file, or pipe the task on stdin.",
     )
-    interview.add_argument(
+    race.add_argument(
         "task",
         nargs="?",
         help="Markdown file with the task. Omit it, or pass -, to read stdin.",
     )
-    interview.add_argument("--tech", choices=TECHS, default="python", help="Rubric and checks for the review.")
+    race.add_argument("--tech", choices=TECHS, default="python", help="Rubric and checks for the review.")
     ui = sub.add_parser(
         "ui",
-        help="Open the interview page on 127.0.0.1. Pass no task; paste it in the browser.",
+        help="Open the page on 127.0.0.1. Pass no task; paste it in the browser.",
     )
     ui.add_argument(
         "--agents",
-        default=",".join(INTERVIEW_AGENTS),
+        default=",".join(DEFAULT_AGENTS),
         help="Comma-separated cli, cli:model, or cli:model:effort entries.",
     )
     ui.add_argument(
         "--test-author",
-        default=INTERVIEW_AUTHOR,
+        default=DEFAULT_AUTHOR,
         help="Who writes the hidden tests. Same form as --agents, or none.",
     )
     ui.add_argument("--port", type=int, default=8765)
@@ -88,23 +88,23 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--tech", choices=TECHS, default="python", help="Default rubric when a task names none.")
     check = sub.add_parser(
         "check",
-        help="Before an interview: show CLI versions and give each agent a one-line task to prove it can run.",
+        help="Show CLI versions and give each agent a one-line task to prove it can run.",
     )
     check.add_argument(
         "--agents",
-        default=",".join(INTERVIEW_AGENTS),
+        default=",".join(DEFAULT_AGENTS),
         help="Comma-separated cli, cli:model, or cli:model:effort entries.",
     )
-    check.add_argument("--test-author", default=INTERVIEW_AUTHOR, help="Same form as --agents, or none.")
+    check.add_argument("--test-author", default=DEFAULT_AUTHOR, help="Same form as --agents, or none.")
     args = parser.parse_args(argv)
     if args.command == "ui":
         return _serve_ui(args)
     if args.command == "check":
         return _check(args)
-    if args.command == "interview":
+    if args.command == "race":
         args.attempts = 3
-        args.agents = ",".join(INTERVIEW_AGENTS)
-        args.test_author = INTERVIEW_AUTHOR
+        args.agents = ",".join(DEFAULT_AGENTS)
+        args.test_author = DEFAULT_AUTHOR
         args.timeout = SOLVE_TIMEOUT_S
         args.author_timeout = AUTHOR_TIMEOUT_S
         args.review_timeout = REVIEW_TIMEOUT_S
@@ -203,7 +203,7 @@ def _check(args: argparse.Namespace) -> int:
             print("      " + " ".join(problem.split())[:400])
     failed = sum(problem is not None for problem in problems)
     print()
-    print("Ready." if not failed else f"{failed} of {len(agents)} agents cannot run. Fix them before the interview.")
+    print("Ready." if not failed else f"{failed} of {len(agents)} agents cannot run. Fix them before you start.")
     return 1 if failed else 0
 
 

@@ -206,7 +206,7 @@ components:
 
 **Creative North Star: "The arcade cabinet"**
 
-A near-black cabinet with five lit players. The page answers one question during a recorded interview: who is ahead, and what is each agent doing right now. Every agent owns one bright hue and carries it everywhere it appears: its diamond, its passed attempt blocks, its running stripes, its best score, its leaderboard swatch. The interviewee (`you`) races in ink. The energy comes from those hues, from heavy scoreboard type, and from small motion, not from gradients or glow.
+A near-black cabinet with five lit players. The page answers one question while a run is live: who is ahead, and what is each agent doing right now. Every agent owns one bright hue and carries it everywhere it appears: its diamond, its passed attempt blocks, its running stripes, its best score, its leaderboard swatch. You (`you`) race in ink. The energy comes from those hues, from heavy scoreboard type, and from small motion, not from gradients or glow.
 
 The race board leads. Each agent is a lane: rank, name, three attempt blocks, best score. The leader's lane is outlined in its own hue and its rank and best score light up. The task and your own solution sit side by side as two equal editors, with a Python or FastAPI badge on the task (detected from the text, click to switch). Once a run starts, the task editor collapses to its title and first lines. Below the race, the leaderboard and the attempt details share a row on desktop; the details are a sticky panel with Review and Solution tabs, Review first. A score appears only once solving has ended and every review of that attempt is in, so it never jumps. Rows join the leaderboard as soon as an attempt starts, sit at the bottom with empty cells, and slide to their place when the score lands. The phase is a row of pill steps, with the current one lit in sun.
 
@@ -231,7 +231,7 @@ A dark field lit by five player hues and one house accent; colour belongs to age
 ### Secondary: the agent hues
 
 - **Coral** (`coral`), **Sun** (`sun`), **Mint** (`mint`), **Sky** (`sky`), **Pink** (`pink`): assigned to agents by their order in the run's agent list, cycling after five. Each paints its agent's diamond, passed blocks, running stripes and ring, failed-block outline (55% mix) and strike (75% mix), the leader outline, the lead rank and best score, the leaderboard swatch, the first-row bar, and the selected-row tint and ring.
-- **Ink as a player**: the interviewee's lane and rows use `ink` as their hue, so a passed `you` block is an ink block with on-hue text.
+- **Ink as a player**: your lane and rows use `ink` as their hue, so a passed `you` block is an ink block with on-hue text.
 - **On-hue** (`on-hue`): text on any hue fill (passed blocks, current step, banner, stopped phase, selection).
 
 ### Tertiary: results

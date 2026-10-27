@@ -18,8 +18,8 @@ from ctb.agents.usage import (
     result_from_stdout,
 )
 from ctb.cli import (
-    INTERVIEW_AGENTS,
-    INTERVIEW_AUTHOR,
+    DEFAULT_AGENTS,
+    DEFAULT_AUTHOR,
     _build_agent,
     _resolve_author,
     _split_agent,
@@ -154,8 +154,8 @@ def test_headless_commands_keep_solvers_in_bounds() -> None:
     assert grok_model[grok_model.index("-m") + 1] == "grok-4"
 
 
-def test_interview_lineup_is_five_distinct_models() -> None:
-    agents = [_build_agent(name, 30, 1) for name in INTERVIEW_AGENTS]
+def test_default_lineup_is_five_distinct_models() -> None:
+    agents = [_build_agent(name, 30, 1) for name in DEFAULT_AGENTS]
     assert [(agent.name, agent.model, agent.effort) for agent in agents] == [
         ("claude-opus-medium", "opus", "medium"),
         ("claude-sonnet-high", "sonnet", "high"),
@@ -177,7 +177,7 @@ def test_interview_lineup_is_five_distinct_models() -> None:
     assert grok_cmd[grok_cmd.index("--effort") + 1] == "high"
 
 
-def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ui_defaults_match_the_default_lineup(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
     monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok", "gemini"}))
     monkeypatch.setattr("ctb.cli.model_catalog", dict)
@@ -199,8 +199,8 @@ def test_ui_defaults_match_the_interview_lineup(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr("ctb.cli._serve", fake_serve)
     assert main(["ui"]) == 0
-    assert seen["agents"] == [_build_agent(name, 600, 3).name for name in INTERVIEW_AGENTS]
-    assert seen["author"] == _build_agent(INTERVIEW_AUTHOR, 600, 3).name
+    assert seen["agents"] == [_build_agent(name, 600, 3).name for name in DEFAULT_AGENTS]
+    assert seen["author"] == _build_agent(DEFAULT_AUTHOR, 600, 3).name
     assert seen["port"] == 8765
     assert seen["review"] is True
     assert seen["attempts"] == 3
@@ -239,15 +239,15 @@ def test_the_test_author_falls_back_through_available_models(monkeypatch: pytest
         "grok": ["grok-4.7", "grok-4"],
     }
     monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"claude", "codex", "grok"}))
-    assert _resolve_author(INTERVIEW_AUTHOR, catalog) == INTERVIEW_AUTHOR
+    assert _resolve_author(DEFAULT_AUTHOR, catalog) == DEFAULT_AUTHOR
     assert _resolve_author("none", catalog) == "none"
     assert _resolve_author("fake", {}) == "fake"
     assert _resolve_author("grok:grok-4:low", {"grok": ["grok-4", "grok-4.7"]}) == "grok:grok-4:low"
     monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"codex", "grok"}))
-    assert _resolve_author(INTERVIEW_AUTHOR, catalog) == "codex:gpt-6.1-sol:xhigh"
+    assert _resolve_author(DEFAULT_AUTHOR, catalog) == "codex:gpt-6.1-sol:xhigh"
     monkeypatch.setattr("ctb.cli.installed_clis", lambda: frozenset({"grok"}))
-    assert _resolve_author(INTERVIEW_AUTHOR, {"grok": ["grok-4.7"]}) == "grok:grok-4.7:high"
-    assert _resolve_author(INTERVIEW_AUTHOR, {"grok": ["grok-4"], "codex": ["gpt-6-astra"]}) == "none"
+    assert _resolve_author(DEFAULT_AUTHOR, {"grok": ["grok-4.7"]}) == "grok:grok-4.7:high"
+    assert _resolve_author(DEFAULT_AUTHOR, {"grok": ["grok-4"], "codex": ["gpt-6-astra"]}) == "none"
 
 
 def test_catalog_skips_a_cli_that_is_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:

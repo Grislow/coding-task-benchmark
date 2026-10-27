@@ -28,7 +28,7 @@ make lint                               # Ruff, plus a check for private paths a
 Set in `ctb.toml` in the project root, read on startup:
 
 ```toml
-# Default setup for `ctb ui`, `ctb check` and `ctb interview`.
+# Default setup for `ctb ui`, `ctb check` and `ctb race`.
 # Entries are cli:model:level. Leave the level out to use the CLI's default.
 
 # Models that race on every task, three attempts each.

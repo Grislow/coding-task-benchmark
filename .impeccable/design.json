@@ -87,7 +87,7 @@
       "ink": {
         "role": "neutral",
         "displayName": "Ink",
-        "purpose": "Text, action fill, the interviewee's hue (--ink)",
+        "purpose": "Text, action fill, your hue (--ink)",
         "canonical": "#f4f4f7",
         "tonalRamp": [
           "#0b0b0d",
@@ -422,7 +422,7 @@
   ],
   "narrative": {
     "northStar": "The arcade cabinet",
-    "overview": "**Creative North Star: \"The arcade cabinet\"**\n\nA near-black cabinet with five lit players. The page answers one question during a recorded interview: who is ahead, and what is each agent doing right now. Every agent owns one bright hue and carries it everywhere it appears: its diamond, its passed attempt blocks, its running stripes, its best score, its leaderboard swatch. The interviewee (`you`) races in ink. The energy comes from those hues, from heavy scoreboard type, and from small motion, not from gradients or glow.\n\nThe race board leads. Each agent is a lane: rank, name, three attempt blocks, best score. The leader's lane is outlined in its own hue and its rank and best score light up. Once a run starts, the task paste collapses to a one-line strip so the race sits near the top. The phase is a row of pill steps, with the current one lit in sun.\n\nSurfaces are flat, rounded, and stepped in tone: ground, then panel, then raised. Lines are inset rings, never drop shadows.\n\n- Near-black ground; rounded panels one tone lighter; raised tiles one tone lighter again.\n- Five agent hues (coral, sun, mint, sky, pink); `you` in ink.\n- Passed is a solid block in the hue, failed is an outline with the score struck through, running is marching stripes.\n- Unbounded 800 for the scoreboard voice, Onest for words, Martian Mono for counts and code.\n- Sun yellow is the house accent: current step, focus ring, text selection, the recording banner, the dialog ring.",
+    "overview": "**Creative North Star: \"The arcade cabinet\"**\n\nA near-black cabinet with five lit players. The page answers one question while a run is live: who is ahead, and what is each agent doing right now. Every agent owns one bright hue and carries it everywhere it appears: its diamond, its passed attempt blocks, its running stripes, its best score, its leaderboard swatch. You (`you`) race in ink. The energy comes from those hues, from heavy scoreboard type, and from small motion, not from gradients or glow.\n\nThe race board leads. Each agent is a lane: rank, name, three attempt blocks, best score. The leader's lane is outlined in its own hue and its rank and best score light up. Once a run starts, the task paste collapses to a one-line strip so the race sits near the top. The phase is a row of pill steps, with the current one lit in sun.\n\nSurfaces are flat, rounded, and stepped in tone: ground, then panel, then raised. Lines are inset rings, never drop shadows.\n\n- Near-black ground; rounded panels one tone lighter; raised tiles one tone lighter again.\n- Five agent hues (coral, sun, mint, sky, pink); `you` in ink.\n- Passed is a solid block in the hue, failed is an outline with the score struck through, running is marching stripes.\n- Unbounded 800 for the scoreboard voice, Onest for words, Martian Mono for counts and code.\n- Sun yellow is the house accent: current step, focus ring, text selection, the recording banner, the dialog ring.",
     "keyCharacteristics": [
       "Near-black ground; rounded panels one tone lighter; raised tiles one tone lighter again.",
       "Five agent hues (coral, sun, mint, sky, pink); `you` in ink.",

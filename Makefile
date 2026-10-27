@@ -21,7 +21,7 @@ check:
 run:
 	@test -x .venv/bin/ctb || { echo "Run make setup first"; exit 1; }
 	@test -n "$(TASK)" || { echo "Usage: make run TASK=examples/binary_gap.md"; exit 1; }
-	.venv/bin/ctb interview "$(TASK)"
+	.venv/bin/ctb race "$(TASK)"
 
 test:
 	@test -x .venv/bin/pytest || { echo "Run make setup first"; exit 1; }
