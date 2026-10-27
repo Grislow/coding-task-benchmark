@@ -64,8 +64,16 @@ Omit the `TICKET-ID` and `Refs` if one is not available.
 
 Refs: TICKET-ID
 
-Co-Authored-By: {your model name from system context} <noreply@anthropic.com> {same format but other model / email for grok or openai}
+<the Co-Authored-By trailer for your provider, from the table below>
 ```
+
+End the message with one `Co-Authored-By` trailer for the model writing it. Use the row for your provider and put your exact model name in place of `<model>`.
+
+| Provider | Trailer |
+|---|---|
+| Anthropic (Claude) | `Co-Authored-By: Claude <model> <noreply@anthropic.com>` |
+| OpenAI (Codex, GPT) | `Co-Authored-By: <model> <noreply@openai.com>` |
+| xAI (Grok) | `Co-Authored-By: <model> <noreply@x.ai>` |
 
 ### Step 5 - Commit with a heredoc to preserve line breaks
 
