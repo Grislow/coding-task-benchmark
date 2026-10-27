@@ -30,11 +30,11 @@ Used once, beside a Codility tab, for the length of one task. The task text is c
 
 ## Capabilities and Constraints
 
-- Paste a task and start the fixed interview lineup: Claude Opus medium, Claude Sonnet high, Codex gpt-6-astra high, Codex gpt-6.1-sol xhigh, Grok 4.7 high. Claude Opus high, which is not a solver, writes the hidden tests. Three attempts, 300 seconds per attempt (set in the config dialog), $3 Claude budget, review on. A model never reviews its own family's code.
+- Paste a task and start the fixed interview lineup: Claude Opus medium, Claude Sonnet high, Codex gpt-6-astra high, Codex gpt-6.1-sol xhigh, Grok 4.7 high. Claude Opus high, which is not a solver, writes the hidden tests when that model is available. Otherwise the page uses Codex gpt-6.1-sol at xhigh, then Grok 4.7 at high. The config dialog can choose another available model and reasoning level. Three attempts, 300 seconds per attempt (set in the config dialog), $3 Claude budget, review on. A model never reviews its own family's code.
 - One run at a time. A second task waits until the current one is done.
 - Show each attempt as waiting, running, passed, or failed, with the test count when it has finished.
 - Open any finished attempt's `solution.py`, and the kept solution.
-- Show the same profile as `report.md`: correctness 40, performance 20, static 15, review 15, contract 10 (FastAPI only), cost 10. Missing dimensions are dropped and the rest rescaled.
+- Show the same profile as `report.md`: correctness 40, performance 20, static 15, review 15, contract 10 (FastAPI and Express only), cost 10. Missing dimensions are dropped and the rest rescaled.
 - Paste the interviewee's own solution once the frozen suite exists. Score it on that suite and show the other agents' reviews. Their row is named `you`.
 - A message field: Enter shows that line across the top for 5 seconds, large enough to read on the recording. The line is not stored and not sent anywhere.
 - Listens on `127.0.0.1` only. `runs/` stays gitignored. No accounts, no network API, no Codility traffic.

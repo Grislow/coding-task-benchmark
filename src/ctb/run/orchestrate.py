@@ -7,9 +7,7 @@ from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
-from ctb.checks import readability_report
-from ctb.contract import contract_report
-from ctb.evaluate import compile_source, evaluate_solution, extract_public_tests
+from ctb.langs import WEB, lang
 from ctb.models import (
     AgentResult,
     AttemptRecord,
@@ -18,11 +16,16 @@ from ctb.models import (
     ReviewNote,
     SolutionRun,
 )
-from ctb.progress import ProgressBoard
-from ctb.prompts import author_prompt, next_approach_prompt, rubric_rules, solver_prompt
-from ctb.reviews import parse_review
-from ctb.score import apply_profile, chosen_index
-from ctb.workspace import TIMED_OUT, make_workspace, scratch_dir, setup_error
+from ctb.run.progress import ProgressBoard
+from ctb.run.prompts import (
+    author_prompt,
+    next_approach_prompt,
+    rubric_rules,
+    solver_prompt,
+)
+from ctb.run.reviews import parse_review
+from ctb.run.score import apply_profile, chosen_index
+from ctb.run.workspace import TIMED_OUT, make_workspace, scratch_dir, setup_error
 
 RETRY_DELAY_S = 5.0
 
@@ -36,19 +39,19 @@ def run_benchmark(
     out_dir: Path,
     review: bool,
     progress: ProgressBoard | None = None,
-    candidate: Callable[[], SolutionRun | None] | None = None,
+    candidate: Callable[[], list[SolutionRun]] | None = None,
     tech: str = "python",
 ) -> BenchmarkReport:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "task.md").write_text(task_text)
     notes: list[str] = []
-    public_tests = extract_public_tests(task_text)
-    hidden_tests, perf_cases, author_note = _hidden_suite(test_author, task_text, out_dir, progress)
+    public_tests = lang(tech).extract_public_tests(task_text)
+    hidden_tests, perf_cases, author_note = _hidden_suite(test_author, task_text, out_dir, progress, tech)
     if author_note:
         notes.append(author_note)
         if progress is not None:
             progress.add_note(author_note)
-    _store_suite(out_dir, public_tests, hidden_tests, perf_cases)
+    _store_suite(out_dir, public_tests, hidden_tests, perf_cases, tech)
     if progress is not None:
         progress.set_suite(bool(public_tests or hidden_tests))
     if not public_tests and not hidden_tests:
@@ -68,9 +71,9 @@ def run_benchmark(
         progress,
         tech,
     )
-    if tech == "fastapi":
+    if tech in WEB:
         for solution in solutions:
-            _contract(solution, perf_cases, timeout_s)
+            _contract(solution, perf_cases, timeout_s, tech)
     if progress is not None:
         progress.set_solutions(solutions)
     if review and agents:
@@ -79,7 +82,7 @@ def run_benchmark(
     if progress is not None:
         progress.set_solutions(solutions)
         progress.set_phase("done")
-    return BenchmarkReport(_title(task_text), str(out_dir), notes, solutions)
+    return BenchmarkReport(_title(task_text), str(out_dir), notes, solutions, tech)
 
 
 def _solve_all(
@@ -147,7 +150,7 @@ def _solve_apart(
     finally:
         produced = scratch / "work" / agent.name
         if produced.exists():
-            shutil.copytree(produced, out_dir / "work" / agent.name, dirs_exist_ok=True)
+            shutil.copytree(produced, out_dir / "work" / agent.name, symlinks=True, dirs_exist_ok=True)
         shutil.rmtree(scratch, ignore_errors=True)
 
 
@@ -164,39 +167,39 @@ def _solve(
     tech: str = "python",
 ) -> SolutionRun:
     print(f"solving {agent.name}", file=sys.stderr, flush=True)
+    toolchain = lang(tech)
     workspace = out_dir / "work" / agent.name
-    make_workspace(workspace, task_text)
-    solution_path = workspace / "solution.py"
-    session_id: str | None = None
+    make_workspace(workspace, task_text, tech)
+    solution_path = workspace / toolchain.SOLUTION
     records: list[AttemptRecord] = []
     sources: list[str] = []
     for number in range(1, attempts + 1):
         if progress is not None:
             progress.attempt_started(agent.name, number)
-        previous = next((record for record in reversed(records) if record.setup_error is None), None)
-        prompt = solver_prompt() if previous is None else next_approach_prompt(
-            previous.number,
-            previous.passed,
-            previous.tests_passed,
-            previous.tests_total,
-            previous.performance_ms,
-            previous.readability,
-            previous.failure_excerpt,
+        previous = next((index for index in reversed(range(len(records))) if records[index].setup_error is None), None)
+        prompt = solver_prompt(tech) if previous is None else next_approach_prompt(
+            records[previous].number,
+            records[previous].passed,
+            records[previous].tests_passed,
+            records[previous].tests_total,
+            records[previous].performance_ms,
+            records[previous].readability,
+            records[previous].failure_excerpt,
+            sources[previous],
+            tech,
         )
         result = _with_retry(
-            partial(agent.complete, cwd=str(workspace), prompt=prompt, session_id=session_id, role="solve"),
-            lambda attempt: setup_error(attempt, _source(solution_path)) is not None,
+            partial(agent.complete, cwd=str(workspace), prompt=prompt, session_id=None, role="solve"),
+            lambda attempt: setup_error(attempt, _source(solution_path), tech) is not None,
         )
-        session_id = result.session_id or session_id
         source = _source(solution_path)
-        (workspace / f"attempt-{number}.py").write_text(source)
         sources.append(source)
-        problem = setup_error(result, source)
+        problem = setup_error(result, source, tech)
         if problem is not None:
             records.append(
                 AttemptRecord(
                     number=number,
-                    session_id=session_id,
+                    session_id=result.session_id,
                     usage=result.usage,
                     wall_ms=result.wall_ms,
                     cost_usd=result.cost_usd,
@@ -212,13 +215,13 @@ def _solve(
             if progress is not None:
                 progress.attempt_finished(agent.name, records[-1], source)
             continue
-        evaluation = evaluate_solution(source, public_tests, hidden_tests, perf_cases, timeout_s)
-        readability, readability_notes = readability_report(source, tech)
+        evaluation = toolchain.evaluate_solution(source, public_tests, hidden_tests, perf_cases, timeout_s)
+        readability, readability_notes = toolchain.readability_report(source, tech)
         excerpt = result.error or evaluation.failure_excerpt
         records.append(
             AttemptRecord(
                 number=number,
-                session_id=session_id,
+                session_id=result.session_id,
                 usage=result.usage,
                 wall_ms=result.wall_ms,
                 cost_usd=result.cost_usd,
@@ -236,13 +239,15 @@ def _solve(
         )
         if progress is not None:
             progress.attempt_finished(agent.name, records[-1], source)
+    for number, attempt_source in enumerate(sources, 1):
+        (workspace / f"attempt-{number}{solution_path.suffix}").write_text(attempt_source)
     best = chosen_index(records)
     records[best] = replace(records[best], chosen=True)
     if progress is not None:
         progress.mark_chosen(agent.name, records[best].number)
     source = sources[best]
-    (workspace / "solution.py").write_text(source)
-    readability, readability_notes = readability_report(source, tech)
+    solution_path.write_text(source)
+    readability, readability_notes = toolchain.readability_report(source, tech)
     return SolutionRun(
         agent=agent.name,
         source=source,
@@ -269,27 +274,29 @@ def _hidden_suite(
     task_text: str,
     out_dir: Path,
     progress: ProgressBoard | None = None,
+    tech: str = "python",
 ) -> tuple[str | None, str | None, str | None]:
     if author is None:
         return None, None, None
+    toolchain = lang(tech)
     if progress is not None:
         progress.set_phase("authoring")
         progress.author_running(author.name)
     workspace = out_dir / "work" / f"{author.name}-author"
-    make_workspace(workspace, task_text)
+    make_workspace(workspace, task_text, tech)
     result = _with_retry(
-        lambda: author.complete(cwd=str(workspace), prompt=author_prompt(), session_id=None, role="author"),
-        lambda attempt: _did_not_run(attempt) and not (workspace / "test_hidden.py").exists(),
+        lambda: author.complete(cwd=str(workspace), prompt=author_prompt(tech), session_id=None, role="author"),
+        lambda attempt: _did_not_run(attempt) and not (workspace / toolchain.HIDDEN).exists(),
     )
-    hidden = _readable(workspace / "test_hidden.py")
-    perf = _readable(workspace / "perf_cases.py")
+    hidden = _readable(workspace / toolchain.HIDDEN)
+    perf = _readable(workspace / toolchain.PERF)
     notes: list[str] = []
     if not result.ok:
         notes.append(f"Test author {author.name} failed: {result.error}")
-    if hidden is not None and compile_source(hidden) is not None:
+    if hidden is not None and toolchain.compile_error(hidden) is not None:
         notes.append("Hidden tests did not parse and were discarded.")
         hidden = None
-    if perf is not None and compile_source(perf) is not None:
+    if perf is not None and toolchain.compile_error(perf) is not None:
         notes.append("Performance cases did not parse and were discarded.")
         perf = None
     if hidden is None:
@@ -306,10 +313,10 @@ def _review(
     task_text: str,
     out_dir: Path,
     progress: ProgressBoard | None = None,
-    candidate: Callable[[], SolutionRun | None] | None = None,
+    candidate: Callable[[], list[SolutionRun]] | None = None,
     tech: str = "python",
 ) -> None:
-    extra = None if candidate is None else candidate()
+    extras = [] if candidate is None else candidate()
     jobs = [
         (attempt, agent)
         for solution in solutions
@@ -317,8 +324,7 @@ def _review(
         for agent in agents
         if attempt.passed and family(agent.name) != family(solution.agent)
     ]
-    if extra is not None and extra.passed:
-        jobs.extend((extra, agent) for agent in agents)
+    jobs.extend((extra, agent) for extra in extras if extra.passed for agent in agents)
     _run_reviews(jobs, task_text, out_dir, progress, tech)
     _sync_chosen(solutions)
 
@@ -365,10 +371,7 @@ def rerun_agent(
     progress: ProgressBoard | None = None,
     tech: str = "python",
 ) -> None:
-    hidden = out_dir / "hidden"
-    public_tests = _readable(hidden / "test_public.py")
-    hidden_tests = _readable(hidden / "test_hidden.py")
-    perf_cases = _readable(hidden / "perf_cases.py")
+    public_tests, hidden_tests, perf_cases = read_suite(out_dir, tech)
     if progress is not None:
         progress.reset_agent(agent.name)
         progress.set_phase("solving")
@@ -376,8 +379,8 @@ def rerun_agent(
     solution = _solve_apart(
         agent, task_text, public_tests, hidden_tests, perf_cases, attempts, timeout_s, out_dir, progress, tech
     )
-    if tech == "fastapi":
-        _contract(solution, perf_cases, timeout_s)
+    if tech in WEB:
+        _contract(solution, perf_cases, timeout_s, tech)
     others = [item for item in solutions if item.agent != agent.name]
     solutions[:] = [solution if item.agent == agent.name else item for item in solutions]
     if review:
@@ -404,9 +407,9 @@ def rerun_agent(
         progress.set_phase("done")
 
 
-def _contract(solution: SolutionRun, perf_cases: str | None, timeout_s: int) -> None:
+def _contract(solution: SolutionRun, perf_cases: str | None, timeout_s: int, tech: str) -> None:
     for run in solution.attempt_runs:
-        run.contract, run.contract_notes = contract_report(run.source, perf_cases, timeout_s)
+        run.contract, run.contract_notes = lang(tech).contract_report(run.source, perf_cases, timeout_s)
     chosen = next(run for run in solution.attempt_runs if run.attempts[0].chosen)
     solution.contract, solution.contract_notes = chosen.contract, chosen.contract_notes
 
@@ -434,7 +437,7 @@ def _grade(
     progress: ProgressBoard | None = None,
     tech: str = "python",
 ) -> tuple[SolutionRun, ReviewNote | None]:
-    from ctb.prompts import review_prompt
+    from ctb.run.prompts import review_prompt
 
     solution, agent = job
     number = solution.attempts[0].number if solution.attempts else 1
@@ -442,8 +445,8 @@ def _grade(
         progress.review_started(agent.name, solution.agent, number)
     print(f"grading {solution.agent} with {agent.name}", file=sys.stderr, flush=True)
     workspace = out_dir / "work" / f"review-{agent.name}-{solution.agent}-attempt-{number}"
-    make_workspace(workspace, task_text)
-    (workspace / "solution.py").write_text(solution.source)
+    make_workspace(workspace, task_text, tech)
+    (workspace / lang(tech).SOLUTION).write_text(solution.source)
     result = _with_retry(
         lambda: agent.complete(
             cwd=str(workspace),
@@ -459,8 +462,15 @@ def _grade(
         _raw_text(result.raw), agent.name, rules, lines
     )
     if progress is not None:
-        progress.review_finished(agent.name, solution.agent, note, number)
+        progress.review_finished(agent.name, solution.agent, note, number, "" if note is not None else _review_failure(result))
     return solution, note
+
+
+def _review_failure(result: AgentResult) -> str:
+    if result.ok:
+        return "The reply did not match the review format."
+    lines = [line.strip() for line in (result.error or "").splitlines() if line.strip()]
+    return (lines[-1] if lines else "The reviewer exited without a reply.")[:300]
 
 
 def _store_suite(
@@ -468,15 +478,20 @@ def _store_suite(
     public_tests: str | None,
     hidden_tests: str | None,
     perf_cases: str | None,
+    tech: str = "python",
 ) -> None:
+    toolchain = lang(tech)
     hidden_dir = out_dir / "hidden"
     hidden_dir.mkdir(exist_ok=True)
-    if public_tests:
-        (hidden_dir / "test_public.py").write_text(public_tests)
-    if hidden_tests:
-        (hidden_dir / "test_hidden.py").write_text(hidden_tests)
-    if perf_cases:
-        (hidden_dir / "perf_cases.py").write_text(perf_cases)
+    for name, text in ((toolchain.PUBLIC, public_tests), (toolchain.HIDDEN, hidden_tests), (toolchain.PERF, perf_cases)):
+        if text:
+            (hidden_dir / name).write_text(text)
+
+
+def read_suite(out_dir: Path, tech: str) -> tuple[str | None, str | None, str | None]:
+    toolchain = lang(tech)
+    hidden = out_dir / "hidden"
+    return _readable(hidden / toolchain.PUBLIC), _readable(hidden / toolchain.HIDDEN), _readable(hidden / toolchain.PERF)
 
 
 def _readable(path: Path) -> str | None:

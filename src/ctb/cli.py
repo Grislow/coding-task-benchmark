@@ -3,15 +3,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ctb.agents import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
-from ctb.fake_agent import FakeAgent
+from ctb.agents.clis import EFFORTS, ClaudeAgent, CodexAgent, GrokAgent
+from ctb.agents.fake import FakeAgent
+from ctb.agents.preflight import check_all, cli_versions, installed_clis, model_catalog
+from ctb.langs import TECHS
 from ctb.models import CodingAgent
-from ctb.orchestrate import run_benchmark
-from ctb.preflight import check_all, cli_versions, installed_clis, model_catalog
-from ctb.prompts import TECHS
-from ctb.report import write_report
-from ctb.server import bind
-from ctb.session import RunSession
+from ctb.run.orchestrate import run_benchmark
+from ctb.run.report import write_report
+from ctb.run.session import RunSession
+from ctb.web.server import bind
 
 # Opus medium and gpt-6.1-sol xhigh are fixed choices. The other three are high:
 # Sonnet's FrontierCode score peaks at xhigh and drops at max, and high is the
@@ -25,6 +25,11 @@ INTERVIEW_AGENTS = (
     "grok:grok-4.7:high",
 )
 INTERVIEW_AUTHOR = "claude:opus:high"
+AUTHOR_FALLBACKS = (
+    INTERVIEW_AUTHOR,
+    "codex:gpt-6.1-sol:xhigh",
+    "grok:grok-4.7:high",
+)
 SOLVE_TIMEOUT_S = 300
 AUTHOR_TIMEOUT_S = 900
 REVIEW_TIMEOUT_S = 300
@@ -160,10 +165,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _serve_ui(args: argparse.Namespace) -> int:
+    catalog = model_catalog()
     try:
         names = _present(_names(args.agents))
         agents = [_build_agent(name, args.timeout, 3.0) for name in names]
-        author_name = _present_author(args.test_author)
+        author_name = _resolve_author(args.test_author, catalog)
         author = None if author_name == "none" else _build_agent(author_name, args.author_timeout, 3.0)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -181,7 +187,7 @@ def _serve_ui(args: argparse.Namespace) -> int:
         review=not args.skip_review,
         out_root=Path("runs"),
         tech=args.tech,
-        catalog=model_catalog(),
+        catalog=catalog,
         build=lambda name: _build_agent(name, args.timeout, 3.0),
     )
     session.check()
@@ -214,7 +220,7 @@ def _check(args: argparse.Namespace) -> int:
 
 
 def _serve(session: RunSession, port: int) -> int:
-    page = (Path(__file__).resolve().parent / "ui.html").read_text()
+    page = (Path(__file__).resolve().parent / "web" / "ui.html").read_text()
     server = bind(session, page, port)
     host, bound = server.server_address
     print(f"http://{host}:{bound}", file=sys.stderr)
@@ -286,6 +292,40 @@ def _present_author(name: str) -> str:
         return name
     print(f"{cli} is not on PATH, so no model will write the hidden tests.", file=sys.stderr)
     return "none"
+
+
+def _resolve_author(preferred: str, catalog: dict[str, list[str]]) -> str:
+    if preferred == "none":
+        return "none"
+    installed = installed_clis()
+    if _author_available(preferred, catalog, installed):
+        return preferred
+    for spec in AUTHOR_FALLBACKS:
+        if spec == preferred:
+            continue
+        if _author_available(spec, catalog, installed):
+            print(f"{preferred} is not available, so {spec} will write the hidden tests.", file=sys.stderr)
+            return spec
+    cli = _split_agent(preferred)[0]
+    if cli not in installed:
+        print(f"{cli} is not on PATH, so no model will write the hidden tests.", file=sys.stderr)
+    else:
+        print(f"{preferred} is not available, so no model will write the hidden tests.", file=sys.stderr)
+    return "none"
+
+
+def _author_available(spec: str, catalog: dict[str, list[str]], installed: frozenset[str]) -> bool:
+    cli, model, _effort = _split_agent(spec)
+    if cli == "fake":
+        return True
+    if cli not in installed:
+        return False
+    if cli not in catalog:
+        return len(catalog) == 0
+    listed = catalog[cli]
+    if model is None or not listed:
+        return True
+    return model in listed
 
 
 def _names(raw: str) -> list[str]:

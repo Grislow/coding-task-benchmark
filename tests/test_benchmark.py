@@ -1,11 +1,11 @@
 import time
 from pathlib import Path
 
-from ctb.evaluate import evaluate_solution
+from ctb.langs.python import STUB
+from ctb.langs.python.grade import evaluate_solution
 from ctb.models import AgentResult, TokenUsage
-from ctb.orchestrate import run_benchmark
-from ctb.prompts import SOLUTION_STUB
-from ctb.report import write_report
+from ctb.run.orchestrate import run_benchmark
+from ctb.run.report import write_report
 
 _CORRECT = """
 def solution(N):
@@ -122,12 +122,12 @@ def test_three_attempt_loop_repairs_and_peers_grade_the_other_solution(tmp_path:
     assert "different approach" in fast.prompts[1]
     assert "passed the tests" in fast.prompts[1]
     assert len(slow.prompts) == 6
-    assert slow.sessions[1] == "slow-session"
+    assert slow.sessions == [None] * len(slow.sessions)
     assert "failed the tests" in slow.prompts[1]
     assert "test_hidden_sentinel_gap" in slow.prompts[1]
     assert "different approach" in slow.prompts[1]
     assert not (tmp_path / "work" / "slow" / "test_hidden.py").exists()
-    assert (tmp_path / "work" / "slow" / "solution.py").read_text() != SOLUTION_STUB
+    assert (tmp_path / "work" / "slow" / "solution.py").read_text() != STUB
 
     by_name = {solution.agent: solution for solution in report.solutions}
     assert len(by_name["fast"].attempts) == 3

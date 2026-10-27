@@ -1,10 +1,11 @@
 import time
 from pathlib import Path
 
-from test_benchmark import ScriptedAgent, SleepySolver, _CORRECT, _TASK, _WRONG
+import pytest
+from test_benchmark import _CORRECT, _TASK, _WRONG, ScriptedAgent, SleepySolver
 
 from ctb.models import AgentResult
-from ctb.session import RunSession
+from ctb.run.session import RunSession
 
 
 def _wait(session: RunSession, timeout_s: float = 30) -> dict[str, object]:
@@ -84,7 +85,7 @@ def test_reset_is_refused_while_active_and_clears_a_finished_run(tmp_path: Path)
     snapshot = session.reset()
     assert snapshot["phase"] == "idle"
     assert snapshot["attempts"] == []
-    assert snapshot["candidate"] is None
+    assert snapshot["candidates"] == []
     assert session.out_dir() is None
 
 
@@ -102,24 +103,28 @@ class SlowAuthor(ScriptedAgent):
         return super().complete(cwd=cwd, prompt=prompt, session_id=session_id, role=role)
 
 
-def _candidate(snapshot: dict[str, object]) -> dict[str, object]:
-    row = snapshot["candidate"]
+def _candidate(snapshot: dict[str, object], number: int = 1) -> dict[str, object]:
+    rows = snapshot["candidates"]
+    assert isinstance(rows, list)
+    row = rows[number - 1]
     assert isinstance(row, dict)
     return row
 
 
-def _wait_for_reviews(session: RunSession, timeout_s: float = 30) -> dict[str, object]:
+def _reviewed(row: object) -> bool:
+    return isinstance(row, dict) and len(row.get("reviews") or []) == 2 and row.get("profile") is not None
+
+
+def _wait_for_reviews(session: RunSession, timeout_s: float = 30, count: int = 1) -> dict[str, object]:
     deadline = time.monotonic() + timeout_s
     snapshot = session.snapshot()
     while time.monotonic() < deadline:
-        row = snapshot["candidate"]
-        reviews = row["reviews"] if isinstance(row, dict) else None
-        profile = row.get("profile") if isinstance(row, dict) else None
+        rows = snapshot["candidates"]
         if (
             snapshot["phase"] in {"done", "error"}
-            and isinstance(reviews, list)
-            and len(reviews) == 2
-            and profile is not None
+            and isinstance(rows, list)
+            and len(rows) == count
+            and all(_reviewed(row) for row in rows)
         ):
             return snapshot
         time.sleep(0.02)
@@ -186,13 +191,46 @@ def test_skip_review_scores_the_paste_without_grades(tmp_path: Path) -> None:
     session.start(_TASK)
     assert _wait(session)["phase"] == "done"
     session.submit_mine(_CORRECT)
-    deadline = time.monotonic() + 0.4
-    while time.monotonic() < deadline:
+    deadline = time.monotonic() + 10
+    while _candidate(session.snapshot())["state"] == "running" and time.monotonic() < deadline:
         time.sleep(0.05)
     mine = _candidate(session.snapshot())
     assert mine["passed"] is True
     assert mine["reviews"] == []
     assert mine["profile"] is not None
+
+
+def test_each_paste_is_its_own_attempt(tmp_path: Path) -> None:
+    session = RunSession(
+        [ScriptedAgent("fast", [_CORRECT], tokens=40), ScriptedAgent("slow", [_CORRECT], tokens=80)],
+        ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=True,
+        out_root=tmp_path,
+    )
+    session.start(_TASK)
+    assert _wait(session)["phase"] == "done"
+    try:
+        session.submit_mine("  ")
+    except RuntimeError as exc:
+        assert "Paste" in str(exc)
+    else:
+        raise AssertionError("an empty paste was accepted")
+    first = session.submit_mine(_CORRECT)
+    assert _candidate(first)["state"] == "running"
+    session.submit_mine(_WRONG)
+    session.submit_mine(_CORRECT)
+    snapshot = session.snapshot()
+    deadline = time.monotonic() + 30
+    while len(snapshot["candidates"]) < 3 or not all(_reviewed(row) or row.get("state") == "failed" for row in snapshot["candidates"]):
+        assert time.monotonic() < deadline
+        time.sleep(0.02)
+        snapshot = session.snapshot()
+    assert [row["number"] for row in snapshot["candidates"]] == [1, 2, 3]
+    assert [row["state"] for row in snapshot["candidates"]] == ["passed", "failed", "passed"]
+    assert {review["attempt"] for review in _candidate(snapshot, 3)["reviews"]} == {3}
+    assert {(review["author"], review["attempt"]) for review in snapshot["reviews"] if review["author"] == "you"} == {("you", 1), ("you", 3)}
 
 
 def test_a_paste_during_solving_is_reviewed_with_the_agents(tmp_path: Path) -> None:
@@ -268,7 +306,7 @@ def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
             "review_timeout_s": 180,
             "models": [
                 {"cli": "claude", "model": "opus", "enabled": False},
-                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low"},
+                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low", "review_effort": "medium"},
             ],
         }
     )
@@ -282,6 +320,8 @@ def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
     haiku = session._agents[0]
     assert haiku.timeout_s == 120
     assert haiku.review_timeout_s == 180
+    assert haiku.review_effort == "medium"
+    assert next(row for row in session.config()["models"] if row["model"] == "haiku")["review_effort"] == "medium"
     for bad in (
         {"timeout_s": 5},
         {"author_timeout_s": 5},
@@ -299,3 +339,184 @@ def test_config_switches_models_and_sets_the_time_limit(tmp_path: Path) -> None:
     assert [item["agent"] for item in done["attempts"]] == ["claude-haiku-low"]
     assert done["attempts"][0]["finished_at"] >= done["attempts"][0]["started_at"]
     assert done["timings"]["solving"]["end"] >= done["timings"]["solving"]["start"]
+
+
+def _author_check(session: RunSession) -> dict[str, object] | None:
+    rows = [row for row in session.snapshot()["preflight"] if row["role"] == "test author"]
+    assert len(rows) <= 1
+    return rows[0] if rows else None
+
+
+def _wait_author(session: RunSession, name: str) -> dict[str, object]:
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        row = _author_check(session)
+        if row is not None and row["agent"] == name and row["state"] == "ready":
+            return row
+        time.sleep(0.02)
+    raise AssertionError(_author_check(session))
+
+
+def test_config_can_switch_the_test_author(tmp_path: Path) -> None:
+    built: list[str] = []
+
+    def build(spec: str) -> ScriptedAgent:
+        built.append(spec)
+        cli, model, effort = spec.split(":")
+        agent = ScriptedAgent(f"{cli}-{model}-{effort}", [_CORRECT], tokens=1)
+        agent.model = model
+        agent.effort = effort
+        agent.timeout_s = 1
+        return agent
+
+    author = ScriptedAgent("claude-opus-high", [_CORRECT], tokens=1)
+    author.model = "opus"
+    author.effort = "high"
+    author.timeout_s = 900
+    opus = ScriptedAgent("claude-opus-medium", [_CORRECT], tokens=1)
+    opus.model = "opus"
+    opus.timeout_s = 300
+    session = RunSession(
+        [opus],
+        author,
+        attempts=1,
+        timeout_s=300,
+        author_timeout_s=900,
+        review_timeout_s=300,
+        review=False,
+        out_root=tmp_path,
+        catalog={"claude": ["opus", "sonnet"], "codex": ["gpt-6.1-sol"], "grok": ["grok-4.7"]},
+        build=build,
+    )
+    view = session.config()["author"]
+    assert isinstance(view, dict)
+    assert (view["cli"], view["model"], view["effort"]) == ("claude", "opus", "high")
+    session.check()
+    _wait_author(session, "claude-opus-high")
+    session.configure(
+        {
+            "models": [{"cli": "claude", "model": "opus", "enabled": True}],
+            "author": {"cli": "codex", "model": "gpt-6.1-sol", "effort": "xhigh"},
+        }
+    )
+    assert built == ["codex:gpt-6.1-sol:xhigh"]
+    chosen = session._test_author
+    assert chosen is not None
+    assert chosen.name == "codex-gpt-6.1-sol-xhigh"
+    assert chosen.timeout_s == 900
+    assert opus.timeout_s == 300
+    _wait_author(session, "codex-gpt-6.1-sol-xhigh")
+    session.configure({"author": {"cli": "codex", "model": "gpt-6.1-sol", "effort": "xhigh"}})
+    assert built == ["codex:gpt-6.1-sol:xhigh"]
+    for bad in (
+        {"author": {"cli": "codex", "model": "gpt-6.1-sol", "effort": "turbo"}},
+        {"author": {"cli": "codex", "model": "missing", "effort": "high"}},
+        {"author": {"cli": "grok", "model": "grok-4.7"}},
+        {"author": "codex"},
+    ):
+        with pytest.raises(ValueError):
+            session.configure(bad)
+    assert session._test_author is chosen
+    session.configure({"author": None})
+    assert session._test_author is None
+    assert _author_check(session) is None
+
+
+class FlakyReviewer(ScriptedAgent):
+    def __init__(self, name: str, sources: list[str], tokens: int) -> None:
+        super().__init__(name, sources, tokens)
+        self.reviews = 0
+
+    def complete(self, *, cwd: str, prompt: str, session_id: str | None, role: str) -> AgentResult:
+        result = super().complete(cwd=cwd, prompt=prompt, session_id=session_id, role=role)
+        if role != "review":
+            return result
+        self.reviews += 1
+        return result if self.reviews > 1 else AgentResult(True, "not a review", None, result.usage, 1, None, None, {})
+
+
+def test_a_failed_review_can_be_retried_once_the_run_is_done(tmp_path: Path) -> None:
+    flaky = FlakyReviewer("flaky", [_CORRECT], tokens=10)
+    session = RunSession(
+        [ScriptedAgent("solid", [_CORRECT], tokens=10), flaky],
+        ScriptedAgent("author", [], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=True,
+        out_root=tmp_path,
+    )
+    session.start(_TASK)
+    assert _wait(session)["phase"] == "done"
+    failed = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "flaky")
+    assert failed["state"] == "failed"
+    assert failed["summary"] == "The reply did not match the review format."
+    done = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "solid")
+    with pytest.raises(RuntimeError, match="Only a failed review"):
+        session.retry_review("solid", done["author"], 1)
+    session.retry_review("flaky", "solid", 1)
+    deadline = time.monotonic() + 10
+    while True:
+        review = next(item for item in session.snapshot()["reviews"] if item["reviewer"] == "flaky")
+        if review["state"] == "done" or time.monotonic() > deadline:
+            break
+        time.sleep(0.02)
+    assert review["state"] == "done"
+    assert review["score"] is not None
+    solid = next(item for item in session.snapshot()["solutions"] if item["agent"] == "solid")
+    assert solid["review"] is not None
+
+
+def _settled(session: RunSession) -> list[dict[str, object]]:
+    deadline = time.monotonic() + 10
+    rows = session.snapshot()["preflight"]
+    while any(row["state"] == "checking" for row in rows) and time.monotonic() < deadline:
+        time.sleep(0.02)
+        rows = session.snapshot()["preflight"]
+    return rows
+
+
+def test_models_that_fail_the_check_sit_out_and_a_failed_author_blocks_the_run(tmp_path: Path) -> None:
+    from test_setup import BrokenAgent
+
+    def build(spec: str) -> ScriptedAgent:
+        cli, model, effort = spec.split(":")
+        agent = BrokenAgent(f"{cli}-{model}-{effort}", failures=1, ok=False) if model == "haiku" else ScriptedAgent(f"{cli}-{model}-{effort}", [_CORRECT], tokens=1)
+        agent.model = model
+        agent.effort = effort
+        return agent
+
+    opus = ScriptedAgent("claude-opus-high", [_CORRECT], tokens=1)
+    opus.model = "opus"
+    opus.effort = "high"
+    session = RunSession(
+        [opus, BrokenAgent("broken", failures=1, ok=False)],
+        ScriptedAgent("author", [_CORRECT], tokens=1),
+        attempts=1,
+        timeout_s=30,
+        review=False,
+        out_root=tmp_path,
+        catalog={"claude": ["opus", "haiku"]},
+        build=build,
+    )
+    session.check()
+    assert {row["agent"]: row["state"] for row in _settled(session)} == {"claude-opus-high": "ready", "broken": "failed", "author": "ready"}
+    session.configure(
+        {
+            "models": [
+                {"cli": "claude", "model": "opus", "enabled": True, "effort": "low"},
+                {"cli": "broken", "model": "broken", "enabled": True},
+                {"cli": "claude", "model": "haiku", "enabled": True, "effort": "low"},
+            ],
+        }
+    )
+    assert session.snapshot()["lineup"] == ["claude-opus-low", "broken", "claude-haiku-low"]
+    states = {row["agent"]: row["state"] for row in _settled(session)}
+    assert states == {"claude-opus-low": "ready", "broken": "failed", "claude-haiku-low": "failed", "author": "ready"}
+    session.start(_TASK)
+    done = _wait(session)
+    assert done["agents"] == ["claude-opus-low"]
+    assert {item["agent"] for item in done["attempts"]} == {"claude-opus-low"}
+    session.configure({"author": {"cli": "claude", "model": "haiku", "effort": "low"}})
+    _settled(session)
+    with pytest.raises(RuntimeError, match="test author claude-haiku-low cannot run"):
+        session.start(_TASK)

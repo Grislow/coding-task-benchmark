@@ -99,6 +99,7 @@
     .notice::before { content: "!"; display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--fail); color: var(--on-hue); font-weight: 800; font-size: 12px; }
     #banner {
       display: none;
+      flex-direction: column;
       position: fixed;
       top: 0;
       left: 0;
@@ -108,11 +109,13 @@
       color: var(--on-hue);
       font: 800 56px/1.1 var(--display);
       letter-spacing: -0.02em;
-      padding: 28px 32px;
     }
-    #banner.visible { display: block; animation: drop 320ms cubic-bezier(.2, .8, .2, 1); }
-    @keyframes drop { from { transform: translateY(-100%); } to { transform: none; } }
-    body.telling main { padding-top: 160px; }
+    #banner.visible { display: flex; }
+    #banner p { margin: 0; padding: 28px 32px; animation: drop 320ms cubic-bezier(.2, .8, .2, 1); transition: opacity 400ms ease; }
+    #banner p + p { padding-top: 0; }
+    #banner p.leaving { opacity: 0; }
+    @keyframes drop { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: none; } }
+    body.telling main { padding-top: calc(var(--banner-h, 132px) + 28px); }
     .card { background: var(--panel); border-radius: 20px; padding: 22px; }
     .race .lane { background: none; margin-top: 0; border-radius: 12px; }
     .race .lane + .lane { border-top: 1px solid #262230; }
@@ -206,6 +209,8 @@
       transition: background-color 200ms ease, border-color 200ms ease;
     }
     .tech[data-tech="fastapi"] { --tech: var(--a3); }
+    .tech[data-tech="javascript"] { --tech: var(--a2); }
+    .tech[data-tech="express"] { --tech: var(--a5); }
     .tech::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--tech); transform: rotate(45deg); }
     .tech small { color: var(--muted); font: 400 11px var(--mono); }
     .tech:disabled { cursor: default; }
@@ -255,7 +260,7 @@
       background: color-mix(in oklab, var(--hue) 24%, transparent);
       -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
       mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M-5 5 5-5M0 20 20 0M15 25 25 15' stroke='%23000' stroke-width='5'/%3E%3C/svg%3E") 0 0 / 20px 20px;
-      animation: march 800ms linear infinite;
+      animation: march 800ms linear var(--sync, 0ms) infinite;
     }
     @keyframes march { to { -webkit-mask-position: 20px 0; mask-position: 20px 0; } }
     .slot svg, .result svg { flex: none; }
@@ -267,9 +272,9 @@
     .slot.setup b, .slot.broken b, .result.setup { color: var(--fail); }
     .slot.ready { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--pass) 55%, transparent); }
     .slot.ready b { color: var(--pass); }
-    .slot.broken { height: auto; min-height: 54px; padding-block: 8px; background: color-mix(in oklab, var(--fail) 10%, transparent); box-shadow: inset 0 0 0 2px var(--fail); animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    .slot.broken { height: auto; min-height: 54px; padding-block: 8px; background: color-mix(in oklab, var(--fail) 10%, transparent); box-shadow: inset 0 0 0 2px var(--fail); }
     .slot.broken small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .slot.ready { animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
+    .slot.ready.fresh, .slot.broken.fresh { animation: rise 360ms cubic-bezier(.2, .8, .2, 1); }
     button.ghost.small { height: 30px; padding: 0 12px; font-size: 13px; line-height: 30px; }
     .section-head #recheck { align-self: center; margin-left: auto; }
     .section-head #recheck[hidden] { display: none; }
@@ -327,18 +332,36 @@
     .result.pass { color: var(--pass); }
     .result.fail { color: var(--fail); }
     .result.run { color: var(--hue); }
-    .result.run::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
+    .result.run::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear var(--sync, 0ms) infinite; }
     .score { font: 800 18px var(--display); text-align: right; }
     .wait { display: inline-flex; gap: 3px; justify-content: flex-end; width: 100%; }
-    .wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s ease-in-out infinite; }
-    .wait i:nth-child(2) { animation-delay: 160ms; }
-    .wait i:nth-child(3) { animation-delay: 320ms; }
+    .wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1.2s ease-in-out var(--sync, 0ms) infinite; }
+    .wait i:nth-child(2) { animation-delay: calc(var(--sync, 0ms) + 160ms); }
+    .wait i:nth-child(3) { animation-delay: calc(var(--sync, 0ms) + 320ms); }
     @keyframes blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
     .landed { animation: land 520ms cubic-bezier(.2, .8, .2, 1); display: inline-block; }
     @keyframes land { from { transform: scale(0.6); opacity: 0; } 55% { transform: scale(1.18); opacity: 1; } to { transform: none; } }
-    .lower { align-items: stretch; }
     .board-frame { overflow: clip; overflow-clip-margin: 24px; transition: height 420ms cubic-bezier(.2, .8, .2, 1); }
-    .detail { contain: size; display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
+    .detail { position: sticky; top: 20px; height: min(var(--board-h, 520px), calc(100vh - 120px)); display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; transition: height 420ms cubic-bezier(.2, .8, .2, 1); }
+    .init { display: grid; justify-items: center; gap: 10px; padding: 26px 12px 18px; text-align: center; }
+    .init p { margin: 0; max-width: 46ch; text-wrap: pretty; }
+    .init .init-title { font: 800 16px var(--display); color: var(--ink); }
+    .init .roster { display: contents; }
+    .podium { display: flex; align-items: flex-end; gap: 8px; height: 132px; margin-bottom: 8px; }
+    .podium i { --hue: var(--line); display: grid; place-items: start center; width: 64px; padding-top: 10px; border-radius: 12px 12px 4px 4px; border: 2px dashed color-mix(in oklab, var(--hue) 70%, transparent); background: color-mix(in oklab, var(--hue) 10%, transparent); color: var(--hue); font: 800 22px var(--display); animation: climb 560ms cubic-bezier(.2, .8, .2, 1) backwards; }
+    .podium i::before { content: attr(data-place); }
+    .podium i:nth-child(1) { --hue: var(--a2); height: 70%; animation-delay: 80ms; }
+    .podium i:nth-child(2) { --hue: var(--a1); height: 100%; }
+    .podium i:nth-child(3) { --hue: var(--a3); height: 50%; animation-delay: 160ms; }
+    @keyframes climb { from { transform: scaleY(0.2); transform-origin: bottom; opacity: 0; } to { transform: none; opacity: 1; } }
+    .grid-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+    .grid-line li { --hue: var(--muted); display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--raised); font-weight: 600; font-size: 13px; }
+    .grid-line li::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--hue); transform: rotate(45deg); }
+    .grid-label { color: var(--muted); font: 600 12px var(--mono); }
+    .tab-ghosts { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--ground); margin-bottom: 8px; }
+    .tab-ghosts span { height: 32px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); font: 600 13px var(--font); }
+    #detail-empty:not([hidden]) { flex: 1; display: grid; align-content: center; padding-bottom: 40px; }
+    button.action.busy::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
     .detail-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -22px; padding: 2px 22px 22px; scrollbar-gutter: stable; }
     .skeleton { display: grid; gap: 10px; padding-top: 30px; }
     .skeleton i { height: 26px; border-radius: 8px; background: var(--raised); animation: blink 1.4s ease-in-out infinite; }
@@ -350,7 +373,7 @@
     .detail-head::before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 3px; background: var(--hue, var(--line)); transform: rotate(45deg); }
     #detail-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tabs { display: flex; gap: 4px; margin: 16px 0 14px; padding: 4px; border-radius: 999px; background: var(--ground); width: max-content; }
-    .tabs[hidden], [role="tabpanel"][hidden], #detail-empty[hidden], pre[hidden] { display: none; }
+    .tabs[hidden], [role="tabpanel"][hidden], #detail-empty[hidden], .detail-body[hidden], pre[hidden] { display: none; }
     [role="tab"] {
       height: 32px;
       padding: 0 14px;
@@ -383,6 +406,7 @@
     .review[data-state="running"] .review-head span { color: var(--muted); font-family: var(--font); font-weight: 500; }
     .review[data-state="failed"] .review-head span { color: var(--fail); font-family: var(--font); }
     .review > p { margin: 6px 0 0; color: var(--muted); }
+    .review .retry { margin-top: 10px; }
     .findings { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
     .findings li { padding: 10px 12px; border-radius: 10px; background: var(--raised); }
     .findings .where { display: flex; gap: 8px; align-items: center; font: 400 12px var(--mono); color: var(--muted); }
@@ -422,10 +446,25 @@
     .config-head { display: flex; align-items: center; gap: 14px; padding: 24px 26px 0; flex-wrap: wrap; }
     .config-head h2 { margin: 0; margin-right: auto; }
     .config-head .tabs { margin: 0; }
-    .config-body { overflow: auto; padding: 18px 26px; height: min(640px, calc(100vh - 220px)); }
-    .config-foot { display: flex; align-items: center; gap: 10px; padding: 16px 26px 22px; border-top: 1px solid var(--line); }
+    .config-body { overflow: auto; margin: 0 2px; padding: 18px 24px; height: min(640px, calc(100vh - 220px)); }
+    .config-foot { display: flex; align-items: center; gap: 10px; margin: 0 2px; padding: 16px 24px 22px; border-top: 1px solid var(--line); }
     .config-foot .muted { margin-right: auto; }
     .config-foot .error { color: var(--fail); margin-right: auto; }
+    .author-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 12px; background: var(--raised); margin-bottom: 10px; }
+    .author-pick > label { margin: 0; min-width: 7.5rem; color: var(--ink); font-weight: 600; }
+    .author-pick p { flex-basis: 100%; margin: 0; }
+    .combo { position: relative; flex: 1 1 220px; min-width: 180px; }
+    .combo input, .author-pick select { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--ground); color: var(--ink); }
+    .combo input { width: 100%; padding: 0 10px; font: 600 15px var(--mono); }
+    .author-pick select { min-width: 120px; padding: 0 8px; font: 500 13px var(--font); }
+    .combo input:focus-visible, .author-pick select:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
+    .combo input:disabled, .author-pick select:disabled { opacity: 0.45; }
+    .combo ul { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow: auto; margin: 0; padding: 4px; list-style: none; background: var(--panel); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+    .combo li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    .combo li b { font-weight: 600; }
+    .combo li small { color: var(--muted); font: 500 12px var(--mono); }
+    .combo li[aria-selected="true"] { background: var(--ground); box-shadow: inset 2px 0 0 var(--a2); }
+    .combo li.empty { color: var(--muted); cursor: default; }
     .limits { display: grid; gap: 10px; margin-bottom: 18px; }
     .limit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 12px; background: var(--raised); }
     .limit label { margin: 0; min-width: 7.5rem; color: var(--ink); font-weight: 600; }
@@ -436,7 +475,9 @@
     .limit input:focus-visible, .model select:focus-visible, .model input:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; }
     .cli-group { margin: 0 0 16px; padding: 0; border: 0; }
     .cli-group legend { padding: 0; margin-bottom: 6px; color: var(--muted); font: 600 12px var(--mono); text-transform: lowercase; }
-    .model { display: grid; grid-template-columns: 22px minmax(0, 1fr) 110px 112px; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-radius: 10px; }
+    .model, .model-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) 104px 104px 112px; align-items: center; gap: 12px; min-height: 46px; padding: 8px 12px; border-radius: 10px; }
+    .model-head { min-height: 0; padding-block: 0 4px; color: var(--muted); font: 600 12px var(--font); }
+    .model-head span:last-child { justify-self: end; }
     .model + .model { border-top: 1px solid #262230; }
     .model:has(input:checked) { background: var(--raised); }
     .model input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--a2); }
@@ -453,16 +494,16 @@
     .prompt summary:focus-visible { outline: 2px solid var(--a2); outline-offset: 1px; border-radius: 12px; }
     .prompt pre { margin: 0 14px 14px; min-height: 0; max-height: 360px; width: auto; font-size: 12px; }
     @media (prefers-reduced-motion: reduce) {
-      .slot.running::before, #banner.visible, .steps li.now.busy::before, .steps li.now.busy::after,
-      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready, .slot.broken, [role="tabpanel"]:not([hidden]), .skeleton i { animation: none; }
-      button.action, .tech, [role="tab"], .board-frame { transition: none; }
+      .slot.running::before, #banner p, .steps li.now.busy::before, .steps li.now.busy::after,
+      .result.run::before, .wait i, .landed, .tech.swap, .slot.ready.fresh, .slot.broken.fresh, [role="tabpanel"]:not([hidden]), .skeleton i, .podium i, button.action.busy::before { animation: none; }
+      button.action, .tech, [role="tab"], .board-frame, .detail, #banner p { transition: none; }
     }
     @media (max-width: 1240px) {
       h1 { font-size: 19px; }
     }
     @media (max-width: 960px) {
       .lower { grid-template-columns: 1fr; }
-      .detail { contain: none; padding-bottom: 22px; }
+      .detail { position: static; height: auto; padding-bottom: 22px; }
       .detail-body { overflow: visible; margin: 0; padding: 2px 0 0; }
     }
     @media (max-width: 800px) {
@@ -475,7 +516,8 @@
       .best b { font-size: 22px; }
       .slot { padding: 0 10px; }
       .columns { grid-template-columns: 22px minmax(0, 1fr) 20px 68px 52px; gap: 8px; }
-      .model { grid-template-columns: 22px minmax(0, 1fr) auto; }
+      .model { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+      .model-head { display: none; }
       .model .chip { grid-column: 2 / -1; justify-self: start; }
       .columns.head span:nth-child(n + 6), button.row > :nth-child(n + 6) { display: none; }
       .who-cell .cli { display: none; }
@@ -539,11 +581,11 @@
       <section class="card" id="ranking" tabindex="-1" aria-labelledby="ranking-title">
         <div class="section-head"><h2 id="ranking-title">Leaderboard</h2><kbd>L</kbd></div>
         <p class="hint">Rows appear once the model check has finished and the tests start, one per model in that run. A score appears once solving ends and the attempt's reviews are in, then the row moves to its place.</p>
-        <div class="board-frame" id="leaderboard-frame"><div id="leaderboard"><div class="skeleton" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="board-frame" id="leaderboard-frame"><div id="leaderboard"></div></div>
       </section>
       <section id="detail" class="card detail" aria-labelledby="detail-title">
         <div class="detail-head"><h2 id="detail-title">Attempt</h2></div>
-        <p id="detail-empty" class="empty">Pick a row to see its score, reviews and code. Press <kbd>L</kbd>, then <kbd>↑</kbd> <kbd>↓</kbd>.</p>
+        <div id="detail-empty" class="empty"></div>
         <div class="tabs" id="tabs" role="tablist" aria-label="Attempt details" hidden>
           <button role="tab" id="tab-score" type="button" aria-selected="true" aria-controls="panel-score">Score <kbd>1</kbd></button>
           <button role="tab" id="tab-review" type="button" aria-selected="false" aria-controls="panel-review" tabindex="-1">Review <kbd>2</kbd></button>
@@ -581,7 +623,7 @@
   <dialog id="message-dialog" aria-labelledby="message-title">
     <form id="message-form" method="dialog">
       <h2 id="message-title">Message the recording</h2>
-      <label for="message">Shown across the top for 5 seconds</label>
+      <label for="message" id="message-label">Shown across the top for 10 seconds</label>
       <input id="message" type="text" autocomplete="off">
       <p class="hint">Enter sends it. Escape closes this.</p>
     </form>
@@ -597,6 +639,15 @@
       </div>
       <div class="config-body">
         <div role="tabpanel" id="cpanel-run" aria-labelledby="ctab-run">
+          <div class="author-pick" id="author-pick">
+            <label for="author-model">Test author</label>
+            <div class="combo">
+              <input id="author-model" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="author-options" aria-describedby="author-pick-help" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type to filter models">
+              <ul id="author-options" role="listbox" hidden></ul>
+            </div>
+            <select id="author-effort" disabled aria-label="Test author reasoning level"></select>
+            <p id="author-pick-help" class="muted">Writes the hidden tests. Reasoning stays off until a model is chosen.</p>
+          </div>
           <div class="limits">
             <div class="limit">
               <label for="author-limit">Test author</label>
@@ -616,11 +667,17 @@
               <span>min</span>
               <p id="review-limit-help" class="muted">Each review stops at this limit.</p>
             </div>
+            <div class="limit">
+              <label for="message-limit">Messages</label>
+              <input id="message-limit" type="number" min="1" max="120" step="1" inputmode="numeric" aria-describedby="message-limit-help">
+              <span>s</span>
+              <p id="message-limit-help" class="muted">How long each message stays on screen. Saved in this browser as you type.</p>
+            </div>
           </div>
           <div id="model-list"></div>
         </div>
         <div role="tabpanel" id="cpanel-prompts" aria-labelledby="ctab-prompts" hidden>
-          <p class="hint">What each role is told. Read-only here. Edit them in src/ctb/prompts.py and src/ctb/rubrics.</p>
+          <p class="hint">What each role is told. Read-only here. Edit them in src/ctb/run/prompts.py and src/ctb/langs.</p>
           <div id="prompt-list"></div>
         </div>
       </div>
@@ -645,6 +702,7 @@
     const TABS = ["score", "review", "solution"];
     const revealed = new Set();
     const landed = new Set();
+    const laneStates = new Map();
     const still = matchMedia("(prefers-reduced-motion: reduce)");
 
     const phases = {
@@ -661,7 +719,8 @@
     const SOLVED = ["reviewing", "done", "error"];
     const HUES = ["--a1", "--a2", "--a3", "--a4", "--a5"];
     const WEIGHTS = { correctness: 40, performance: 20, static: 15, review: 15, contract: 10, cost: 10 };
-    const TECHS = { python: "Python", fastapi: "FastAPI" };
+    const TECHS = { python: "Python", fastapi: "FastAPI", javascript: "JavaScript", express: "Express" };
+    const TECH_ORDER = Object.keys(TECHS);
     const EASE = "cubic-bezier(.2, .8, .2, 1)";
 
     const ICONS = {
@@ -775,9 +834,10 @@
 
     function reviewsOf(snapshot) {
       const list = (snapshot.reviews || []).slice();
-      const mine = snapshot.candidate;
-      for (const review of (mine && mine.reviews) || []) {
-        if (!list.some((item) => item.reviewer === review.reviewer && item.author === "you")) list.push(review);
+      for (const mine of snapshot.candidates || []) {
+        for (const review of mine.reviews || []) {
+          if (!list.some((item) => item.reviewer === review.reviewer && item.author === "you" && item.attempt === review.attempt)) list.push(review);
+        }
       }
       return list;
     }
@@ -799,16 +859,10 @@
 
     function attemptsOf(snapshot) {
       const attempts = (snapshot.attempts || []).slice();
-      const mine = snapshot.candidate;
-      if (!mine) return attempts;
-      if (mine.state === "running") {
-        attempts.push({ agent: "you", number: 1, state: "running" });
-        return attempts;
-      }
-      attempts.push({
+      for (const mine of snapshot.candidates || []) attempts.push(mine.state === "running" ? { agent: "you", number: mine.number, state: "running", started_at: mine.started_at } : {
         agent: "you",
-        number: 1,
-        state: mine.passed ? "passed" : "failed",
+        number: mine.number,
+        state: mine.state,
         tests_passed: mine.tests_passed,
         tests_total: mine.tests_total,
         public_failed: mine.public_failed,
@@ -824,6 +878,52 @@
         tokens: 0
       });
       return attempts;
+    }
+
+    function initBoard() {
+      const box = el("div", "init");
+      const podium = el("div", "podium");
+      podium.setAttribute("aria-hidden", "true");
+      for (const place of ["2", "1", "3"]) podium.appendChild(el("i")).dataset.place = place;
+      box.append(podium, el("p", "init-title", "The podium is empty"), el("div", "roster"));
+      return box;
+    }
+
+    function fillRoster(roster, snapshot) {
+      const models = (snapshot.lineup || []).filter((agent) => checkState(agent) !== "failed");
+      const each = snapshot.attempts_per_agent || 0;
+      const key = models.join() + ":" + each;
+      if (roster.dataset.key === key) return;
+      roster.dataset.key = key;
+      roster.replaceChildren(el("p", "muted", "Paste a task and start the run. " + (models.length ? models.length * each + " attempts" : "Every attempt") + " line up here, and each climbs to its place once it is scored."));
+      if (!models.length) return;
+      roster.appendChild(el("span", "grid-label", "On the grid · " + each + (each === 1 ? " attempt" : " attempts") + " each"));
+      const line = el("ul", "grid-line");
+      line.setAttribute("aria-label", "Models in the next run");
+      for (const agent of models) {
+        const chip = el("li", "", nameParts(agent).name);
+        chip.style.setProperty("--hue", hueOf(agent));
+        chip.title = agent;
+        line.appendChild(chip);
+      }
+      roster.appendChild(line);
+    }
+
+    function renderDetailEmpty(snapshot) {
+      const box = document.getElementById("detail-empty");
+      const idle = !snapshot || snapshot.phase === "idle";
+      if (box.dataset.idle === String(idle)) return;
+      box.dataset.idle = String(idle);
+      box.replaceChildren();
+      const keys = [el("kbd", "", "L"), document.createTextNode(", then "), el("kbd", "", "↑"), document.createTextNode(" "), el("kbd", "", "↓"), document.createTextNode(".")];
+      const init = el("div", "init");
+      const tabs = el("div", "tab-ghosts");
+      tabs.setAttribute("aria-hidden", "true");
+      for (const name of ["Score", "Review", "Solution"]) tabs.appendChild(el("span", "", name));
+      const line = el("p", "muted", idle ? "Once the run starts, pick a row or press " : "Click a row or press ");
+      line.append(...keys);
+      init.append(tabs, el("p", "init-title", idle ? "Nothing to inspect yet" : "Pick an attempt"), el("p", "muted", "Every attempt opens here with its score, each reviewer's findings and its code."), line);
+      box.appendChild(init);
     }
 
     function rowsFrom(snapshot) {
@@ -860,9 +960,10 @@
         }
         return { key, attempt, jobs, graded, pending, final, parts, score: final ? weighted(parts) : null };
       });
+      const TIERS = { passed: 0, failed: 2, setup: 3 };
       const tier = (entry) => {
-        if (!entry.final) return 3;
-        return entry.attempt.state === "passed" ? 0 : 2;
+        const base = TIERS[entry.attempt.state] ?? 4;
+        return base === 0 && !entry.final ? 1 : base;
       };
       const seat = (agent) => (agent === "you" ? order.length : order.indexOf(agent));
       const graded = (left, right) => !left.final || !right.final ? 0
@@ -995,16 +1096,18 @@
         who.append(el("span", "dot"), copy);
         const slots = el("div", "slots");
         const slot = el("div", "slot wide " + ({ checking: "running", ready: "ready", failed: "broken", unchecked: "waiting" })[row.state]);
+        if (laneStates.get(lane.dataset.key) !== row.state) slot.classList.add("fresh");
+        laneStates.set(lane.dataset.key, row.state);
         const mark = el("b");
         if (row.state === "checking") {
           mark.textContent = "Checking";
           slot.append(mark, el("small", "", "login, model and file access"));
         } else if (row.state === "unchecked") {
           mark.textContent = "Not checked";
-          slot.append(mark, el("small", "", "added from the catalog in Config, so it runs unchecked"));
+          slot.append(mark, el("small", "", "not checked yet, so it runs unchecked"));
         } else if (row.state === "ready") {
           mark.append(icon("check"), document.createTextNode("Ready"));
-          slot.append(mark, el("small", "", "read the task and wrote solution.py"));
+          slot.append(mark);
         } else {
           mark.append(icon("alert"), document.createTextNode("Cannot run"));
           slot.append(mark, el("small", "", row.note));
@@ -1051,18 +1154,22 @@
       return lane;
     }
 
+    function setText(node, text) {
+      if (node.textContent !== text) node.textContent = text;
+    }
+
     function tickClock() {
       for (const node of document.querySelectorAll("[data-since]")) {
-        node.textContent = clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed";
+        setText(node, clock(authorSince ? (Date.now() - authorSince) / 1000 : 0) + " elapsed");
       }
       for (const node of document.querySelectorAll("[data-started]")) {
-        if (node.dataset.started) node.textContent = (node.dataset.prefix || "") + since(Number(node.dataset.started));
+        if (node.dataset.started) setText(node, (node.dataset.prefix || "") + since(Number(node.dataset.started)));
       }
       const timings = (latest && latest.timings) || {};
       for (const step of document.querySelectorAll("#steps li")) {
         const span = timings[step.dataset.phase];
         const time = step.querySelector("time");
-        if (time) time.textContent = span ? since(span.start, span.end ?? undefined) : "";
+        if (time) setText(time, span ? since(span.start, span.end ?? undefined) : "");
       }
     }
 
@@ -1096,7 +1203,7 @@
       if (entries.some((entry) => entry.attempt.agent === "you")) racers.push("you");
       const lanes = racers.map((agent, index) => {
         const attempts = agent === "you"
-          ? entries.filter((entry) => entry.attempt.agent === "you").map((entry) => entry.attempt)
+          ? entries.filter((entry) => entry.attempt.agent === "you").map((entry) => entry.attempt).sort((left, right) => left.number - right.number)
           : (snapshot.attempts || []).filter((item) => item.agent === agent);
         const scored = attempts.map((item) => byKey.get(agent + ":" + item.number)).filter((entry) => entry && entry.final && entry.score !== null);
         const top = scored.length ? scored.reduce((best, entry) => (entry.score > best.score ? entry : best)) : null;
@@ -1146,6 +1253,7 @@
         lane.append(el("span", "pos", ranked ? String(rank + 1) : "·"), who, slots, best);
         board.appendChild(lane);
       });
+      checkLanes(board, (snapshot.preflight || []).filter((row) => row.role === "solver" && row.state === "failed" && !agents.includes(row.agent)));
       flip(board, ".lane[data-key]", before);
       if (!focusedRerun) return;
       const again = board.querySelector('button[data-rerun="' + CSS.escape(focusedRerun) + '"]');
@@ -1219,8 +1327,21 @@
       const active = document.activeElement;
       const focusedKey = active && active.matches && active.matches("#leaderboard button.row") ? active.dataset.key : null;
       const before = positions(leaderboard, "button.row");
+      const idle = !latest || (latest.phase === "idle" && !entries.length);
+      const view = idle ? "init" : leaderboardReady(latest) ? "table" : "skeleton";
+      if (idle && leaderboard.dataset.view === "init") {
+        fillRoster(leaderboard.querySelector(".roster"), latest || {});
+        return;
+      }
+      if (view !== "table" && leaderboard.dataset.view === view) return;
+      leaderboard.dataset.view = view;
       leaderboard.replaceChildren();
-      if (!leaderboardReady(latest || {})) {
+      if (idle) {
+        leaderboard.appendChild(initBoard());
+        fillRoster(leaderboard.querySelector(".roster"), latest || {});
+        return;
+      }
+      if (view === "skeleton") {
         leaderboard.appendChild(leaderboardSkeleton());
         return;
       }
@@ -1282,10 +1403,10 @@
         box.appendChild(why);
         if (attempt.failure_excerpt) box.appendChild(el("pre", "excerpt", attempt.failure_excerpt));
       }
-      const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from pytest. " : "No tests ran. ";
+      const tests = attempt.tests_total ? attempt.tests_passed + "/" + attempt.tests_total + " from the test runner. " : "No tests ran. ";
       addMeasure(box, "Correctness" + part(entry, "correctness"), tests
         + (attempt.public_failed ? "A public example failed, so correctness is 0. " : "")
-        + (attempt.tests_total && attempt.tests_passed < attempt.tests_total ? "" : attempt.state === "failed" ? "These grade the solution.py it left. The attempt still fails: " + failureReason(attempt) + "." : "Every test passed."));
+        + (attempt.tests_total && attempt.tests_passed < attempt.tests_total ? "" : attempt.state === "failed" ? "These grade the solution it left. The attempt still fails: " + failureReason(attempt) + "." : "Every test passed."));
       const timing = attempt.performance_ms === null || attempt.performance_ms === undefined
         ? "Not timed. The profiler runs only after every test passes."
         : milliseconds(attempt.performance_ms) + ". " + (attempt.performance_note || "");
@@ -1334,6 +1455,15 @@
         head.append(name, el("span", "", status));
         block.appendChild(head);
         if (job.summary) block.appendChild(el("p", "", job.summary));
+        if (job.state === "failed" && (latest.phase === "done" || latest.phase === "error")) {
+          const again = el("button", "ghost small retry");
+          again.type = "button";
+          again.dataset.reviewer = job.reviewer;
+          again.dataset.author = job.author;
+          again.dataset.attempt = String(job.attempt ?? 1);
+          again.append(icon("redo"), document.createTextNode("Retry review"));
+          block.appendChild(again);
+        }
         const findings = job.findings || [];
         if (job.state === "done" && !findings.length) block.appendChild(el("p", "", "No rubric findings."));
         if (findings.length) {
@@ -1359,7 +1489,9 @@
       const entry = selected ? entries.find((item) => item.key === selected.key) : null;
       const title = document.getElementById("detail-title");
       document.getElementById("detail-empty").hidden = !!entry;
+      renderDetailEmpty(latest);
       document.getElementById("tabs").hidden = !entry;
+      document.getElementById("detail-body").hidden = !entry;
       if (!entry) {
         detail.style.removeProperty("--hue");
         title.textContent = "Attempt";
@@ -1378,7 +1510,7 @@
       const source = attempt.state === "setup" ? "" : attempt.source || "";
       if (pre.textContent !== source) pre.textContent = source;
       let note = "";
-      if (!source) note = attempt.state === "setup" ? "The agent could not run, so there is no code." : finished(attempt) ? "This attempt wrote no solution.py." : "No code until this attempt finishes.";
+      if (!source) note = attempt.state === "setup" ? "The agent could not run, so there is no code." : finished(attempt) ? "This attempt wrote no solution." : "No code until this attempt finishes.";
       document.getElementById("solution-note").textContent = note;
       applyBlur();
     }
@@ -1437,7 +1569,15 @@
     }
 
     function techFor(text) {
-      return techChoice || (/fastapi/i.test(text) ? "fastapi" : "python");
+      if (techChoice) return techChoice;
+      if (/fastapi/i.test(text)) return "fastapi";
+      if (/\bexpress\b/i.test(text)) return "express";
+      if (/javascript|node\.?js|```js\b/i.test(text)) return "javascript";
+      return "python";
+    }
+
+    function nextTech(tech) {
+      return TECH_ORDER[(TECH_ORDER.indexOf(tech) + 1) % TECH_ORDER.length];
     }
 
     function renderTech() {
@@ -1445,7 +1585,7 @@
       const locked = !!(latest && latest.phase && latest.phase !== "idle" && !editingTask);
       const tech = locked ? latest.tech || "python" : techFor(document.getElementById("task").value);
       const changed = badge.dataset.tech !== tech;
-      const other = tech === "python" ? "FastAPI" : "Python";
+      const other = TECHS[nextTech(tech)];
       badge.dataset.tech = tech;
       badge.disabled = locked;
       badge.replaceChildren(document.createTextNode(TECHS[tech] || tech));
@@ -1477,12 +1617,14 @@
 
     function renderMine(snapshot) {
       const hint = document.getElementById("mine-hint");
-      const mine = snapshot.candidate;
-      document.getElementById("score").disabled = snapshot.suite_ready !== true || !!mine;
+      const button = document.getElementById("score");
       const area = document.getElementById("mine");
-      if (mine && mine.source && !area.value) area.value = mine.source;
-      if (mine) hint.textContent = mine.state === "running" ? "Running the suite…" : "Scored. It races as you.";
-      else hint.textContent = snapshot.suite_ready ? "Runs on the same frozen suite." : "Opens once the tests are written.";
+      const mine = snapshot.candidates || [];
+      const running = mine.filter((item) => item.state === "running").length;
+      button.disabled = snapshot.suite_ready !== true || button.classList.contains("busy") || !area.value.trim();
+      if (!snapshot.suite_ready) hint.textContent = "Opens once the tests are written.";
+      else if (!mine.length) hint.textContent = "Runs on the same frozen suite. Submit as many as you like.";
+      else hint.textContent = mine.length + " submitted" + (running ? " · " + running + " scoring" : "") + ". Paste another any time.";
     }
 
     function render(snapshot) {
@@ -1495,6 +1637,7 @@
       if (lastPhase !== snapshot.phase && lastPhase !== null) notice.textContent = "";
       lastPhase = snapshot.phase;
       latest = snapshot;
+      document.documentElement.style.setProperty("--sync", -(document.timeline.currentTime % 16800) + "ms");
       authorSince = (snapshot.author || {}).state === "running" ? authorSince || Date.now() : null;
       renderPhase(snapshot);
       renderTask(snapshot.phase);
@@ -1562,24 +1705,42 @@
       document.getElementById("ranking").scrollIntoView({ block: "start", behavior: still.matches ? "auto" : "smooth" });
     }
 
+    function messageSeconds() {
+      try {
+        const value = Number(localStorage.getItem("ctb.message-s"));
+        if (value >= 1 && value <= 120) return value;
+      } catch {}
+      return 10;
+    }
+
     function openMessage() {
       const dialog = document.getElementById("message-dialog");
+      const seconds = messageSeconds();
+      document.getElementById("message-label").textContent = "Shown across the top for " + seconds + (seconds === 1 ? " second" : " seconds");
       document.getElementById("message").value = "";
       dialog.showModal();
       document.getElementById("message").focus();
     }
 
+    function fitBanner() {
+      const banner = document.getElementById("banner");
+      const any = banner.childElementCount > 0;
+      banner.classList.toggle("visible", any);
+      document.body.classList.toggle("telling", any);
+      document.body.style.setProperty("--banner-h", banner.offsetHeight + "px");
+    }
+
     function showToast(text) {
       const banner = document.getElementById("banner");
-      banner.textContent = text;
-      banner.classList.add("visible");
-      document.body.classList.add("telling");
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => {
-        banner.classList.remove("visible");
-        banner.textContent = "";
-        document.body.classList.remove("telling");
-      }, 5000);
+      const line = banner.appendChild(el("p", "", text));
+      fitBanner();
+      setTimeout(() => {
+        line.classList.add("leaving");
+        setTimeout(() => {
+          line.remove();
+          fitBanner();
+        }, still.matches ? 0 : 400);
+      }, messageSeconds() * 1000);
     }
 
     function closeTaskEditor() {
@@ -1606,7 +1767,7 @@
     });
 
     document.getElementById("tech").addEventListener("click", () => {
-      techChoice = techFor(document.getElementById("task").value) === "python" ? "fastapi" : "python";
+      techChoice = nextTech(techFor(document.getElementById("task").value));
       renderTech();
     });
 
@@ -1635,18 +1796,31 @@
     });
 
     document.getElementById("score").addEventListener("click", async () => {
-      const response = await fetch("/mine", {
-        method: "POST",
-        body: document.getElementById("mine").value
-      });
+      const button = document.getElementById("score");
+      const area = document.getElementById("mine");
+      button.classList.add("busy");
+      button.disabled = true;
+      button.textContent = "Submitting";
+      area.readOnly = true;
       const notice = document.getElementById("notice");
-      if (!response.ok) {
-        notice.textContent = await response.text();
-        return;
+      try {
+        const response = await fetch("/mine", { method: "POST", body: area.value });
+        if (!response.ok) {
+          notice.textContent = await response.text();
+          return;
+        }
+        notice.textContent = "";
+        area.value = "";
+      } finally {
+        button.classList.remove("busy");
+        button.textContent = "Score my solution";
+        area.readOnly = false;
+        lastPayload = null;
+        await refresh();
       }
-      notice.textContent = "";
-      refresh();
     });
+
+    document.getElementById("mine").addEventListener("input", () => latest && renderMine(latest));
 
     async function post(path) {
       const response = await fetch(path, { method: "POST" });
@@ -1660,6 +1834,14 @@
     }
 
     document.getElementById("recheck").addEventListener("click", () => post("/check"));
+
+    document.getElementById("reviews").addEventListener("click", (event) => {
+      const again = event.target.closest("button.retry");
+      if (!again) return;
+      again.disabled = true;
+      const query = new URLSearchParams({ reviewer: again.dataset.reviewer, author: again.dataset.author, attempt: again.dataset.attempt });
+      post("/review?" + query);
+    });
 
     document.getElementById("board").addEventListener("click", (event) => {
       const again = event.target.closest("button[data-rerun]");
@@ -1762,8 +1944,167 @@
     new ResizeObserver(() => {
       frame.style.height = document.getElementById("leaderboard").offsetHeight + "px";
     }).observe(document.getElementById("leaderboard"));
+    new ResizeObserver(() => {
+      document.getElementById("detail").style.setProperty("--board-h", document.getElementById("ranking").offsetHeight + "px");
+    }).observe(document.getElementById("ranking"));
 
     let configTab = "run";
+    let authorActive = -1;
+    const AUTHOR_LEVEL = { "claude:opus": "high", "codex:gpt-6.1-sol": "xhigh", "grok:grok-4.7": "high" };
+
+    function authorChoices(query) {
+      const models = [...(config.models || [])];
+      const author = config.author;
+      if (author && !models.some((model) => model.cli === author.cli && model.model === author.model)) {
+        models.unshift({ cli: author.cli, model: author.model, effort: author.effort, efforts: author.efforts || [] });
+      }
+      const needle = query.trim().toLowerCase();
+      return models.filter((model) => !needle || model.model.toLowerCase().includes(needle) || model.cli.toLowerCase().includes(needle));
+    }
+
+    function clearAuthorEffort() {
+      const effort = document.getElementById("author-effort");
+      effort.replaceChildren();
+      const option = el("option", "", "Reasoning");
+      option.value = "";
+      effort.appendChild(option);
+      effort.dataset.ready = "";
+      effort.disabled = true;
+    }
+
+    function fillAuthorEffort(model, selected) {
+      const effort = document.getElementById("author-effort");
+      const levels = (model && model.efforts) || [];
+      effort.replaceChildren();
+      if (!levels.length) {
+        clearAuthorEffort();
+        return;
+      }
+      for (const level of levels) {
+        const option = el("option", "", level);
+        option.value = level;
+        option.selected = level === selected;
+        effort.appendChild(option);
+      }
+      if (![...effort.options].some((option) => option.selected)) {
+        const high = levels.indexOf("high");
+        effort.selectedIndex = high >= 0 ? high : 0;
+      }
+      effort.dataset.ready = "1";
+      effort.disabled = config.locked;
+    }
+
+    function preferredEffort(model) {
+      const known = AUTHOR_LEVEL[model.cli + ":" + model.model];
+      const levels = model.efforts || [];
+      if (known && levels.includes(known)) return known;
+      if (model.effort && levels.includes(model.effort)) return model.effort;
+      if (levels.includes("high")) return "high";
+      return levels[0] || "";
+    }
+
+    function applyAuthor(author) {
+      const input = document.getElementById("author-model");
+      if (!author) {
+        input.value = "";
+        delete input.dataset.cli;
+        delete input.dataset.model;
+        clearAuthorEffort();
+        return;
+      }
+      input.value = author.model;
+      input.dataset.cli = author.cli;
+      input.dataset.model = author.model;
+      const model = (config.models || []).find((item) => item.cli === author.cli && item.model === author.model);
+      fillAuthorEffort(model || { efforts: author.efforts || [], effort: author.effort }, author.effort);
+    }
+
+    function renderAuthor() {
+      const input = document.getElementById("author-model");
+      const effort = document.getElementById("author-effort");
+      const open = document.getElementById("config-dialog").open;
+      if (!(open && input.dataset.touched === "1")) applyAuthor(config.author);
+      input.disabled = config.locked;
+      effort.disabled = config.locked || !input.dataset.model || effort.dataset.ready !== "1";
+    }
+
+    function closeAuthorList() {
+      const input = document.getElementById("author-model");
+      const list = document.getElementById("author-options");
+      list.hidden = true;
+      list.replaceChildren();
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+      authorActive = -1;
+    }
+
+    function moveAuthorActive(delta) {
+      const options = [...document.querySelectorAll("#author-options [role=option]")];
+      if (!options.length) return;
+      if (authorActive < 0) authorActive = 0;
+      else authorActive = Math.min(Math.max(authorActive + delta, 0), options.length - 1);
+      options.forEach((option, index) => option.setAttribute("aria-selected", index === authorActive ? "true" : "false"));
+      inputActivedescendant(options[authorActive]);
+    }
+
+    function inputActivedescendant(option) {
+      document.getElementById("author-model").setAttribute("aria-activedescendant", option.id);
+      option.scrollIntoView({ block: "nearest" });
+    }
+
+    function openAuthorList() {
+      const input = document.getElementById("author-model");
+      if (input.disabled || !config) return;
+      authorActive = -1;
+      const query = input.dataset.model && input.value === input.dataset.model ? "" : input.value;
+      const choices = authorChoices(query);
+      const list = document.getElementById("author-options");
+      list.replaceChildren();
+      if (!choices.length) {
+        const empty = el("li", "empty", "No matching model");
+        empty.setAttribute("role", "presentation");
+        list.appendChild(empty);
+      }
+      choices.forEach((model, index) => {
+        const option = el("li");
+        option.setAttribute("role", "option");
+        option.id = "author-option-" + index;
+        option.dataset.cli = model.cli;
+        option.dataset.model = model.model;
+        const selected = model.cli === input.dataset.cli && model.model === input.dataset.model;
+        option.setAttribute("aria-selected", selected ? "true" : "false");
+        option.append(el("b", "", model.model), el("small", "", model.cli));
+        option.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          chooseAuthor(model);
+        });
+        list.appendChild(option);
+        if (selected) authorActive = index;
+      });
+      list.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      const options = [...list.querySelectorAll("[role=option]")];
+      if (authorActive < 0 && options.length) authorActive = 0;
+      if (options[authorActive]) {
+        options.forEach((option, index) => option.setAttribute("aria-selected", index === authorActive ? "true" : "false"));
+        inputActivedescendant(options[authorActive]);
+      }
+    }
+
+    function chooseAuthor(model) {
+      const input = document.getElementById("author-model");
+      const same = input.dataset.cli === model.cli && input.dataset.model === model.model;
+      const kept = same ? document.getElementById("author-effort").value : preferredEffort(model);
+      input.value = model.model;
+      input.dataset.cli = model.cli;
+      input.dataset.model = model.model;
+      input.dataset.touched = "1";
+      fillAuthorEffort(model, kept);
+      closeAuthorList();
+      configSummary();
+      const effort = document.getElementById("author-effort");
+      if (!effort.disabled) effort.focus();
+    }
 
     function showConfigTab(name, focus) {
       configTab = name;
@@ -1794,11 +2135,30 @@
         if (!open) input.value = seconds / 60;
         input.disabled = locked;
       }
+      if (!open) document.getElementById("message-limit").value = messageSeconds();
       document.getElementById("config-save").disabled = locked;
+      renderAuthor();
       const note = document.getElementById("config-note");
       note.className = "muted";
       note.textContent = locked ? "Locked while a run is going." : checking ? "Models can be switched once the lineup check finishes." : "";
       list.replaceChildren();
+      const head = el("div", "model-head");
+      head.setAttribute("aria-hidden", "true");
+      head.append(el("span"), el("span", "", "Model"), el("span", "", "Solving"), el("span", "", "Reviews"), el("span", "", "Check"));
+      list.appendChild(head);
+      const levelSelect = (id, name, model, value) => {
+        const select = el("select");
+        select.id = id;
+        select.setAttribute("aria-label", model.model + " " + name + " reasoning level");
+        select.disabled = locked;
+        for (const level of model.efforts) {
+          const option = el("option", "", level);
+          option.value = level;
+          option.selected = level === (kept.has(id) ? kept.get(id) : value);
+          select.appendChild(option);
+        }
+        return select;
+      };
       const groups = new Map();
       for (const model of config.models) {
         if (!groups.has(model.cli)) groups.set(model.cli, []);
@@ -1816,31 +2176,25 @@
           box.checked = kept.has(id) ? kept.get(id) : model.enabled;
           box.dataset.cli = model.cli;
           box.dataset.model = model.model;
-          const state = model.lineup ? checkState(model.name) || "unchecked" : "unchecked";
+          const state = checkState(model.name) || "unchecked";
           box.disabled = locked || checking || (!model.enabled && state === "failed");
           const label = el("label", "", model.model);
           label.htmlFor = id;
           if (model.lineup) label.append(" ", el("small", "", "lineup"));
-          let effort;
-          if (model.lineup) {
-            effort = el("span", "fixed", model.effort || "default");
-          } else {
-            effort = el("select");
+          let effort = el("span", "fixed", model.effort || "default");
+          if (model.efforts.length) {
+            effort = levelSelect(id + "-effort", "solving", model, model.effort);
             effort.dataset.effortFor = id;
-            effort.id = id + "-effort";
-            effort.setAttribute("aria-label", model.model + " reasoning level");
-            effort.disabled = locked;
-            for (const level of model.efforts) {
-              const option = el("option", "", level);
-              option.value = level;
-              option.selected = level === (kept.has(effort.id) ? kept.get(effort.id) : model.effort);
-              effort.appendChild(option);
-            }
+          }
+          let review = el("span", "fixed", model.review_effort || model.effort || "default");
+          if (model.efforts.length) {
+            review = levelSelect(id + "-review", "review", model, model.review_effort || model.effort);
+            review.dataset.reviewFor = id;
           }
           const chip = el("span", "chip", { ready: "Ready", failed: "Cannot run", checking: "Checking", unchecked: "Not checked" }[state] || state);
           chip.dataset.state = state;
           if (state === "failed") chip.title = ((latest.preflight || []).find((item) => item.agent === model.name) || {}).note || "";
-          row.append(box, label, effort, chip);
+          row.append(box, label, effort, review, chip);
           group.appendChild(row);
         }
         list.appendChild(group);
@@ -1861,11 +2215,12 @@
       const note = document.getElementById("config-note");
       if (config.locked || note.className === "error" || ((latest && latest.preflight) || []).some((row) => row.state === "checking")) return;
       const on = [...document.querySelectorAll("#model-list input[type=checkbox]:checked")];
-      const unchecked = on.map((box) => config.models.find((model) => model.cli === box.dataset.cli && model.model === box.dataset.model)).filter((model) => !model.lineup).map((model) => model.model);
+      const unchecked = on.map((box) => config.models.find((model) => model.cli === box.dataset.cli && model.model === box.dataset.model)).filter((model) => !checkState(model.name)).map((model) => model.model);
       const tests = Number(document.getElementById("author-limit").value) || 0;
       const solving = Number(document.getElementById("solve-limit").value) || 0;
       const reviews = Number(document.getElementById("review-limit").value) || 0;
-      note.textContent = on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
+      const writer = document.getElementById("author-model").dataset.model;
+      note.textContent = (writer ? writer + " writes tests · " : "No test author · ") + on.length + (on.length === 1 ? " model" : " models") + " × " + config.attempts + " attempts · tests " + tests + " min · solving " + solving + " min · reviews " + reviews + " min"
         + (unchecked.length ? " · not checked: " + unchecked.join(", ") : "");
     }
 
@@ -1882,9 +2237,67 @@
     }
 
     document.getElementById("open-config").addEventListener("click", openConfig);
+    document.getElementById("message-limit").addEventListener("input", (event) => {
+      const value = Number(event.target.value);
+      if (!(value >= 1 && value <= 120)) return;
+      try {
+        localStorage.setItem("ctb.message-s", String(value));
+      } catch {}
+    });
     document.getElementById("config-form").addEventListener("input", () => {
       document.getElementById("config-note").className = "muted";
       configSummary();
+    });
+    document.getElementById("author-model").addEventListener("click", openAuthorList);
+    document.getElementById("author-model").addEventListener("input", () => {
+      const input = document.getElementById("author-model");
+      input.dataset.touched = "1";
+      if (!(input.dataset.model && input.value === input.dataset.model)) {
+        delete input.dataset.cli;
+        delete input.dataset.model;
+        clearAuthorEffort();
+      }
+      openAuthorList();
+    });
+    document.getElementById("author-model").addEventListener("keydown", (event) => {
+      const input = document.getElementById("author-model");
+      const open = input.getAttribute("aria-expanded") === "true";
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (!open) openAuthorList();
+        else moveAuthorActive(1);
+      } else if (event.key === "ArrowUp" && open) {
+        event.preventDefault();
+        moveAuthorActive(-1);
+      } else if (event.key === "Enter" && open) {
+        event.preventDefault();
+        const options = [...document.querySelectorAll("#author-options [role=option]")];
+        const chosen = options[authorActive] || options[0];
+        if (!chosen) return;
+        const model = (config.models || []).find((item) => item.cli === chosen.dataset.cli && item.model === chosen.dataset.model);
+        if (model) chooseAuthor(model);
+      } else if (event.key === "Escape" && open) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeAuthorList();
+      }
+    });
+    document.getElementById("author-effort").addEventListener("change", () => {
+      document.getElementById("author-model").dataset.touched = "1";
+    });
+    document.getElementById("config-form").addEventListener("pointerdown", (event) => {
+      if (!event.target.closest(".combo")) closeAuthorList();
+    });
+    document.getElementById("config-dialog").addEventListener("cancel", (event) => {
+      const input = document.getElementById("author-model");
+      if (input.getAttribute("aria-expanded") === "true") {
+        event.preventDefault();
+        closeAuthorList();
+      }
+    });
+    document.getElementById("config-dialog").addEventListener("close", () => {
+      document.getElementById("author-model").dataset.touched = "";
+      closeAuthorList();
     });
     document.getElementById("config-cancel").addEventListener("click", () => document.getElementById("config-dialog").close());
     document.getElementById("config-tabs").addEventListener("keydown", (event) => tabKeys(event, ["run", "prompts"], configTab, showConfigTab));
@@ -1905,15 +2318,24 @@
       event.preventDefault();
       const models = [...document.querySelectorAll("#model-list input[type=checkbox]")].map((box) => {
         const effort = document.querySelector('[data-effort-for="' + CSS.escape(box.id) + '"]');
-        return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined };
+        const review = document.querySelector('[data-review-for="' + CSS.escape(box.id) + '"]');
+        return { cli: box.dataset.cli, model: box.dataset.model, enabled: box.checked, effort: effort ? effort.value : undefined, review_effort: review ? review.value : undefined };
       });
+      const authorInput = document.getElementById("author-model");
+      const authorEffort = document.getElementById("author-effort");
+      const author = authorInput.dataset.model ? {
+        cli: authorInput.dataset.cli,
+        model: authorInput.dataset.model,
+        effort: authorEffort.dataset.ready === "1" ? authorEffort.value : null
+      } : null;
       const response = await fetch("/config", {
         method: "POST",
         body: JSON.stringify({
           author_timeout_s: Math.round(Number(document.getElementById("author-limit").value) * 60),
           timeout_s: Math.round(Number(document.getElementById("solve-limit").value) * 60),
           review_timeout_s: Math.round(Number(document.getElementById("review-limit").value) * 60),
-          models
+          models,
+          author
         })
       });
       if (!response.ok) {

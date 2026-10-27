@@ -7,7 +7,7 @@ Research notes, 2026-10-24. Nothing here is built yet.
 Today every solver runs on this Mac as the logged-in user:
 
 - Claude solves with `--permission-mode bypassPermissions` and the Bash tool. It can read and write anything the user can.
-- Codex attempts 2 and 3 run with `--dangerously-bypass-approvals-and-sandbox`, because `codex exec resume` has no `--sandbox` flag.
+- Codex runs every attempt in its `workspace-write` sandbox. Sessions are no longer resumed, so no attempt needs `--dangerously-bypass-approvals-and-sandbox`.
 - Grok uses its own `--sandbox strict`, which is the only real limit we have.
 - pytest and the perf runner execute each agent's `solution.py` on the host, also unsandboxed.
 
@@ -30,7 +30,7 @@ Pass the tokens with `--env-file`, never in the command line. `ps` and the run l
 ## Recommended shape
 
 1. **One image**, `ctb-agent`: Debian slim, Node 22, Python 3.12, pytest, ruff, fastapi, httpx, and the three CLIs pinned to the versions `ctb check` prints. Build it once before the interview.
-2. **One container per agent per run**, started with `docker run -d --rm` and the workspace bind-mounted at `/work`. Each attempt is a `docker exec`. The container keeps each CLI's session files (`~/.claude/projects`, `~/.codex/sessions`, Grok's sessions) between attempts, so `--resume`, `exec resume` and `-r` still work. A fresh container per attempt would break the retry prompts, because they continue the same session.
+2. **One container per agent per run**, started with `docker run -d --rm` and the workspace bind-mounted at `/work`. Each attempt is a `docker exec`. Sessions are not resumed: each retry prompt carries the previous attempt's code and results, so a fresh container per attempt would also work.
 3. **The CLIs' own sandboxes off inside the container.** Codex's Landlock sandbox and Grok's strict profile often can't start in an unprivileged container, and the container already sets the limit. So the flags would become: Codex always `--dangerously-bypass-approvals-and-sandbox`, Grok `--sandbox off` (check the exact name).
 4. **Network**: the solvers need their API hosts. Start with the default bridge network. An egress allowlist (api.anthropic.com, api.openai.com / chatgpt.com, the grok.com API) via a small proxy is a later step.
 5. **Grading in its own container** with `--network none --read-only`, a tmpfs at `/tmp`, `--cpus 1 --memory 1g`, and a `--pids-limit`. Untrusted code then can't call out or fork-bomb the Mac, and timings are steadier because each grade gets the same CPU share.

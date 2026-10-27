@@ -1,7 +1,7 @@
 import json
 
 from ctb.models import Finding, ReviewNote
-from ctb.score import findings_score
+from ctb.run.score import findings_score
 
 _SEVERITIES = ("blocker", "major", "minor")
 

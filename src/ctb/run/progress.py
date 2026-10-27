@@ -99,7 +99,7 @@ class ProgressBoard:
                 return
             item["state"] = "running"
 
-    def review_finished(self, reviewer: str, author: str, note: ReviewNote | None, attempt: int = 1) -> None:
+    def review_finished(self, reviewer: str, author: str, note: ReviewNote | None, attempt: int = 1, reason: str = "") -> None:
         with self._lock:
             item = self._review(reviewer, author, attempt)
             if item is None:
@@ -108,6 +108,8 @@ class ProgressBoard:
             item["state"] = "done" if note is not None else "failed"
             if note is not None:
                 item.update(review_row(note))
+            else:
+                item["summary"] = reason
 
     def set_solutions(self, solutions: list[SolutionRun]) -> None:
         with self._lock:

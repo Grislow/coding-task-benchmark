@@ -2,12 +2,12 @@ import ast
 import json
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import textwrap
 from pathlib import Path
 
+from ctb.langs.shared import read_junit, run
 from ctb.models import EvalResult
 
 _PERF_RUNNER = """
@@ -125,10 +125,10 @@ def _run_pytest(root: Path, timeout_s: int, target: str | None = None) -> EvalRe
     ]
     if target:
         command.append(target)
-    completed = _run(command, root, timeout_s)
+    completed = run(command, root, timeout_s)
     if completed is None:
         return EvalResult(False, 0, 0, False, "pytest timed out.", None)
-    passed, total, excerpt = _read_junit(report_path, completed.stdout, completed.stderr)
+    passed, total, excerpt = read_junit(report_path, completed.stdout, completed.stderr)
     ok = completed.returncode == 0 and total > 0 and passed == total
     failure = "" if ok else (excerpt or completed.stdout or completed.stderr or "pytest failed")
     return EvalResult(ok, passed, total, False, failure[:4000], None)
@@ -137,7 +137,7 @@ def _run_pytest(root: Path, timeout_s: int, target: str | None = None) -> EvalRe
 def _run_perf(root: Path, perf_cases: str, timeout_s: int) -> tuple[float | None, str]:
     (root / "perf_cases.py").write_text(perf_cases)
     (root / "run_perf.py").write_text(_PERF_RUNNER)
-    completed = _run([sys.executable, "run_perf.py"], root, min(timeout_s, 30))
+    completed = run([sys.executable, "run_perf.py"], root, min(timeout_s, 30))
     if completed is None or completed.returncode != 0:
         return None, "The profiler did not finish."
     try:
@@ -154,60 +154,6 @@ def _run_perf(root: Path, perf_cases: str, timeout_s: int) -> tuple[float | None
     return float(value), text
 
 
-def _read_junit(path: Path, stdout: str, stderr: str) -> tuple[int, int, str]:
-    if not path.exists():
-        return 0, 0, stdout or stderr
-    import xml.etree.ElementTree as element_tree
-
-    try:
-        tree = element_tree.parse(path)
-    except element_tree.ParseError:
-        return 0, 0, stdout or stderr
-    root = tree.getroot()
-    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
-    tests = 0
-    failures = 0
-    errors = 0
-    messages: list[str] = []
-    for suite in suites:
-        tests += _xml_int(suite, "tests")
-        failures += _xml_int(suite, "failures")
-        errors += _xml_int(suite, "errors")
-        for case in suite.findall("testcase"):
-            for child in list(case):
-                if child.tag in {"failure", "error"}:
-                    name = case.get("name", "test")
-                    detail = (child.get("message") or child.text or "").strip()
-                    messages.append(f"{name}: {detail}")
-    passed = max(0, tests - failures - errors)
-    excerpt = "\n".join(messages[:8]) or stdout or stderr
-    return passed, tests, excerpt
-
-
-def _xml_int(node: object, key: str) -> int:
-    value = getattr(node, "get", lambda _name: None)(key)
-    if not isinstance(value, str):
-        return 0
-    try:
-        return int(value)
-    except ValueError:
-        return 0
-
-
 def _module_missing(name: str) -> bool:
-    completed = _run([sys.executable, "-c", f"import {name}"], Path.cwd(), 30)
+    completed = run([sys.executable, "-c", f"import {name}"], Path.cwd(), 30)
     return completed is None or completed.returncode != 0
-
-
-def _run(command: list[str], cwd: Path, timeout_s: int) -> subprocess.CompletedProcess[str] | None:
-    try:
-        return subprocess.run(
-            command,
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            timeout=timeout_s,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return None
